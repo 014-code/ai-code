@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: ai-code
+  # mysql
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/ai_code
+    username: root
+    password: 123456
+  profiles:
+    active: dev
+server:
+  port: 8123
+  servlet:
+    context-path: /api
+    # cookie 30 ???
+    session:
+      cookie:
+        max-age: 2592000
+# knife4j
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+# springdoc-openapi
+springdoc:
+  group-configs:
+    - group: 'default'
+      paths-to-match: '/**'
+      packages-to-scan: com.yupi.yuaicodemother.controller
+
