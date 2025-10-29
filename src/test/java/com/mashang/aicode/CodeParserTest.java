@@ -90,7 +90,7 @@ class CodeParserTest {
 
     @Test
     void generateAndSaveCodeStream() {
-        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream("任务记录网站，代码不超过100行", CodeGenTypeEnum.MULTI_FILE);
+        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream("任务记录网站，代码不超过100行", CodeGenTypeEnum.MULTI_FILE, 1L);
 
         List<String> result = codeStream.collectList().block();
 

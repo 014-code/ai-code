@@ -23,8 +23,6 @@ import java.util.List;
 
 /**
  * 用户 控制层。
- *
- * @author <a href="https://github.com/liyupi">程序员鱼皮</a>
  */
 @RestController
 @RequestMapping("/user")

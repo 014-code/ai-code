@@ -6,6 +6,8 @@ import cn.hutool.core.util.StrUtil;
 import com.mashang.aicode.web.ai.model.HtmlCodeResult;
 import com.mashang.aicode.web.ai.model.MultiFileCodeResult;
 import com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum;
+import com.mashang.aicode.web.exception.BusinessException;
+import com.mashang.aicode.web.exception.ErrorCode;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,8 +31,11 @@ public class CodeFileSaver {
      * @param bizType
      * @return
      */
-    private static String buildUniqueDir(String bizType) {
-        String uniqueDirName = StrUtil.format("{}_{}", bizType, IdUtil.getSnowflakeNextIdStr());
+    private static String buildUniqueDir(String bizType, Long appId) {
+        if (appId == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "应用 ID 不能为空");
+        }
+        String uniqueDirName = StrUtil.format("{}_{}", bizType, appId);
         String dirPath = FILE_SAVE_ROOT_DIR + File.separator + uniqueDirName;
         FileUtil.mkdir(dirPath);
         return dirPath;
@@ -58,8 +63,8 @@ public class CodeFileSaver {
      * @param result
      * @return
      */
-    public static File saveHtmlCodeResult(HtmlCodeResult result) {
-        String baseDirPath = buildUniqueDir(CodeGenTypeEnum.HTML.getValue());
+    public static File saveHtmlCodeResult(HtmlCodeResult result, Long appId) {
+        String baseDirPath = buildUniqueDir(CodeGenTypeEnum.HTML.getValue(),  appId);
         writeFile("index.html", baseDirPath, result.getHtmlCode());
         return new File(baseDirPath);
     }
@@ -69,8 +74,8 @@ public class CodeFileSaver {
      * @param result
      * @return
      */
-    public static File saveMultiFileCodeResult(MultiFileCodeResult result) {
-        String baseDirPath = buildUniqueDir(CodeGenTypeEnum.MULTI_FILE.getValue());
+    public static File saveMultiFileCodeResult(MultiFileCodeResult result, Long appId) {
+        String baseDirPath = buildUniqueDir(CodeGenTypeEnum.MULTI_FILE.getValue(),   appId);
         writeFile("index.html", baseDirPath, result.getHtmlCode());
         writeFile("style.css", baseDirPath, result.getCssCode());
         writeFile("script.js", baseDirPath, result.getJsCode());
