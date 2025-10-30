@@ -7,7 +7,9 @@ export default [
       { path: '/user/register', component: './User/Register' },
     ],
   },
-  { path: '/welcome', icon: 'smile', component: './Welcome', name: '欢迎页' },
+  { path: '/home', icon: 'smile', component: './Code/Home', name: '首页' },
+  { path: '/chat/:appId', component: './Code/Chat', name: '应用对话', layout: false },
+  { path: '/app/edit/:appId', component: './Code/AppEdit', name: '编辑应用', layout: false },
   {
     path: '/admin',
     icon: 'crown',
@@ -16,8 +18,9 @@ export default [
     routes: [
       { path: '/admin', redirect: '/admin/user' },
       { icon: 'table', path: '/admin/user', component: './Admin/User', name: '用户管理' },
+      { icon: 'table', path: '/admin/app', component: './Admin/App', name: '应用管理' },
     ],
   },
-  { path: '/', redirect: '/welcome' },
+  { path: '/', redirect: '/home' },
   { path: '*', layout: false, component: './404' },
 ];

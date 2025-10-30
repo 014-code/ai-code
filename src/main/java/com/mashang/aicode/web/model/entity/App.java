@@ -26,32 +26,44 @@ import java.io.Serializable;
 public class App implements Serializable {
     //id
     @Id(keyType = KeyType.Generator, value = KeyGenerators.snowFlakeId)
+    @Column("id")
     private Long id;
     //应用名称
-    private String appname;
+    @Column("appName")
+    private String appName;
     //应用封面
+    @Column("cover")
     private String cover;
     //应用初始化的 prompt
-    private String initprompt;
+    @Column("initPrompt")
+    private String initPrompt;
     //代码生成类型（枚举）
-    private String codegentype;
+    @Column("codeGenType")
+    private String codeGenType;
     //部署标识
-    private String deploykey;
+    @Column("deployKey")
+    private String deployKey;
     //部署时间
-    private Date deployedtime;
+    @Column("deployedTime")
+    private Date deployedTime;
     //优先级
+    @Column("priority")
     private Integer priority;
     //创建用户id
-    private Long userid;
+    @Column("userId")
+    private Long userId;
     //编辑时间
-    private Date edittime;
+    @Column("editTime")
+    private Date editTime;
     //创建时间
-    private Date createtime;
+    @Column("createTime")
+    private Date createTime;
     //更新时间
-    private Date updatetime;
+    @Column("updateTime")
+    private Date updateTime;
     //是否删除
-    @Column(isLogicDelete = true)
-    private Integer isdelete;
+    @Column(value = "isDelete", isLogicDelete = true)
+    private Integer isDelete;
 
 }
 

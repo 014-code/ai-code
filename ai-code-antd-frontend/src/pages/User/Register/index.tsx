@@ -1,5 +1,5 @@
 import Footer from '@/components/Footer';
-import { userRegisterUsingPost } from '@/services/backend/userController';
+import {userRegister} from '@/services/backend/userController';
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { LoginForm, ProFormText } from '@ant-design/pro-components';
 import { useEmotionCss } from '@ant-design/use-emotion-css';
@@ -42,7 +42,7 @@ const UserRegisterPage: React.FC = () => {
 
     try {
       // 注册
-      await userRegisterUsingPost({
+      await userRegister({
         ...values,
       });
 
@@ -86,7 +86,7 @@ const UserRegisterPage: React.FC = () => {
             },
           }}
           onFinish={async (values) => {
-            await handleSubmit(values as API.UserLoginRequest);
+            await handleSubmit(values as API.UserRegisterRequest);
           }}
         >
           <Tabs

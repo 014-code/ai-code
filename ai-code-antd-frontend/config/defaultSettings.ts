@@ -15,7 +15,7 @@ const Settings: ProLayoutProps & {
   fixedHeader: false,
   fixSiderbar: true,
   colorWeak: false,
-  title: '鱼皮前端万用模板',
+  title: '加炜ai零代码生成平台',
   pwa: true,
   iconfontUrl: '',
   token: {

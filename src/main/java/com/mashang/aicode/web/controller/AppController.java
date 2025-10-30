@@ -52,26 +52,28 @@ public class AppController {
     @PostMapping("/add")
     public BaseResponse<Long> addApp(@RequestBody AppAddRequest appAddRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(appAddRequest == null, ErrorCode.PARAMS_ERROR);
-        
+
         // 获取当前登录用户
         User loginUser = userService.getLoginUser(request);
-        
+
         // 校验参数
         String appName = appAddRequest.getAppName();
         String initPrompt = appAddRequest.getInitPrompt();
         ThrowUtils.throwIf(StrUtil.isBlank(appName), ErrorCode.PARAMS_ERROR, "应用名称不能为空");
         ThrowUtils.throwIf(StrUtil.isBlank(initPrompt), ErrorCode.PARAMS_ERROR, "初始化提示词不能为空");
-        
+
         // 创建应用
         App app = new App();
         BeanUtil.copyProperties(appAddRequest, app);
-        app.setUserid(loginUser.getId());
+        app.setUserId(loginUser.getId());
 //        app.setPriority(0); // 默认非精选
         app.setPriority(0); // 默认优先级
-        
+        //默认设置为多文件
+        app.setCodeGenType("multi_file");
+
         boolean result = appService.save(app);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-        
+
         return ResultUtils.success(app.getId());
     }
 
@@ -81,26 +83,26 @@ public class AppController {
     @PostMapping("/update/user")
     public BaseResponse<Boolean> updateApp(@RequestBody AppUpdateRequest appUpdateRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(appUpdateRequest == null || appUpdateRequest.getId() == null, ErrorCode.PARAMS_ERROR);
-        
+
         // 获取当前登录用户
         User loginUser = userService.getLoginUser(request);
-        
+
         // 查询应用
         App app = appService.getById(appUpdateRequest.getId());
         ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR);
-        
+
         // 校验权限（只能修改自己的应用）
-        ThrowUtils.throwIf(!app.getUserid().equals(loginUser.getId()), ErrorCode.NO_AUTH_ERROR);
-        
+        ThrowUtils.throwIf(!app.getUserId().equals(loginUser.getId()), ErrorCode.NO_AUTH_ERROR);
+
         // 更新应用名称
         App updateApp = new App();
         updateApp.setId(appUpdateRequest.getId());
-        updateApp.setAppname(appUpdateRequest.getAppName());
-        updateApp.setEdittime(new Date());
-        
+        updateApp.setAppName(appUpdateRequest.getAppName());
+        updateApp.setEditTime(new Date());
+
         boolean result = appService.updateById(updateApp);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-        
+
         return ResultUtils.success(true);
     }
 
@@ -110,20 +112,20 @@ public class AppController {
     @PostMapping("/delete/user")
     public BaseResponse<Boolean> deleteApp(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(deleteRequest == null || deleteRequest.getId() == null, ErrorCode.PARAMS_ERROR);
-        
+
         // 获取当前登录用户
         User loginUser = userService.getLoginUser(request);
-        
+
         // 查询应用
         App app = appService.getById(deleteRequest.getId());
         ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR);
-        
+
         // 校验权限（只能删除自己的应用）
-        ThrowUtils.throwIf(!app.getUserid().equals(loginUser.getId()), ErrorCode.NO_AUTH_ERROR);
-        
+        ThrowUtils.throwIf(!app.getUserId().equals(loginUser.getId()), ErrorCode.NO_AUTH_ERROR);
+
         boolean result = appService.removeById(deleteRequest.getId());
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-        
+
         return ResultUtils.success(true);
     }
 
@@ -133,19 +135,19 @@ public class AppController {
     @GetMapping("/get/vo")
     public BaseResponse<AppVO> getAppVOById(long id, HttpServletRequest request) {
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
-        
+
         // 获取当前登录用户
         User loginUser = userService.getLoginUser(request);
-        
+
         // 查询应用
         App app = appService.getById(id);
         ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR);
-        
+
         // 校验权限（只能查看自己的应用或精选应用）
-        if (!app.getUserid().equals(loginUser.getId()) && app.getPriority() != 1) {
+        if (!app.getUserId().equals(loginUser.getId()) && app.getPriority() != 1) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
-        
+
         AppVO appVO = appService.getAppVO(app);
         return ResultUtils.success(appVO);
     }
@@ -156,10 +158,10 @@ public class AppController {
     @PostMapping("/my/list/page/vo")
     public BaseResponse<Page<AppVO>> listMyAppVOByPage(@RequestBody AppQueryRequest appQueryRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);
-        
+
         // 获取当前登录用户
         User loginUser = userService.getLoginUser(request);
-        
+
         Page<AppVO> appVOPage = appService.listAppVOByPageForUser(appQueryRequest, loginUser.getId());
         return ResultUtils.success(appVOPage);
     }
@@ -170,7 +172,7 @@ public class AppController {
     @PostMapping("/featured/list/page/vo")
     public BaseResponse<Page<AppVO>> listFeaturedAppVOByPage(@RequestBody AppQueryRequest appQueryRequest) {
         ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);
-        
+
         Page<AppVO> appVOPage = appService.listFeaturedAppVOByPage(appQueryRequest);
         return ResultUtils.success(appVOPage);
     }
@@ -182,10 +184,10 @@ public class AppController {
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> deleteAppByAdmin(@RequestBody DeleteRequest deleteRequest) {
         ThrowUtils.throwIf(deleteRequest == null || deleteRequest.getId() == null, ErrorCode.PARAMS_ERROR);
-        
+
         boolean result = appService.removeById(deleteRequest.getId());
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-        
+
         return ResultUtils.success(true);
     }
 
@@ -196,14 +198,14 @@ public class AppController {
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> updateAppByAdmin(@RequestBody AppUpdateRequest appUpdateRequest) {
         ThrowUtils.throwIf(appUpdateRequest == null || appUpdateRequest.getId() == null, ErrorCode.PARAMS_ERROR);
-        
+
         App app = new App();
         BeanUtil.copyProperties(appUpdateRequest, app);
-        app.setEdittime(new Date());
-        
+        app.setEditTime(new Date());
+
         boolean result = appService.updateById(app);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-        
+
         return ResultUtils.success(true);
     }
 
@@ -214,13 +216,13 @@ public class AppController {
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Page<App>> listAppByPage(@RequestBody AppQueryRequest appQueryRequest) {
         ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);
-        
+
         long pageNum = appQueryRequest.getPageNum();
         long pageSize = appQueryRequest.getPageSize();
-        
+
         Page<App> appPage = appService.page(Page.of(pageNum, pageSize),
                 appService.getQueryWrapper(appQueryRequest));
-        
+
         return ResultUtils.success(appPage);
     }
 
@@ -231,11 +233,54 @@ public class AppController {
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<App> getAppById(long id) {
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
-        
+
         App app = appService.getById(id);
         ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR);
-        
+
         return ResultUtils.success(app);
+    }
+
+    /**
+     * 【管理员】设置应用为精选/取消精选
+     */
+    @PostMapping("/set/featured")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> setAppFeatured(@RequestBody AppUpdateRequest appUpdateRequest) {
+        ThrowUtils.throwIf(appUpdateRequest == null || appUpdateRequest.getId() == null, ErrorCode.PARAMS_ERROR);
+
+        // 查询应用是否存在
+        App oldApp = appService.getById(appUpdateRequest.getId());
+        ThrowUtils.throwIf(oldApp == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+
+        // 设置优先级（1为精选，0为非精选）
+        App app = new App();
+        app.setId(appUpdateRequest.getId());
+        app.setPriority(appUpdateRequest.getPriority() != null ? appUpdateRequest.getPriority() : 0);
+        app.setEditTime(new Date());
+
+        boolean result = appService.updateById(app);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 【管理员】分页查询所有应用列表（按创建时间倒序排列）
+     */
+    @PostMapping("/list/all/page")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Page<App>> listAllAppsByPage(@RequestBody AppQueryRequest appQueryRequest) {
+        ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);
+
+        long pageNum = appQueryRequest.getPageNum();
+        long pageSize = appQueryRequest.getPageSize();
+
+        // 创建查询条件，按创建时间倒序排列
+        com.mybatisflex.core.query.QueryWrapper queryWrapper = new com.mybatisflex.core.query.QueryWrapper();
+        queryWrapper.orderBy("createTime", false); // false表示倒序
+
+        Page<App> appPage = appService.page(Page.of(pageNum, pageSize), queryWrapper);
+        return ResultUtils.success(appPage);
     }
 
     /**
