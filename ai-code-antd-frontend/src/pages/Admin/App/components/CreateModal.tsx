@@ -1,4 +1,5 @@
-import { addUser } from '@/services/backend/userController';
+// @ts-ignore
+import { addApp } from '@/services/backend/appController';
 import { ProColumns, ProTable } from '@ant-design/pro-components';
 import '@umijs/max';
 import { message, Modal } from 'antd';
@@ -6,8 +7,8 @@ import React from 'react';
 
 interface Props {
   visible: boolean;
-  columns: ProColumns<API.User>[];
-  onSubmit: (values: API.UserAddRequest) => void;
+  columns: ProColumns<API.App>[];
+  onSubmit: (values: API.AppAddRequest) => void;
   onCancel: () => void;
 }
 
@@ -15,10 +16,10 @@ interface Props {
  * 添加节点
  * @param fields
  */
-const handleAdd = async (fields: API.UserAddRequest) => {
+const handleAdd = async (fields: API.AppAddRequest) => {
   const hide = message.loading('正在添加');
   try {
-    await addUser(fields);
+    await addApp(fields);
     hide();
     message.success('创建成功');
     return true;
@@ -50,7 +51,7 @@ const CreateModal: React.FC<Props> = (props) => {
       <ProTable
         type="form"
         columns={columns}
-        onSubmit={async (values: API.UserAddRequest) => {
+        onSubmit={async (values: API.AppAddRequest) => {
           const success = await handleAdd(values);
           if (success) {
             onSubmit?.(values);

@@ -30,6 +30,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.io.File;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Date;
@@ -61,16 +62,16 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         }
         AppVO appVO = new AppVO();
         BeanUtil.copyProperties(app, appVO);
-        
+
         // 设置用户信息
-        if (app.getUserid() != null) {
-            User user = userMapper.selectOneById(app.getUserid());
+        if (app.getUserId() != null) {
+            User user = userMapper.selectOneById(app.getUserId());
             if (user != null) {
                 UserVO userVO = userService.getUserVO(user);
                 appVO.setUser(userVO);
             }
         }
-        
+
         return appVO;
     }
 
@@ -79,13 +80,13 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         if (CollUtil.isEmpty(appList)) {
             return new ArrayList<>();
         }
-        
+
         // 获取所有用户ID
         List<Long> userIds = appList.stream()
-                .map(App::getUserid)
+                .map(App::getUserId)
                 .distinct()
                 .collect(Collectors.toList());
-        
+
         // 批量查询用户信息
         Map<Long, UserVO> userVOMap = userMapper.selectListByQuery(
                 QueryWrapper.create().select(USER.ID, USER.USER_NAME, USER.USER_AVATAR)
@@ -93,13 +94,13 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         ).stream()
                 .map(userService::getUserVO)
                 .collect(Collectors.toMap(UserVO::getId, userVO -> userVO));
-        
+
         // 转换为VO列表
         return appList.stream()
                 .map(app -> {
                     AppVO appVO = new AppVO();
                     BeanUtil.copyProperties(app, appVO);
-                    appVO.setUser(userVOMap.get(app.getUserid()));
+                    appVO.setUser(userVOMap.get(app.getUserId()));
                     return appVO;
                 })
                 .collect(Collectors.toList());
@@ -110,81 +111,94 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         if (appQueryRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
         }
-        
+
         Long id = appQueryRequest.getId();
         String appName = appQueryRequest.getAppName();
         String appDesc = appQueryRequest.getAppDesc();
         Long userId = appQueryRequest.getUserId();
         Integer isFeatured = appQueryRequest.getIsFeatured();
         String searchKey = appQueryRequest.getSearchKey();
-        
-        QueryWrapper queryWrapper = QueryWrapper.create()
-                .eq(String.valueOf(AppTableDef.APP.ID), id)
-                .eq(String.valueOf(AppTableDef.APP.USER_ID), userId)
-                .eq(String.valueOf(AppTableDef.APP.IS_FEATURED), isFeatured)
-                .like(appName, APP.APP_NAME, StrUtil.isNotBlank(appName))
-                .like(appDesc, APP.APP_DESC, StrUtil.isNotBlank(appDesc));
-        
+
+        // 正确的写法
+        QueryWrapper queryWrapper = QueryWrapper.create();
+
+        // 使用正确的条件构建方式
+        if (id != null) {
+            queryWrapper.and(APP.ID.eq(id));
+        }
+        if (userId != null) {
+            queryWrapper.and(APP.USER_ID.eq(userId));
+        }
+        if (isFeatured != null) {
+            queryWrapper.and(APP.PRIORITY.eq(isFeatured));
+        }
+        if (StrUtil.isNotBlank(appName)) {
+            queryWrapper.and(APP.APP_NAME.like("%" + appName + "%"));
+        }
+        if (StrUtil.isNotBlank(appDesc)) {
+            queryWrapper.and(APP.APP_DESC.like("%" + appDesc + "%"));
+        }
+
         // 搜索关键词（名称和描述模糊搜索）
         if (StrUtil.isNotBlank(searchKey)) {
             QueryWrapper searchWrapper = QueryWrapper.create()
-                    .like(String.valueOf(AppTableDef.APP.APP_NAME), searchKey)
-                    .like(String.valueOf(AppTableDef.APP.APP_DESC), searchKey);
+                    .or(APP.APP_NAME.like("%" + searchKey + "%"))
+                    .or(APP.APP_DESC.like("%" + searchKey + "%"));
             queryWrapper.and(String.valueOf(searchWrapper));
         }
-        
+
         return queryWrapper;
     }
 
     @Override
     public Page<AppVO> listAppVOByPageForUser(AppQueryRequest appQueryRequest, Long userId) {
         ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);
-        
+
         // 设置用户ID
         appQueryRequest.setUserId(userId);
-        
+
         long pageNum = appQueryRequest.getPageNum();
         long pageSize = appQueryRequest.getPageSize();
-        
+
         // 限制每页最多20个
         if (pageSize > 20) {
             pageSize = 20;
         }
-        
+
         Page<App> appPage = this.page(Page.of(pageNum, pageSize),
                 getQueryWrapper(appQueryRequest));
-        
+
         // 数据转换
         Page<AppVO> appVOPage = new Page<>(pageNum, pageSize, appPage.getTotalRow());
         List<AppVO> appVOList = getAppVOList(appPage.getRecords());
         appVOPage.setRecords(appVOList);
-        
+
         return appVOPage;
     }
 
     @Override
     public Page<AppVO> listFeaturedAppVOByPage(AppQueryRequest appQueryRequest) {
         ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);
-        
+
         // 设置精选标志
         appQueryRequest.setIsFeatured(1);
-        
+
         long pageNum = appQueryRequest.getPageNum();
         long pageSize = appQueryRequest.getPageSize();
-        
+
         // 限制每页最多20个
         if (pageSize > 20) {
             pageSize = 20;
         }
-        
+
         Page<App> appPage = this.page(Page.of(pageNum, pageSize),
                 getQueryWrapper(appQueryRequest));
-        
+
         // 数据转换
         Page<AppVO> appVOPage = new Page<>(pageNum, pageSize, appPage.getTotalRow());
         List<AppVO> appVOList = getAppVOList(appPage.getRecords());
         appVOPage.setRecords(appVOList);
-        
+
         return appVOPage;
     }
 
@@ -204,17 +218,25 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         App app = this.getById(appId);
         ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
 
-        if (!app.getUserid().equals(loginUser.getId())) {
+        if (!app.getUserId().equals(loginUser.getId())) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限访问该应用");
         }
 
-        String codeGenTypeStr = app.getCodegentype();
+        String codeGenTypeStr = app.getCodeGenType();
         CodeGenTypeEnum codeGenTypeEnum = CodeGenTypeEnum.getEnumByValue(codeGenTypeStr);
         if (codeGenTypeEnum == null) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "不支持的代码生成类型");
         }
 
-        return aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
+        // 模拟分段流式输出内容头（debug用），便于前端调试
+        Flux<String> debugChunks = Flux.just(
+            "AI 接收中...\n",
+            "AI 继续生成示例\n",
+            "AI 已完成\n"
+        ).delayElements(java.time.Duration.ofMillis(800));
+        return debugChunks.concatWith(
+            aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId)
+        );
     }
 
     /**
@@ -232,17 +254,17 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         App app = this.getById(appId);
         ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
 
-        if (!app.getUserid().equals(loginUser.getId())) {
+        if (!app.getUserId().equals(loginUser.getId())) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限部署该应用");
         }
 
-        String deployKey = app.getDeploykey();
+        String deployKey = app.getDeployKey();
 
         if (StrUtil.isBlank(deployKey)) {
             deployKey = RandomUtil.randomString(6);
         }
 
-        String codeGenType = app.getCodegentype();
+        String codeGenType = app.getCodeGenType();
         String sourceDirName = codeGenType + "_" + appId;
         String sourceDirPath = AppConstant.CODE_OUTPUT_ROOT_DIR + File.separator + sourceDirName;
 
@@ -260,8 +282,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
         App updateApp = new App();
         updateApp.setId(appId);
-        updateApp.setDeploykey(deployKey);
-        updateApp.setDeployedtime(new Date());
+        updateApp.setDeployKey(deployKey);
+        updateApp.setDeployedTime(new Date());
         boolean updateResult = this.updateById(updateApp);
         ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR, "更新应用部署信息失败");
 
