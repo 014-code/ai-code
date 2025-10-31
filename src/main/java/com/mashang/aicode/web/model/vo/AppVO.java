@@ -52,6 +52,11 @@ public class AppVO implements Serializable {
     private UserVO user;
 
     /**
+     * 应用封面
+     */
+    private String cover;
+
+    /**
      * 部署标识
      */
     private String deployKey;

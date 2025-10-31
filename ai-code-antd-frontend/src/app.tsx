@@ -20,9 +20,13 @@ export async function getInitialState(): Promise<InitialState> {
   if (location.pathname !== loginPath) {
     try {
       const res = await getLoginUser();
-      initialState.currentUser = res.data;
+      // 确保响应成功且数据有效
+      if (res && res.data) {
+        initialState.currentUser = res.data;
+      }
     } catch (error: any) {
-      // 如果未登录
+      // 如果未登录，不抛出错误，保持currentUser为undefined
+      console.log('未登录或获取用户信息失败:', error.message);
     }
 
     // 模拟登录用户

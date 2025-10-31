@@ -140,9 +140,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (CollUtil.isEmpty(userList)) {
             return new ArrayList<>();
         }
-        return userList.stream()
-                .map(this::getUserVO)
-                .collect(Collectors.toList());
+        return userList.stream().map(this::getUserVO).collect(Collectors.toList());
     }
 
     @Override
@@ -169,13 +167,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         String userRole = userQueryRequest.getUserRole();
         String sortField = userQueryRequest.getSortField();
         String sortOrder = userQueryRequest.getSortOrder();
-        return QueryWrapper.create()
-                .eq("id", id) // where id = ${id}
+        return QueryWrapper.create().eq("id", id) // where id = ${id}
                 .eq("userRole", userRole) // and userRole = ${userRole}
-                .like("userAccount", userAccount)
-                .like("userName", userName)
-                .like("userProfile", userProfile)
-                .orderBy(sortField, "ascend".equals(sortOrder));
+                .like("userAccount", userAccount).like("userName", userName).like("userProfile", userProfile).orderBy(sortField, "ascend".equals(sortOrder));
     }
 
     @Override

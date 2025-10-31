@@ -220,8 +220,7 @@ public class AppController {
         long pageNum = appQueryRequest.getPageNum();
         long pageSize = appQueryRequest.getPageSize();
 
-        Page<App> appPage = appService.page(Page.of(pageNum, pageSize),
-                appService.getQueryWrapper(appQueryRequest));
+        Page<App> appPage = appService.page(Page.of(pageNum, pageSize), appService.getQueryWrapper(appQueryRequest));
 
         return ResultUtils.success(appPage);
     }
@@ -285,6 +284,7 @@ public class AppController {
 
     /**
      * 与ai对话生成应用
+     *
      * @param appId
      * @param message
      * @param request
@@ -296,25 +296,17 @@ public class AppController {
         ThrowUtils.throwIf(StrUtil.isBlank(message), ErrorCode.PARAMS_ERROR, "用户消息不能为空");
         User loginUser = userService.getLoginUser(request);
         Flux<String> contentFlux = appService.chatToGenCode(appId, message, loginUser);
-        return contentFlux
-                .map(chunk -> {
+        return contentFlux.map(chunk -> {
 
-                    Map<String, String> wrapper = Map.of("d", chunk);
-                    String jsonData = JSONUtil.toJsonStr(wrapper);
-                    return ServerSentEvent.<String>builder()
-                            .data(jsonData)
-                            .build();
-                })
-                .concatWith(Mono.just(
-                        ServerSentEvent.<String>builder()
-                                .event("done")
-                                .data("")
-                                .build()
-                ));
+            Map<String, String> wrapper = Map.of("d", chunk);
+            String jsonData = JSONUtil.toJsonStr(wrapper);
+            return ServerSentEvent.<String>builder().data(jsonData).build();
+        }).concatWith(Mono.just(ServerSentEvent.<String>builder().event("done").data("").build()));
     }
 
     /**
      * 部署应用
+     *
      * @param appDeployRequest
      * @param request
      * @return
@@ -328,12 +320,6 @@ public class AppController {
         String deployUrl = appService.deployApp(appId, loginUser);
         return ResultUtils.success(deployUrl);
     }
-
-
-
-
-
-
 
 
 }
