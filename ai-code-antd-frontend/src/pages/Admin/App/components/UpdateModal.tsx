@@ -1,4 +1,3 @@
-// @ts-ignore
 import { updateApp } from '@/services/backend/appController';
 import { ProColumns, ProTable } from '@ant-design/pro-components';
 import '@umijs/max';

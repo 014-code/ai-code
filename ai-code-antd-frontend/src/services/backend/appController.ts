@@ -24,10 +24,10 @@ export async function chatToGenCode(
   const queryParams = new URLSearchParams();
   if (params.appId) queryParams.append('appId', params.appId);
   if (params.message) queryParams.append('message', params.message);
-  
-  // 直接调用后端地址，不使用代理
-  const url = `http://localhost:8123/api/app/chat/gen/code?${queryParams.toString()}`;
-  
+
+  // 通过同源代理访问，确保 Cookie 被发送
+  const url = `/api/app/chat/gen/code?${queryParams.toString()}`;
+
   try {
     const response = await fetch(url, {
       method: 'GET',
@@ -176,7 +176,7 @@ export async function listMyAppVoByPage(
 }
 
 /** 此处后端没有提供注释 POST /app/set/featured */
-export async function setAppFeatured(body: API.AppUpdateRequest, options?: { [key: string]: any }) {
+export async function setAppFeatured(body: { id: number | undefined }, options?: { [p: string]: any }) {
   return request<API.BaseResponseBoolean>('/app/set/featured', {
     method: 'POST',
     headers: {

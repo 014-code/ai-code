@@ -1,5 +1,4 @@
-﻿import { BACKEND_HOST_LOCAL, BACKEND_HOST_PROD } from '@/constants';
-import type { RequestOptions } from '@@/plugin-request/request';
+﻿import type { RequestOptions } from '@@/plugin-request/request';
 import type { RequestConfig } from '@umijs/max';
 
 // 与后端约定的响应数据格式
@@ -18,7 +17,8 @@ const isDev = process.env.NODE_ENV === 'development';
  * @doc https://umijs.org/docs/max/request#配置
  */
 export const requestConfig: RequestConfig = {
-  baseURL: isDev ? BACKEND_HOST_LOCAL : BACKEND_HOST_PROD,
+  // 开发环境统一走同源代理 /api，生产根据部署自行配置
+  baseURL: isDev ? '/api' : '/api',
   withCredentials: true,
 
   // 请求拦截器
@@ -43,10 +43,11 @@ export const requestConfig: RequestConfig = {
 
       // 错误码处理
       const code: number = data.code;
-      // 未登录，且不为获取用户登录信息接口
+      // 未登录，且不为获取用户登录信息接口和登录接口
       if (
         code === 40100 &&
         !requestPath.includes('user/get/login') &&
+        !requestPath.includes('user/login') &&
         !location.pathname.includes('/user/login')
       ) {
         // 跳转至登录页
