@@ -108,7 +108,15 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
 
     @Override
     public Page<ChatHistory> listByAppId(Long appId, Long pageNum, Long pageSize) {
-        return null;
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID不能为空");
+        ThrowUtils.throwIf(pageNum == null || pageNum <= 0, ErrorCode.PARAMS_ERROR, "页码不能为空");
+        ThrowUtils.throwIf(pageSize == null || pageSize <= 0, ErrorCode.PARAMS_ERROR, "页面大小不能为空");
+        
+        QueryWrapper queryWrapper = QueryWrapper.create()
+                .eq("appId", appId)
+                .orderBy("createTime", false);
+        
+        return this.page(Page.of(pageNum, pageSize), queryWrapper);
     }
 
     @Override

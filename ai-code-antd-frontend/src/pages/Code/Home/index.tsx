@@ -1,8 +1,9 @@
 import React, {useEffect, useState} from 'react';
 import {addApp, listMyAppVoByPage, listFeaturedAppVoByPage} from '@/services/backend/appController';
-import {Button, Card, Input, message, Typography, Row, Col} from 'antd';
+import {Button, Card, Input, message, Typography, Row, Tag} from 'antd';
 import {history} from '@umijs/max';
 import AppCard from "@/pages/Code/Home/components/AppCard";
+import {CheckCircleOutlined} from "@ant-design/icons";
 
 const {Title} = Typography, {TextArea} = Input;
 
@@ -25,6 +26,14 @@ const HomePage: React.FC = () => {
     setLoading(false);
   };
 
+  /**
+   * 复制提示词到输入框内
+   */
+  function inputCopy(text: string) {
+    console.log("aaa")
+    setPrompt(text);
+  }
+
   useEffect(() => {
     listMyAppVoByPage({pageNum: 1, pageSize: 8}).then(({data}) => setMyApps(data?.records || []));
     listFeaturedAppVoByPage({pageNum: 1, pageSize: 8}).then(({data}) => setFeaturedApps(data?.records || []));
@@ -36,22 +45,26 @@ const HomePage: React.FC = () => {
       <Card style={{margin: '24px 0', position: "relative"}}>
         <TextArea rows={8} value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="输入你的应用名称"
                   style={{resize: 'none', fontSize: '22px'}}/>
-        <Button type="primary" loading={loading} style={{marginTop: 8, position: "absolute", bottom: "40px", right: "40px"}} onClick={handleCreateApp} size={"large"}>创建应用</Button>
+        <Button type="primary" loading={loading}
+                style={{marginTop: 8, position: "absolute", bottom: "40px", right: "40px"}} onClick={handleCreateApp}
+                size={"large"}>创建应用</Button>
       </Card>
       <Card title="精选应用">
         <Row gutter={16}>
           {featuredApps.map(app => (
             // eslint-disable-next-line react/jsx-key
-            <AppCard app={app}></AppCard>
+            <AppCard app={app} onCopy={inputCopy}
+                     children={<Tag icon={<CheckCircleOutlined />} color="success">
+              精选
+            </Tag>}></AppCard>
           ))}
         </Row>
       </Card>
       <Card title="我的应用" style={{marginBottom: 24}}>
         <Row gutter={16}>
           {myApps.map(app => (
-            <>
-              <AppCard app={app}></AppCard>
-            </>
+            // eslint-disable-next-line react/jsx-key
+            <AppCard app={app} onCopy={inputCopy}></AppCard>
           ))}
         </Row>
       </Card>

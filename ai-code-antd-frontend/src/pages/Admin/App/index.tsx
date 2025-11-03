@@ -48,12 +48,17 @@ const AppAdminPage: React.FC = () => {
   /**
    * 设为精选应用
    */
-  function setNew(id: number | undefined) {
-    setAppFeatured({id: id}).then(res => {
-      message.success(res.message)
-    }).catch(err => {
-      message.error(err.message)
-    })
+  function setNew(record: API.App) {
+    const current = Number(record.priority) || 0;
+    const nextPriority = current === 1 ? 0 : 1;
+    setAppFeatured({ id: record.id as any, priority: nextPriority })
+      .then(() => {
+        message.success(nextPriority === 1 ? '已设为精选' : '已取消精选');
+        actionRef?.current?.reload();
+      })
+      .catch(err => {
+        message.error(err.message || '操作失败');
+      });
   }
 
   /**
@@ -150,8 +155,7 @@ const AppAdminPage: React.FC = () => {
             删除
           </Typography.Link>
           <Button type={"primary"} size={"small"}
-            // @ts-ignore
-                  onClick={() => setNew(record.id)}>{record.priority === '1' ? '取消精选' : '设为精选'}</Button>
+                  onClick={() => setNew(record)}>{Number(record.priority) === 1 ? '取消精选' : '设为精选'}</Button>
         </Space>
       ),
     },
@@ -198,6 +202,7 @@ const AppAdminPage: React.FC = () => {
           return {
             success: code === 0,
             data: data?.records || [],
+            // @ts-ignore
             total: parseInt(data?.total as string) || 0,
           };
         }}

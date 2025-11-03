@@ -9,10 +9,14 @@ interface AppData {
   appDesc: string,
   initPrompt: string,
   cover: string,
+  user?: { userAvatar: string, userName: string },
 }
 
 interface Props {
-  app: AppData
+  app: AppData,
+  onCopy: (text: string) => void;
+  // 使用 children 作为默认插槽
+  children?: React.ReactNode;
 }
 
 /**
@@ -22,13 +26,14 @@ interface Props {
  */
 // @ts-ignore
 const AppCard: React.FC<Props> = (props) => {
-  const {app} = props;
-
+  const {app, onCopy, children} = props;
 
   // 复制到剪贴板函数
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
+      // 同步填充到父组件输入框
+      onCopy(text);
       message.success('复制成功');
     } catch (err) {
       console.error('复制失败:', err);
@@ -39,6 +44,8 @@ const AppCard: React.FC<Props> = (props) => {
       textArea.select();
       try {
         document.execCommand('copy');
+        // 同步填充到父组件输入框
+        onCopy(text);
         message.success('复制成功');
       } catch (fallbackErr) {
         message.error('复制失败，请手动复制');
@@ -63,11 +70,15 @@ const AppCard: React.FC<Props> = (props) => {
             />
           }
         >
+          <div style={{marginBottom: '10px', marginLeft: '50px'}}>
+            {children}
+          </div>
           <Card.Meta
-            avatar={<Avatar src={app.user.userAvatar}/>}
+            avatar={<Avatar src={app.user?.userAvatar}/>}
             title={app.appName}
-            description={"创建者：" + app.user.userName}
+            description={"创建者：" + (app.user?.userName || '')}
           />
+
         </Card>
 
         {/* 悬浮遮罩 */}

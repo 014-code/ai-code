@@ -16,8 +16,6 @@ const ChatHistoryAdminPage: React.FC = () => {
   // 是否显示新建窗口
   const [createModalVisible, setCreateModalVisible] = useState<boolean>(false);
   const actionRef = useRef<ActionType>();
-  // 当前对话历史点击的数据
-  const [currentRow, setCurrentRow] = useState<API.ChatHistory>();
 
   /**
    * 删除节点
@@ -71,9 +69,9 @@ const ChatHistoryAdminPage: React.FC = () => {
       valueType: 'text',
       width: 100,
       valueEnum: {
-        'user': { text: '用户消息' },
-        'ai': { text: 'AI回复' },
-        'error': { text: '错误信息' },
+        'user': {text: '用户消息'},
+        'ai': {text: 'AI回复'},
+        'error': {text: '错误信息'},
       },
     },
     {
@@ -176,7 +174,8 @@ const ChatHistoryAdminPage: React.FC = () => {
           return {
             success: code === 0,
             data: data?.records || [],
-            total: parseInt(data?.total as string) || 0,
+            // @ts-ignore
+            total: data?.total || 0,
           };
         }}
         columns={columns}
