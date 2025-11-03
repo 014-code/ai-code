@@ -20,36 +20,13 @@ export async function chatToGenCode(
   params: API.chatToGenCodeParams,
   options?: { [key: string]: any },
 ) {
-  // 对于SSE流式接口，使用fetch API而不是request，但需要携带认证信息
-  const queryParams = new URLSearchParams();
-  if (params.appId) queryParams.append('appId', params.appId);
-  if (params.message) queryParams.append('message', params.message);
-
-  // 通过同源代理访问，确保 Cookie 被发送
-  const url = `/api/app/chat/gen/code?${queryParams.toString()}`;
-
-  try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        ...(options?.headers || {}),
-      },
-      // 确保携带认证信息
-      credentials: 'include',
-      ...options,
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    return response;
-  } catch (error) {
-    console.error('SSE请求失败:', error);
-    throw error;
-  }
+  return request<API.ServerSentEventString[]>('/app/chat/gen/code', {
+    method: 'GET',
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  });
 }
 
 /** 此处后端没有提供注释 POST /app/delete */
@@ -176,7 +153,7 @@ export async function listMyAppVoByPage(
 }
 
 /** 此处后端没有提供注释 POST /app/set/featured */
-export async function setAppFeatured(body: { id: number | undefined }, options?: { [p: string]: any }) {
+export async function setAppFeatured(body: API.AppUpdateRequest, options?: { [key: string]: any }) {
   return request<API.BaseResponseBoolean>('/app/set/featured', {
     method: 'POST',
     headers: {

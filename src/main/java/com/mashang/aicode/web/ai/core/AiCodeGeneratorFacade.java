@@ -1,6 +1,7 @@
 package com.mashang.aicode.web.ai.core;
 
 import com.mashang.aicode.web.ai.AiCodeGeneratorService;
+import com.mashang.aicode.web.ai.AiCodeGeneratorServiceFactory;
 import com.mashang.aicode.web.ai.model.HtmlCodeResult;
 import com.mashang.aicode.web.ai.model.MultiFileCodeResult;
 import com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum;
@@ -21,7 +22,9 @@ import java.io.File;
 public class AiCodeGeneratorFacade {
 
     @Resource
-    private AiCodeGeneratorService aiCodeGeneratorService;
+    private AiCodeGeneratorServiceFactory aiCodeGeneratorServiceFactory;
+
+
 
 
     public File generateAndSaveCode(String userMessage, CodeGenTypeEnum codeGenTypeEnum, Long appId) {
@@ -40,12 +43,14 @@ public class AiCodeGeneratorFacade {
 
 
     private File generateAndSaveHtmlCode(String userMessage, Long appId) {
-        HtmlCodeResult result = aiCodeGeneratorService.generateHtmlCode(userMessage);
+        AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId);
+        HtmlCodeResult result = aiCodeGeneratorService.generateHtmlCode(Math.toIntExact(appId), userMessage);
         return CodeFileSaver.saveHtmlCodeResult(result,  appId);
     }
 
 
     private File generateAndSaveMultiFileCode(String userMessage, Long appId) {
+        AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId);
         MultiFileCodeResult result = aiCodeGeneratorService.generateMultiFileCode(userMessage);
         return CodeFileSaver.saveMultiFileCodeResult(result,   appId);
     }
@@ -56,6 +61,7 @@ public class AiCodeGeneratorFacade {
      * @return
      */
     private Flux<String> generateAndSaveHtmlCodeStream(String userMessage, Long appId) {
+        AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId);
         Flux<String> result = aiCodeGeneratorService.generateHtmlCodeStream(userMessage);
 
         StringBuilder codeBuilder = new StringBuilder();
@@ -81,6 +87,7 @@ public class AiCodeGeneratorFacade {
      * @return
      */
     private Flux<String> generateAndSaveMultiFileCodeStream(String userMessage, Long appId) {
+        AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId);
         Flux<String> result = aiCodeGeneratorService.generateMultiFileCodeStream(userMessage);
         StringBuilder codeBuilder = new StringBuilder();
         return result

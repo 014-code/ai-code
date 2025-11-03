@@ -1,18 +1,18 @@
 declare namespace API {
   type App = {
     id?: number;
-    appname?: string;
+    appName?: string;
     cover?: string;
-    initprompt?: string;
-    codegentype?: string;
-    deploykey?: string;
-    deployedtime?: string;
+    initPrompt?: string;
+    codeGenType?: string;
+    deployKey?: string;
+    deployedTime?: string;
     priority?: number;
-    userid?: number;
-    edittime?: string;
-    createtime?: string;
-    updatetime?: string;
-    isdelete?: number;
+    userId?: number;
+    editTime?: string;
+    createTime?: string;
+    updateTime?: string;
+    isDelete?: number;
   };
 
   type AppAddRequest = {
@@ -24,7 +24,7 @@ declare namespace API {
   };
 
   type AppDeployRequest = {
-    appId?: string;
+    appId?: number;
   };
 
   type AppQueryRequest = {
@@ -41,7 +41,7 @@ declare namespace API {
   };
 
   type AppUpdateRequest = {
-    id?: string;
+    id?: number;
     appName?: string;
     appDesc?: string;
     appIcon?: string;
@@ -58,6 +58,8 @@ declare namespace API {
     initPrompt?: string;
     userId?: number;
     user?: UserVO;
+    cover?: string;
+    deployKey?: string;
     priority?: number;
     isFeatured?: number;
     editTime?: string;
@@ -80,6 +82,18 @@ declare namespace API {
   type BaseResponseBoolean = {
     code?: number;
     data?: boolean;
+    message?: string;
+  };
+
+  type BaseResponseChatHistory = {
+    code?: number;
+    data?: ChatHistory;
+    message?: string;
+  };
+
+  type BaseResponseListChatHistoryVO = {
+    code?: number;
+    data?: ChatHistoryVO[];
     message?: string;
   };
 
@@ -107,6 +121,18 @@ declare namespace API {
     message?: string;
   };
 
+  type BaseResponsePageChatHistory = {
+    code?: number;
+    data?: PageChatHistory;
+    message?: string;
+  };
+
+  type BaseResponsePageChatHistoryVO = {
+    code?: number;
+    data?: PageChatHistoryVO;
+    message?: string;
+  };
+
   type BaseResponsePageUserVO = {
     code?: number;
     data?: PageUserVO;
@@ -131,8 +157,54 @@ declare namespace API {
     message?: string;
   };
 
+  type ChatHistory = {
+    id?: number;
+    appId?: number;
+    userId?: number;
+    messageType?: string;
+    messageContent?: string;
+    errorInfo?: string;
+    createTime?: string;
+    updateTime?: string;
+    isDelete?: number;
+  };
+
+  type ChatHistoryAddRequest = {
+    appId?: number;
+    messageType?: string;
+    messageContent?: string;
+    errorInfo?: string;
+  };
+
+  type ChatHistoryQueryRequest = {
+    pageNum?: number;
+    pageSize?: number;
+    sortField?: string;
+    sortOrder?: string;
+    id?: number;
+    message?: string;
+    messageType?: string;
+    appId?: number;
+    userId?: number;
+    lastCreateTime?: string;
+  };
+
+  type ChatHistoryVO = {
+    id?: number;
+    appId?: number;
+    userId?: number;
+    messageType?: string;
+    messageTypeDesc?: string;
+    messageContent?: string;
+    errorInfo?: string;
+    createTime?: string;
+    updateTime?: string;
+    user?: UserVO;
+    app?: AppVO;
+  };
+
   type chatToGenCodeParams = {
-    appId: string;
+    appId: number;
     message: string;
   };
 
@@ -141,11 +213,15 @@ declare namespace API {
   };
 
   type getAppByIdParams = {
-    id: string;
+    id: number;
   };
 
   type getAppVOByIdParams = {
-    id: string;
+    id: number;
+  };
+
+  type getChatHistoryByIdParams = {
+    id: number;
   };
 
   type getUserByIdParams = {
@@ -154,6 +230,16 @@ declare namespace API {
 
   type getUserVOByIdParams = {
     id: number;
+  };
+
+  type listAppChatHistoryParams = {
+    appId: number;
+    pageSize?: number;
+    lastCreateTime?: string;
+  };
+
+  type listLatestChatHistoryVOParams = {
+    appId: number;
   };
 
   type LoginUserVO = {
@@ -178,6 +264,24 @@ declare namespace API {
 
   type PageAppVO = {
     records?: AppVO[];
+    pageNumber?: number;
+    pageSize?: number;
+    totalPage?: number;
+    totalRow?: number;
+    optimizeCountQuery?: boolean;
+  };
+
+  type PageChatHistory = {
+    records?: ChatHistory[];
+    pageNumber?: number;
+    pageSize?: number;
+    totalPage?: number;
+    totalRow?: number;
+    optimizeCountQuery?: boolean;
+  };
+
+  type PageChatHistoryVO = {
+    records?: ChatHistoryVO[];
     pageNumber?: number;
     pageSize?: number;
     totalPage?: number;
