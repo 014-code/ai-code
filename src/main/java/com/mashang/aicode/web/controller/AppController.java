@@ -19,6 +19,7 @@ import com.mashang.aicode.web.model.entity.App;
 import com.mashang.aicode.web.model.entity.User;
 import com.mashang.aicode.web.model.vo.AppVO;
 import com.mashang.aicode.web.service.AppService;
+import com.mashang.aicode.web.service.ChatHistoryService;
 import com.mashang.aicode.web.service.UserService;
 import com.mybatisflex.core.paginate.Page;
 import jakarta.annotation.Resource;
@@ -45,6 +46,9 @@ public class AppController {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private ChatHistoryService chatHistoryService;
 
     /**
      * 【用户】创建应用
@@ -107,7 +111,7 @@ public class AppController {
     }
 
     /**
-     * 【用户】根据 id 删除自己的应用
+     * 【用户】根据 id 删除自己的应用（同时删除关联的对话历史）
      */
     @PostMapping("/delete/user")
     public BaseResponse<Boolean> deleteApp(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
@@ -116,14 +120,8 @@ public class AppController {
         // 获取当前登录用户
         User loginUser = userService.getLoginUser(request);
 
-        // 查询应用
-        App app = appService.getById(deleteRequest.getId());
-        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR);
-
-        // 校验权限（只能删除自己的应用）
-        ThrowUtils.throwIf(!app.getUserId().equals(loginUser.getId()), ErrorCode.NO_AUTH_ERROR);
-
-        boolean result = appService.removeById(deleteRequest.getId());
+        // 删除应用（同时删除关联的对话历史）
+        boolean result = appService.deleteApp(deleteRequest.getId(), loginUser);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
 
         return ResultUtils.success(true);
@@ -178,13 +176,24 @@ public class AppController {
     }
 
     /**
-     * 【管理员】根据 id 删除任意应用
+     * 【管理员】根据 id 删除任意应用（同时删除关联的对话历史）
      */
     @PostMapping("/delete")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> deleteAppByAdmin(@RequestBody DeleteRequest deleteRequest) {
         ThrowUtils.throwIf(deleteRequest == null || deleteRequest.getId() == null, ErrorCode.PARAMS_ERROR);
 
+        // 查询应用
+        App app = appService.getById(deleteRequest.getId());
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR);
+
+        // 先删除关联的对话历史
+        boolean chatHistoryDeleted = chatHistoryService.deleteByAppId(deleteRequest.getId());
+        if (!chatHistoryDeleted) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "删除对话历史失败");
+        }
+
+        // 再删除应用
         boolean result = appService.removeById(deleteRequest.getId());
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
 

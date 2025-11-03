@@ -76,6 +76,14 @@ public interface AppService extends IService<App> {
      */
     public String deployApp(Long appId, User loginUser);
 
+    /**
+     * 删除应用（同时删除关联的对话历史）
+     * @param appId 应用id
+     * @param loginUser 登录用户
+     * @return 删除结果
+     */
+    public boolean deleteApp(Long appId, User loginUser);
+
 
 
 

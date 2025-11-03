@@ -19,6 +19,7 @@ export default [
       { path: '/admin', redirect: '/admin/user' },
       { icon: 'table', path: '/admin/user', component: './Admin/User', name: '用户管理' },
       { icon: 'table', path: '/admin/app', component: './Admin/App', name: '应用管理' },
+      { icon: 'table', path: '/admin/chatHistory', component: './Admin/ChatHistory', name: '对话管理' },
     ],
   },
   { path: '/', redirect: '/home' },

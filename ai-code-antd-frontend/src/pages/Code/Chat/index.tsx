@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from '@umijs/max';
 import { Button, Card, Input, message, Space, Typography, Avatar, Spin } from 'antd';
-import { SendOutlined } from '@ant-design/icons';
+import {LoginOutlined, SendOutlined} from '@ant-design/icons';
 import {deployApp} from "@/services/backend/appController";
+import {history} from "@@/core/history";
 
 const { TextArea } = Input, { Title, Text } = Typography;
 interface Message {
@@ -82,7 +83,10 @@ const ChatPage: React.FC = () => {
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
       <div style={{ padding: 16, borderBottom: '1px solid #f0f0f0', background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Title level={4} style={{ margin: 0 }}>应用对话</Title>
-        <Button type="primary" loading={deploying} onClick={handleDeploy} style={{ minWidth: 100 }}>部署应用</Button>
+        <Space>
+          <Button type="primary" loading={deploying} onClick={handleDeploy} style={{ minWidth: 100 }}>部署应用</Button>
+          <Button type={"dashed"} onClick={() => history.push(`http://localhost:8080/${deployUrl}/`)} icon={<LoginOutlined />}>新窗口打开</Button>
+        </Space>
       </div>
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
         {/* 左列 聊天区 */}
