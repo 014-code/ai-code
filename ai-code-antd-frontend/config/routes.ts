@@ -8,6 +8,7 @@ export default [
     ],
   },
   { path: '/home', icon: 'smile', component: './Code/Home', name: '首页' },
+  { path: '/cases', icon: 'appstore', component: './Code/Cases', name: '全部案例' },
   { path: '/chat/:appId', component: './Code/Chat', name: '应用对话', layout: false },
   { path: '/app/edit/:appId', component: './Code/AppEdit', name: '编辑应用', layout: false },
   {

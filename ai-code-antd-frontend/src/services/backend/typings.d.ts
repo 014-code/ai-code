@@ -60,6 +60,7 @@ declare namespace API {
     user?: UserVO;
     cover?: string;
     deployKey?: string;
+    codeGenType?: string;
     priority?: number;
     isFeatured?: number;
     editTime?: string;

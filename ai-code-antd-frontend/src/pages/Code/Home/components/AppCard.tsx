@@ -1,6 +1,7 @@
 import React from 'react';
 import {Avatar, Button, Card, Col, message} from "antd";
 import {history} from "@@/core/history";
+import {getStaticPreviewUrl} from "@/constants/proUrlOperation";
 
 interface AppData {
   id: number,
@@ -60,7 +61,8 @@ const AppCard: React.FC<Props> = (props) => {
       <Col key={app.id}>
         <Card
           hoverable
-          onClick={() => history.push(`http://localhost:8080/${app.deployKey}/`)}
+          //@ts-ignore
+          onClick={() => history.push(getStaticPreviewUrl(app.codeGenType, app.id, app.deployKey))}
           style={{width: 200, textAlign: "center"}}
           cover={
             <img
@@ -105,7 +107,8 @@ const AppCard: React.FC<Props> = (props) => {
           <Button
             size={"small"}
             style={{padding: '5px 10px', cursor: 'pointer'}}
-            onClick={() => history.push(`http://localhost:8080/${app.deployKey}/`)}
+            //@ts-ignore
+            onClick={() => history.push(getStaticPreviewUrl(app.codeGenType, app.id, app.deployKey))}
           >
             查看应用
           </Button>

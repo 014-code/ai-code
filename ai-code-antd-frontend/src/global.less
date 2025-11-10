@@ -7,6 +7,9 @@ body,
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
     'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
     'Noto Color Emoji';
+  /* 全局柔和渐变背景 */
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background-attachment: fixed;
 }
 
 .colorWeak {
@@ -15,6 +18,77 @@ body,
 
 .ant-layout {
   min-height: 100vh;
+  /* 让布局继承渐变背景，而不是纯白色 */
+  background: transparent;
+}
+
+/* ProLayout 容器使用渐变背景，覆盖默认白底 */
+.ant-pro-layout,
+.ant-pro-layout .ant-layout,
+.ant-pro-layout .ant-layout-content {
+  background: transparent;
+}
+
+/* 当某些页面容器有白底时，确保外层仍显示渐变（内层卡片保持白色） */
+.ant-pro-layout .ant-pro-page-container,
+.ant-pro-layout .ant-pro-layout-content,
+.ant-pro-page-container-children-content,
+.ant-pro-page-container-warp,
+.ant-layout-content {
+  background: transparent;
+}
+
+@header-gradient: linear-gradient(90deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.75) 50%, rgba(255, 255, 255, 0.7) 100%);
+
+.ant-pro-global-header-layout-mix,
+.ant-pro-top-nav-header,
+.ant-layout-header,
+.ant-pro-top-nav-header-main,
+.ant-pro-top-nav-header-menu {
+  background: @header-gradient !important;
+  color: #1f2933;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.ant-pro-global-header-layout-mix h1,
+.ant-pro-top-nav-header-main h1 {
+  color: #1f2933 !important;
+}
+
+.ant-pro-global-header-layout-mix .anticon,
+.ant-pro-top-nav-header-menu .anticon {
+  color: #1f2933 !important;
+}
+
+.ant-pro-top-nav-header-menu .ant-menu-item,
+.ant-pro-top-nav-header-menu .ant-menu-submenu-title {
+  color: rgba(31, 41, 51, 0.85) !important;
+}
+
+.ant-pro-top-nav-header-menu .ant-menu-item:hover,
+.ant-pro-top-nav-header-menu .ant-menu-submenu-title:hover {
+  color: #111827 !important;
+  background: rgba(255, 255, 255, 0.55) !important;
+  border-radius: 6px;
+}
+
+.ant-pro-top-nav-header-menu .ant-menu-item-selected,
+.ant-pro-top-nav-header-menu .ant-menu-item-active {
+  color: #111827 !important;
+  background: rgba(255, 255, 255, 0.75) !important;
+  border-radius: 6px;
+}
+
+/* 兼容某些自定义页面最外层容器 class，统一透明背景（不影响卡片） */
+.page-container,
+.page-wrapper,
+.page-content {
+  background: transparent;
 }
 .ant-pro-sider.ant-layout-sider.ant-pro-sider-fixed {
   left: unset;

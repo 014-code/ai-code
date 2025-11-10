@@ -10,6 +10,7 @@ import {
 } from "@/services/backend/chatHistoryController";
 import {getLoginUser} from "@/services/backend/userController";
 import ReactMarkdown from 'react-markdown';
+import {getStaticPreviewUrl} from "@/constants/proUrlOperation";
 
 const {TextArea} = Input, {Title, Text} = Typography;
 
@@ -325,8 +326,19 @@ const ChatPage: React.FC = () => {
         <Title level={4} style={{margin: 0}}>应用对话</Title>
         <Space>
           <Button type="primary" loading={deploying} onClick={handleDeploy} style={{minWidth: 100}}>部署应用</Button>
-          <Button type={"dashed"} onClick={() => history.push(`http://localhost:8080/${appInfo?.deployKey}/`)}
-                  icon={<LoginOutlined/>}>新窗口打开</Button>
+          <Button
+            type="dashed"
+            icon={<LoginOutlined/>}
+            onClick={() => {
+              if (!appInfo?.codeGenType || !appInfo?.id) {
+                message.warning('暂无可用预览地址，请先部署应用');
+                return;
+              }
+              history.push(getStaticPreviewUrl(appInfo.codeGenType, String(appInfo.id), appInfo.deployKey));
+            }}
+          >
+            新窗口打开
+          </Button>
         </Space>
       </div>
       <div style={{flex: 1, display: 'flex', minHeight: 0}}>
@@ -421,7 +433,11 @@ const ChatPage: React.FC = () => {
               title="已部署应用预览"
               style={{border: '1px solid #eee', borderRadius: 8, width: '100%', height: '80vh', background: '#fff'}}
               sandbox="allow-scripts allow-same-origin"
-              src={`http://localhost:8080/${appInfo?.deployKey}/` ?? deployUrl}
+              src={
+                appInfo?.codeGenType && appInfo?.id
+                  ? getStaticPreviewUrl(appInfo.codeGenType, String(appInfo.id), appInfo.deployKey)
+                  : undefined
+              }
             />
           ) : (
             <Card

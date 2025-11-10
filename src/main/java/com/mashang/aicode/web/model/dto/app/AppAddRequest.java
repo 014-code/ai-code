@@ -34,6 +34,10 @@ public class AppAddRequest implements Serializable {
      * 初始化提示词
      */
     private String initPrompt;
+    /**
+     * 应用类型
+     */
+    private String codeGenType;
 
     private static final long serialVersionUID = 1L;
 }

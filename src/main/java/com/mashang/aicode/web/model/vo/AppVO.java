@@ -42,6 +42,11 @@ public class AppVO implements Serializable {
     private String initPrompt;
 
     /**
+     * 生成项目类型
+     */
+    private String codeGenType;
+
+    /**
      * 创建用户 id
      */
     private Long userId;
