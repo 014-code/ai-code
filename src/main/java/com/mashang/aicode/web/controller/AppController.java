@@ -72,8 +72,6 @@ public class AppController {
         app.setUserId(loginUser.getId());
 //        app.setPriority(0); // 默认非精选
         app.setPriority(0); // 默认优先级
-        //默认设置为多文件
-        app.setCodeGenType("multi_file");
 
         boolean result = appService.save(app);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
@@ -306,7 +304,6 @@ public class AppController {
         User loginUser = userService.getLoginUser(request);
         Flux<String> contentFlux = appService.chatToGenCode(appId, message, loginUser);
         return contentFlux.map(chunk -> {
-
             Map<String, String> wrapper = Map.of("d", chunk);
             String jsonData = JSONUtil.toJsonStr(wrapper);
             return ServerSentEvent.<String>builder().data(jsonData).build();

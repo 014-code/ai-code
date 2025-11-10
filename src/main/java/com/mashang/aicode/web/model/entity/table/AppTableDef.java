@@ -49,6 +49,11 @@ public class AppTableDef extends TableDef {
     public final QueryColumn USER_ID = new QueryColumn(this, "userId");
 
     /**
+     * 代码生成类型
+     */
+    public final QueryColumn CODE_GEN_TYPE = new QueryColumn(this, "codeGenType");
+
+    /**
      * 优先级（越大越靠前）
      */
     public final QueryColumn PRIORITY = new QueryColumn(this, "priority");

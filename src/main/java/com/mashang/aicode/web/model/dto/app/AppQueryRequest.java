@@ -29,6 +29,11 @@ public class AppQueryRequest extends PageRequest implements Serializable {
     private String appDesc;
 
     /**
+     * 代码生成类型（html / multi_file / vue_project / react_project）
+     */
+    private String codeGenType;
+
+    /**
      * 创建用户 id
      */
     private Long userId;

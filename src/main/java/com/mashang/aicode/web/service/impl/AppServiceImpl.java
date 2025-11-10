@@ -121,6 +121,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         Long id = appQueryRequest.getId();
         String appName = appQueryRequest.getAppName();
         String appDesc = appQueryRequest.getAppDesc();
+        String codeGenType = appQueryRequest.getCodeGenType();
         Long userId = appQueryRequest.getUserId();
         Integer isFeatured = appQueryRequest.getIsFeatured();
         String searchKey = appQueryRequest.getSearchKey();
@@ -134,6 +135,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         }
         if (userId != null) {
             queryWrapper.and(APP.USER_ID.eq(userId));
+        }
+        if (StrUtil.isNotBlank(codeGenType)) {
+            queryWrapper.and(APP.CODE_GEN_TYPE.eq(codeGenType));
         }
         if (isFeatured != null) {
             queryWrapper.and(APP.PRIORITY.eq(isFeatured));
@@ -221,8 +225,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "不支持的代码生成类型");
         }
         // 暂时设置为 VUE 工程生成
-        app.setCodeGenType(CodeGenTypeEnum.VUE_PROJECT.getValue());
-//        // 暂时设置为 REACT 工程生成
+//        app.setCodeGenType(CodeGenTypeEnum.VUE_PROJECT.getValue());
+        // 暂时设置为 REACT 工程生成
 //        app.setCodeGenType(CodeGenTypeEnum.REACT_PROJECT.getValue());
         // 5. 通过校验后，添加用户消息到对话历史
         chatHistoryService.addChatMessage(appId, message, ChatHistoryMessageTypeEnum.USER.getValue(), loginUser.getId());
@@ -284,13 +288,11 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             log.info("Vue/React 项目构建成功，将部署 dist 目录: {}", distDir.getAbsolutePath());
         }
         String deployDirPath = AppConstant.CODE_DEPLOY_ROOT_DIR + File.separator + deployKey;
-        //为原生则执行复制文件
-        if (codeGenTypeEnum == CodeGenTypeEnum.MULTI_FILE || codeGenTypeEnum == CodeGenTypeEnum.HTML) {
-            try {
-                FileUtil.copyContent(sourceDir, new File(deployDirPath), true);
-            } catch (Exception e) {
-                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "部署失败：" + e.getMessage());
-            }
+        //执行复制文件
+        try {
+            FileUtil.copyContent(sourceDir, new File(deployDirPath), true);
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "部署失败：" + e.getMessage());
         }
         App updateApp = new App();
         updateApp.setId(appId);
@@ -298,7 +300,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         updateApp.setDeployedTime(new Date());
         boolean updateResult = this.updateById(updateApp);
         ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR, "更新应用部署信息失败");
-        return String.format("%s/%s/", AppConstant.CODE_DEPLOY_HOST, deployKey);
+        return String.format("%s/deploy/%s/", AppConstant.CODE_DEPLOY_HOST, deployKey);
     }
 
     /**

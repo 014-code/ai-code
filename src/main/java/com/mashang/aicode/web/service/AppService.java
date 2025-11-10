@@ -46,7 +46,7 @@ public interface AppService extends IService<App> {
      * 分页获取应用封装列表（用户）
      *
      * @param appQueryRequest 查询请求
-     * @param userId 用户ID
+     * @param userId          用户ID
      * @return 分页结果
      */
     Page<AppVO> listAppVOByPageForUser(AppQueryRequest appQueryRequest, Long userId);
@@ -61,30 +61,31 @@ public interface AppService extends IService<App> {
 
     /**
      * 聊天生成代码
-     * @param appId 应用id
-     * @param message 用户提示词
+     *
+     * @param appId     应用id
+     * @param message   用户提示词
      * @param loginUser 登录用户
      * @return
      */
-    public Flux<String> chatToGenCode(Long appId, String message, User loginUser);
+    Flux<String> chatToGenCode(Long appId, String message, User loginUser);
 
     /**
      * 部署app
-     * @param appId 应用id
+     *
+     * @param appId     应用id
      * @param loginUser 登录用户
      * @return
      */
-    public String deployApp(Long appId, User loginUser);
+    String deployApp(Long appId, User loginUser);
 
     /**
      * 删除应用（同时删除关联的对话历史）
-     * @param appId 应用id
+     *
+     * @param appId     应用id
      * @param loginUser 登录用户
      * @return 删除结果
      */
-    public boolean deleteApp(Long appId, User loginUser);
-
-
+    boolean deleteApp(Long appId, User loginUser);
 
 
 }
