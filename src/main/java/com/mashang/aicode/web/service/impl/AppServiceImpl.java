@@ -7,6 +7,7 @@ import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import com.mashang.aicode.web.ai.core.AiCodeGeneratorFacade;
 import com.mashang.aicode.web.ai.core.StreamHandlerExecutor;
+import com.mashang.aicode.web.ai.core.builder.ProjectBuilder;
 import com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum;
 import com.mashang.aicode.web.constant.AppConstant;
 import com.mashang.aicode.web.exception.BusinessException;
@@ -67,6 +68,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     @Autowired
     private StreamHandlerExecutor streamHandlerExecutor;
 
+    @Resource
+    private ProjectBuilder projectBuilder;
+
     @Override
     public AppVO getAppVO(App app) {
         if (app == null) {
@@ -94,28 +98,18 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         }
 
         // 获取所有用户ID
-        List<Long> userIds = appList.stream()
-                .map(App::getUserId)
-                .distinct()
-                .collect(Collectors.toList());
+        List<Long> userIds = appList.stream().map(App::getUserId).distinct().collect(Collectors.toList());
 
         // 批量查询用户信息
-        Map<Long, UserVO> userVOMap = userMapper.selectListByQuery(
-                QueryWrapper.create().select(USER.ID, USER.USER_NAME, USER.USER_AVATAR)
-                        .where(USER.ID.in(userIds))
-        ).stream()
-                .map(userService::getUserVO)
-                .collect(Collectors.toMap(UserVO::getId, userVO -> userVO));
+        Map<Long, UserVO> userVOMap = userMapper.selectListByQuery(QueryWrapper.create().select(USER.ID, USER.USER_NAME, USER.USER_AVATAR).where(USER.ID.in(userIds))).stream().map(userService::getUserVO).collect(Collectors.toMap(UserVO::getId, userVO -> userVO));
 
         // 转换为VO列表
-        return appList.stream()
-                .map(app -> {
-                    AppVO appVO = new AppVO();
-                    BeanUtil.copyProperties(app, appVO);
-                    appVO.setUser(userVOMap.get(app.getUserId()));
-                    return appVO;
-                })
-                .collect(Collectors.toList());
+        return appList.stream().map(app -> {
+            AppVO appVO = new AppVO();
+            BeanUtil.copyProperties(app, appVO);
+            appVO.setUser(userVOMap.get(app.getUserId()));
+            return appVO;
+        }).collect(Collectors.toList());
     }
 
     @Override
@@ -153,9 +147,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
         // 搜索关键词（名称和描述模糊搜索）
         if (StrUtil.isNotBlank(searchKey)) {
-            QueryWrapper searchWrapper = QueryWrapper.create()
-                    .or(APP.APP_NAME.like("%" + searchKey + "%"))
-                    .or(APP.APP_DESC.like("%" + searchKey + "%"));
+            QueryWrapper searchWrapper = QueryWrapper.create().or(APP.APP_NAME.like("%" + searchKey + "%")).or(APP.APP_DESC.like("%" + searchKey + "%"));
             queryWrapper.and(String.valueOf(searchWrapper));
         }
 
@@ -177,8 +169,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             pageSize = 20;
         }
 
-        Page<App> appPage = this.page(Page.of(pageNum, pageSize),
-                getQueryWrapper(appQueryRequest));
+        Page<App> appPage = this.page(Page.of(pageNum, pageSize), getQueryWrapper(appQueryRequest));
 
         // 数据转换
         Page<AppVO> appVOPage = new Page<>(pageNum, pageSize, appPage.getTotalRow());
@@ -203,8 +194,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             pageSize = 20;
         }
 
-        Page<App> appPage = this.page(Page.of(pageNum, pageSize),
-                getQueryWrapper(appQueryRequest));
+        Page<App> appPage = this.page(Page.of(pageNum, pageSize), getQueryWrapper(appQueryRequest));
 
         // 数据转换
         Page<AppVO> appVOPage = new Page<>(pageNum, pageSize, appPage.getTotalRow());
@@ -216,8 +206,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     /**
      * ai对话生成应用方法
-     * @param appId 应用id
-     * @param message 用户提示词
+     *
+     * @param appId     应用id
+     * @param message   用户提示词
      * @param loginUser 登录用户
      * @return
      */
@@ -245,7 +236,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     /**
      * 部署应用方法
-     * @param appId 应用id
+     *
+     * @param appId     应用id
      * @param loginUser 登录用户
      * @return
      */
@@ -268,35 +260,51 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             deployKey = RandomUtil.randomString(6);
         }
 
+
         String codeGenType = app.getCodeGenType();
         String sourceDirName = codeGenType + "_" + appId;
         String sourceDirPath = AppConstant.CODE_OUTPUT_ROOT_DIR + File.separator + sourceDirName;
 
+        // 6. 检查源目录是否存在
         File sourceDir = new File(sourceDirPath);
         if (!sourceDir.exists() || !sourceDir.isDirectory()) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "应用代码不存在，请先生成代码");
         }
-
-        String deployDirPath = AppConstant.CODE_DEPLOY_ROOT_DIR + File.separator + deployKey;
-        try {
-            FileUtil.copyContent(sourceDir, new File(deployDirPath), true);
-        } catch (Exception e) {
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "部署失败：" + e.getMessage());
+        // 7. Vue/React 项目特殊处理：执行构建
+        CodeGenTypeEnum codeGenTypeEnum = CodeGenTypeEnum.getEnumByValue(codeGenType);
+        if (codeGenTypeEnum == CodeGenTypeEnum.VUE_PROJECT || codeGenTypeEnum == CodeGenTypeEnum.REACT_PROJECT) {
+            // Vue/React 项目需要构建
+            boolean buildSuccess = projectBuilder.buildProject(sourceDirPath);
+            ThrowUtils.throwIf(!buildSuccess, ErrorCode.SYSTEM_ERROR, "Vue/React 项目构建失败，请检查代码和依赖");
+            // 检查 dist 目录是否存在
+            File distDir = new File(sourceDirPath, "dist");
+            ThrowUtils.throwIf(!distDir.exists(), ErrorCode.SYSTEM_ERROR, "Vue/React 项目构建完成但未生成 dist 目录");
+            // 将 dist 目录作为部署源
+            sourceDir = distDir;
+            log.info("Vue/React 项目构建成功，将部署 dist 目录: {}", distDir.getAbsolutePath());
         }
-
+        String deployDirPath = AppConstant.CODE_DEPLOY_ROOT_DIR + File.separator + deployKey;
+        //为原生则执行复制文件
+        if (codeGenTypeEnum == CodeGenTypeEnum.MULTI_FILE || codeGenTypeEnum == CodeGenTypeEnum.HTML) {
+            try {
+                FileUtil.copyContent(sourceDir, new File(deployDirPath), true);
+            } catch (Exception e) {
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "部署失败：" + e.getMessage());
+            }
+        }
         App updateApp = new App();
         updateApp.setId(appId);
         updateApp.setDeployKey(deployKey);
         updateApp.setDeployedTime(new Date());
         boolean updateResult = this.updateById(updateApp);
         ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR, "更新应用部署信息失败");
-
         return String.format("%s/%s/", AppConstant.CODE_DEPLOY_HOST, deployKey);
     }
 
     /**
      * 删除应用（同时删除关联的对话历史）
-     * @param appId 应用id
+     *
+     * @param appId     应用id
      * @param loginUser 登录用户
      * @return 删除结果
      */
@@ -328,6 +336,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     /**
      * 重写flex内部的removeById-加了同步删除对话消息的逻辑
+     *
      * @param id
      * @return
      */
@@ -349,7 +358,6 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         }
         return super.removeById(id);
     }
-
 
 
 }

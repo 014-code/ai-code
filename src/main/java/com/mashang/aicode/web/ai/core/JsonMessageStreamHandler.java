@@ -4,10 +4,13 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import com.mashang.aicode.web.ai.core.builder.ProjectBuilder;
 import com.mashang.aicode.web.ai.model.message.*;
+import com.mashang.aicode.web.constant.AppConstant;
 import com.mashang.aicode.web.model.entity.User;
 import com.mashang.aicode.web.model.enums.ChatHistoryMessageTypeEnum;
 import com.mashang.aicode.web.service.ChatHistoryService;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
@@ -23,6 +26,10 @@ import java.util.Set;
 @Component
 public class JsonMessageStreamHandler {
 
+    @Resource
+    private ProjectBuilder projectBuilder;
+
+
     /**
      * 处理 TokenStream（VUE_PROJECT）
      * 解析 JSON 消息并重组为完整的响应格式
@@ -33,25 +40,23 @@ public class JsonMessageStreamHandler {
      * @param loginUser          登录用户
      * @return 处理后的流
      */
-    public Flux<String> handle(Flux<String> originFlux,
-                               ChatHistoryService chatHistoryService,
-                               long appId, User loginUser) {
+    public Flux<String> handle(Flux<String> originFlux, ChatHistoryService chatHistoryService, long appId, User loginUser) {
         // 收集数据用于生成后端记忆格式
         StringBuilder chatHistoryStringBuilder = new StringBuilder();
         // 用于跟踪已经见过的工具ID，判断是否是第一次调用
         Set<String> seenToolIds = new HashSet<>();
-        return originFlux
-                .map(chunk -> {
+        return originFlux.map(chunk -> {
                     // 解析每个 JSON 消息块
                     return handleJsonMessageChunk(chunk, chatHistoryStringBuilder, seenToolIds);
-                })
-                .filter(StrUtil::isNotEmpty) // 过滤空字串
+                }).filter(StrUtil::isNotEmpty) // 过滤空字串
                 .doOnComplete(() -> {
                     // 流式响应完成后，添加 AI 消息到对话历史
                     String aiResponse = chatHistoryStringBuilder.toString();
                     chatHistoryService.addChatMessage(appId, aiResponse, ChatHistoryMessageTypeEnum.AI.getValue(), loginUser.getId());
-                })
-                .doOnError(error -> {
+                    // 异步构造 Vue/React 项目
+                    String projectPath = AppConstant.CODE_OUTPUT_ROOT_DIR + "/project_" + appId;
+                    projectBuilder.buildProjectAsync(projectPath);
+                }).doOnError(error -> {
                     // 如果AI回复失败，也要记录错误消息
                     String errorMessage = "AI回复失败: " + error.getMessage();
                     chatHistoryService.addChatMessage(appId, errorMessage, ChatHistoryMessageTypeEnum.AI.getValue(), loginUser.getId());
