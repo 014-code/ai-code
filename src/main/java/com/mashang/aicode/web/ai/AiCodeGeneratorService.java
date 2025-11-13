@@ -2,6 +2,7 @@ package com.mashang.aicode.web.ai;
 
 import com.mashang.aicode.web.ai.model.HtmlCodeResult;
 import com.mashang.aicode.web.ai.model.MultiFileCodeResult;
+import com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
@@ -11,6 +12,7 @@ public interface AiCodeGeneratorService {
 
     /**
      * 持久化记忆对话
+     *
      * @param memoryId-当个会话id-即单个应用id
      * @param userMessage
      * @return
@@ -20,6 +22,7 @@ public interface AiCodeGeneratorService {
 
     /**
      * 生成代码方法接口
+     *
      * @param userMessage
      * @return
      */
@@ -36,6 +39,7 @@ public interface AiCodeGeneratorService {
 
     /**
      * 多文件生成代码
+     *
      * @param userMessage
      * @return
      */
@@ -44,6 +48,7 @@ public interface AiCodeGeneratorService {
 
     /**
      * 流式返回
+     *
      * @param userMessage
      * @return
      */
@@ -52,6 +57,7 @@ public interface AiCodeGeneratorService {
 
     /**
      * 流式返回
+     *
      * @param userMessage
      * @return
      */
@@ -81,8 +87,6 @@ public interface AiCodeGeneratorService {
             //MemoryId对应后续生成react项目的appid
             @MemoryId long appId, @UserMessage String userMessage
     );
-
-
 
 
 }

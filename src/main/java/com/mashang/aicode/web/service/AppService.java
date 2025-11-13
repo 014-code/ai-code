@@ -87,5 +87,13 @@ public interface AppService extends IService<App> {
      */
     boolean deleteApp(Long appId, User loginUser);
 
+    /**
+     * 更新应用封面方法
+     *
+     * @param appId
+     * @param appUrl
+     */
+    void generateAppScreenshotAsync(Long appId, String appUrl);
+
 
 }
