@@ -1,5 +1,7 @@
 package com.mashang.aicode.web.ai.core;
 
+import com.mashang.aicode.web.ai.core.handler.JsonMessageStreamHandler;
+import com.mashang.aicode.web.ai.core.handler.SimpleTextStreamHandler;
 import com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum;
 import com.mashang.aicode.web.model.entity.User;
 import com.mashang.aicode.web.service.ChatHistoryService;
@@ -7,8 +9,6 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
-
-import static com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum.VUE_PROJECT;
 
 /**
  * 流处理器执行器

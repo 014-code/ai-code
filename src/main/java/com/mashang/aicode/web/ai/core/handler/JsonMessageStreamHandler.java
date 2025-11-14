@@ -1,4 +1,4 @@
-package com.mashang.aicode.web.ai.core;
+package com.mashang.aicode.web.ai.core.handler;
 
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;

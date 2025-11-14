@@ -1,8 +1,7 @@
-package com.mashang.aicode.web.ai;
+package com.mashang.aicode.web.ai.service;
 
 import com.mashang.aicode.web.ai.model.HtmlCodeResult;
 import com.mashang.aicode.web.ai.model.MultiFileCodeResult;
-import com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;

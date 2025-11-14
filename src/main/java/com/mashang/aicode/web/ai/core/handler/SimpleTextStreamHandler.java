@@ -1,4 +1,4 @@
-package com.mashang.aicode.web.ai.core;
+package com.mashang.aicode.web.ai.core.handler;
 
 import com.mashang.aicode.web.model.entity.User;
 import com.mashang.aicode.web.model.enums.ChatHistoryMessageTypeEnum;

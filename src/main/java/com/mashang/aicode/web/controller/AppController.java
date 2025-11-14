@@ -3,8 +3,9 @@ package com.mashang.aicode.web.controller;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
-import com.mashang.aicode.web.ai.AiCodeGenTypeRoutingService;
+import com.mashang.aicode.web.ai.service.AiCodeGenTypeRoutingService;
 import com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum;
+import com.mashang.aicode.web.model.enums.AppTypeEnum;
 import com.mashang.aicode.web.annotation.AuthCheck;
 import com.mashang.aicode.web.common.BaseResponse;
 import com.mashang.aicode.web.common.DeleteRequest;
@@ -20,12 +21,16 @@ import com.mashang.aicode.web.model.dto.app.AppQueryRequest;
 import com.mashang.aicode.web.model.dto.app.AppUpdateRequest;
 import com.mashang.aicode.web.model.entity.App;
 import com.mashang.aicode.web.model.entity.User;
+import com.mashang.aicode.web.model.enums.AppTypeEnum;
 import com.mashang.aicode.web.model.vo.AppVO;
+import com.mashang.aicode.web.model.vo.AppTypeVO;
+import com.mashang.aicode.web.model.vo.AppTypeVO;
 import com.mashang.aicode.web.service.AppService;
 import com.mashang.aicode.web.service.ChatHistoryService;
 import com.mashang.aicode.web.service.ProjectDownloadService;
 import com.mashang.aicode.web.service.UserService;
 import com.mybatisflex.core.paginate.Page;
+import com.mybatisflex.core.update.UpdateWrapper;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -36,9 +41,11 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.io.File;
-import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 应用 控制层。
@@ -70,9 +77,7 @@ public class AppController {
      * @param response
      */
     @GetMapping("/download/{appId}")
-    public void downloadAppCode(@PathVariable Long appId,
-                                HttpServletRequest request,
-                                HttpServletResponse response) {
+    public void downloadAppCode(@PathVariable Long appId, HttpServletRequest request, HttpServletResponse response) {
 
         ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID无效");
         App app = appService.getById(appId);
@@ -85,8 +90,7 @@ public class AppController {
         String sourceDirName = codeGenType + "_" + appId;
         String sourceDirPath = AppConstant.CODE_OUTPUT_ROOT_DIR + File.separator + sourceDirName;
         File sourceDir = new File(sourceDirPath);
-        ThrowUtils.throwIf(!sourceDir.exists() || !sourceDir.isDirectory(),
-                ErrorCode.NOT_FOUND_ERROR, "应用代码不存在，请先生成代码");
+        ThrowUtils.throwIf(!sourceDir.exists() || !sourceDir.isDirectory(), ErrorCode.NOT_FOUND_ERROR, "应用代码不存在，请先生成代码");
         String downloadFileName = String.valueOf(appId);
         projectDownloadService.downloadProjectAsZip(sourceDirPath, downloadFileName, response);
     }
@@ -114,7 +118,9 @@ public class AppController {
         app.setUserId(loginUser.getId());
 //        app.setPriority(0); // 默认非精选
         app.setPriority(0); // 默认优先级
-
+        //ai自动选择应用类型
+        AppTypeEnum appTypeEnum = aiCodeGenTypeRoutingService.routeAppType(appName, initPrompt);
+        app.setAppType(appTypeEnum.getText());
         //ai自动选择生成模式
         CodeGenTypeEnum selectedCodeGenType = aiCodeGenTypeRoutingService.routeCodeGenType(initPrompt);
         app.setCodeGenType(selectedCodeGenType.getValue());
@@ -190,6 +196,12 @@ public class AppController {
         if (!app.getUserId().equals(loginUser.getId()) && app.getPriority() != 1) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
+        // 浏览量增加
+        App updateApp = new App();
+        updateApp.setId(app.getId());
+        updateApp.setPriority(app.getPriority() + 1);
+        appService.updateById(updateApp);
+
 
         AppVO appVO = appService.getAppVO(app);
         return ResultUtils.success(appVO);
@@ -372,6 +384,24 @@ public class AppController {
         User loginUser = userService.getLoginUser(request);
         String deployUrl = appService.deployApp(appId, loginUser);
         return ResultUtils.success(deployUrl);
+    }
+
+    /**
+     * 查询所有应用类别
+     *
+     * @return 应用类别列表
+     */
+    @GetMapping("/types")
+    public BaseResponse<List<AppTypeVO>> listAllAppTypes() {
+        List<AppTypeVO> appTypeList = Arrays.stream(AppTypeEnum.values()).map(appType -> {
+            AppTypeVO appTypeVO = new AppTypeVO();
+            appTypeVO.setCode(appType.getCode());
+            appTypeVO.setText(appType.getText());
+            appTypeVO.setCategory(appType.getCategory());
+            appTypeVO.setCategoryName(appType.getCategoryName());
+            return appTypeVO;
+        }).collect(Collectors.toList());
+        return ResultUtils.success(appTypeList);
     }
 
 

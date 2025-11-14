@@ -1,9 +1,10 @@
 import React, {useState, useEffect, useRef} from 'react';
 import {useParams} from '@umijs/max';
-import {Button, Card, Input, message, Space, Typography, Avatar, Spin} from 'antd';
+import {Button, Card, Input, message, Space, Typography, Avatar, Spin, Tag} from 'antd';
 import {LoginOutlined, SendOutlined, ReloadOutlined} from '@ant-design/icons';
 import {deployApp, getAppVoById} from "@/services/backend/appController";
 import {history} from "@@/core/history";
+import {request} from '@umijs/max';
 import {
   listAppChatHistory,
   listLatestChatHistoryVo,
@@ -11,6 +12,7 @@ import {
 import {getLoginUser} from "@/services/backend/userController";
 import ReactMarkdown from 'react-markdown';
 import {getStaticPreviewUrl} from "@/constants/proUrlOperation";
+import {CODE_GEN_TYPE_CONFIG} from "@/constants/codeGenTypeEnum";
 
 const {TextArea} = Input, {Title, Text} = Typography;
 
@@ -42,7 +44,8 @@ const ChatPage: React.FC = () => {
     hasMore: false,
     loading: false,
   });
-
+  //下载状态
+  const [downloading, setDownloading] = useState<boolean>(false)
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // 初始化页面数据
@@ -184,6 +187,55 @@ const ChatPage: React.FC = () => {
   };
 
   /**
+   * 下载代码方法
+   */
+  const downloadCode = async () => {
+    if (!appId) {
+      message.error("应用不存在")
+      return;
+    }
+    setDownloading(true);
+    try {
+      // 使用fetch直接调用后端接口，避免代理问题
+      const response = await fetch(`http://localhost:8123/api/app/download/${appId}`, {
+        method: 'GET',
+        credentials: 'include',
+      })
+
+      if (!response.ok) {
+        throw new Error(`下载失败: ${response.status}`)
+      }
+
+      // 解析文件名从Content-Disposition头
+      const contentDisposition = response.headers.get('Content-Disposition')
+      let fileName = `app-${appId}.zip`
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?(.+?)"?$/)
+        if (filenameMatch && filenameMatch[1]) {
+          fileName = decodeURIComponent(filenameMatch[1])
+        }
+      }
+
+      // 创建下载链接
+      const blob = await response.blob()
+      const downloadUrl = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = downloadUrl
+      link.download = fileName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      URL.revokeObjectURL(downloadUrl)
+      message.success('代码下载成功')
+    } catch (e: any) {
+      message.error("下载失败: " + (e.message || e))
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  /**
    * 发送消息给ai方法
    */
   const handleSendMessage = async (customMessage?: string, isAutoSend = false) => {
@@ -199,8 +251,6 @@ const ChatPage: React.FC = () => {
     }
 
     try {
-      // 由后端统一保存，前端不再重复保存用户消息
-
       // 创建用户消息对象
       const userMessage: API.ChatHistoryVO = {
         id: Date.now(),
@@ -323,8 +373,13 @@ const ChatPage: React.FC = () => {
         justifyContent: 'space-between',
         alignItems: 'center'
       }}>
-        <Title level={4} style={{margin: 0}}>应用对话</Title>
         <Space>
+          <Title level={4} style={{margin: 0}}>应用对话</Title>
+          {/*<Tag color={"blue"}>{CODE_GEN_TYPE_CONFIG[appInfo?.codeGenType].label}</Tag>*/}
+        </Space>
+        <Space>
+          <Button type="primary" ghost loading={downloading} onClick={downloadCode}
+                  style={{minWidth: 100}}>下载代码</Button>
           <Button type="primary" loading={deploying} onClick={handleDeploy} style={{minWidth: 100}}>部署应用</Button>
           <Button
             type="dashed"
@@ -435,7 +490,7 @@ const ChatPage: React.FC = () => {
               sandbox="allow-scripts allow-same-origin"
               src={
                 appInfo?.codeGenType && appInfo?.id
-                  ? getStaticPreviewUrl(appInfo.codeGenType, String(appInfo.id), appInfo.deployKey)
+                  ? getStaticPreviewUrl(appInfo.codeGenType, String(appInfo.id), appInfo.deployKey as string)
                   : undefined
               }
             />

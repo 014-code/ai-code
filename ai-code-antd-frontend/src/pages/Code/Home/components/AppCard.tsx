@@ -1,7 +1,8 @@
 import React from 'react';
-import {Avatar, Button, Card, Col, message} from "antd";
+import {Avatar, Button, Card, Col, Empty, message, Space} from "antd";
 import {history} from "@@/core/history";
 import {getStaticPreviewUrl} from "@/constants/proUrlOperation";
+import {EyeOutlined} from "@ant-design/icons";
 
 interface AppData {
   id: number,
@@ -10,6 +11,7 @@ interface AppData {
   appDesc: string,
   initPrompt: string,
   cover: string,
+  pageViews?: number,
   user?: { userAvatar: string, userName: string },
 }
 
@@ -63,13 +65,20 @@ const AppCard: React.FC<Props> = (props) => {
           hoverable
           //@ts-ignore
           onClick={() => history.push(getStaticPreviewUrl(app.codeGenType, app.id, app.deployKey))}
-          style={{width: 200, textAlign: "center"}}
+          style={{minWidth: 200, textAlign: "center", maxWidth: 282}}
           cover={
-            <img
-              draggable={false}
-              alt="example"
-              src={app.cover}
-            />
+            app.cover ? (
+              <img
+                draggable={false}
+                alt="example"
+                src={app.cover}
+              />
+            ) : (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="暂无封面"
+              />
+            )
           }
         >
           <div style={{marginBottom: '10px', marginLeft: '50px'}}>
@@ -78,7 +87,17 @@ const AppCard: React.FC<Props> = (props) => {
           <Card.Meta
             avatar={<Avatar src={app.user?.userAvatar}/>}
             title={app.appName}
-            description={"创建者：" + (app.user?.userName || '')}
+            description={
+              <div>
+                <div>{"创建者：" + (app.user?.userName || '')}</div>
+                {app.pageViews !== undefined && (
+                  <Space size={4} style={{marginTop: '4px', color: '#666', fontSize: '12px',}}>
+                    <EyeOutlined/>
+                    <span>{app.pageViews || 0}</span>
+                  </Space>
+                )}
+              </div>
+            }
           />
 
         </Card>
@@ -105,7 +124,7 @@ const AppCard: React.FC<Props> = (props) => {
         >
           {/* 查看应用按钮 */}
           <Button
-            size={"small"}
+            size={"large"}
             style={{padding: '5px 10px', cursor: 'pointer'}}
             //@ts-ignore
             onClick={() => history.push(getStaticPreviewUrl(app.codeGenType, app.id, app.deployKey))}
@@ -114,7 +133,7 @@ const AppCard: React.FC<Props> = (props) => {
           </Button>
           {/* 复制提示词按钮 */}
           <Button
-            size={"small"}
+            size={"large"}
             style={{padding: '5px 10px', cursor: 'pointer'}}
             onClick={() => copyToClipboard(app.initPrompt || '')}
           >
@@ -122,7 +141,7 @@ const AppCard: React.FC<Props> = (props) => {
           </Button>
           {/* 查看对话按钮 */}
           <Button
-            size={"small"}
+            size={"large"}
             style={{padding: '5px 10px', cursor: 'pointer'}}
             onClick={() => {
               // 查看对话，跳转相应对话页

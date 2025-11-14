@@ -1,8 +1,8 @@
 package com.mashang.aicode.web.ai.core;
 
 import cn.hutool.json.JSONUtil;
-import com.mashang.aicode.web.ai.AiCodeGeneratorService;
-import com.mashang.aicode.web.ai.AiCodeGeneratorServiceFactory;
+import com.mashang.aicode.web.ai.service.AiCodeGeneratorService;
+import com.mashang.aicode.web.ai.factory.AiCodeGeneratorServiceFactory;
 import com.mashang.aicode.web.ai.model.HtmlCodeResult;
 import com.mashang.aicode.web.ai.model.MultiFileCodeResult;
 import com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum;

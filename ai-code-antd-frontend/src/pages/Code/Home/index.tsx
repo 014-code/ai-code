@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {addApp, listMyAppVoByPage, listFeaturedAppVoByPage} from '@/services/backend/appController';
+import {addApp, listMyAppVoByPage, listFeaturedAppVoByPage, listAllAppTypes} from '@/services/backend/appController';
 import {Button, Card, Input, message, Typography, Row, Tag, Dropdown, Space, MenuProps} from 'antd';
 import {history} from '@umijs/max';
 import AppCard from "@/pages/Code/Home/components/AppCard";
@@ -8,7 +8,9 @@ import {
   DoubleRightOutlined,
   DownOutlined,
   LogoutOutlined,
-  ProductOutlined
+  ProductOutlined,
+  DownOutlined as ChevronDownOutlined,
+  UpOutlined
 } from "@ant-design/icons";
 import {CODE_GEN_TYPE_CONFIG, CodeGenTypeEnum} from "@/constants/codeGenTypeEnum";
 
@@ -19,8 +21,14 @@ const HomePage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [myApps, setMyApps] = useState<any[]>([]);
   const [featuredApps, setFeaturedApps] = useState<any[]>([]);
-  // 选择的应用类型（必须存 value，而不是 label）
+  // 应用类别列表
+  const [appTypes, setAppTypes] = useState<API.AppTypeVO[]>([]);
+  // 当前选中的应用类别
+  const [selectedAppType, setSelectedAppType] = useState<string>('all');
+  // 选择的应用类型
   const [codeType, setCodeType] = useState<string>(CodeGenTypeEnum.HTML);
+  // 是否展开所有类别
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
   // 下拉框选项值
   const menuItems: MenuProps['items'] = Object.values(CodeGenTypeEnum).map(type => ({
@@ -58,12 +66,14 @@ const HomePage: React.FC = () => {
   useEffect(() => {
     listMyAppVoByPage({pageNum: 1, pageSize: 8}).then(({data}) => setMyApps(data?.records || []));
     listFeaturedAppVoByPage({pageNum: 1, pageSize: 8}).then(({data}) => setFeaturedApps(data?.records || []));
+    // 加载应用类别
+    listAllAppTypes().then(({data}) => setAppTypes(data || []));
   }, []);
 
   return (
-    <div style={{padding: 32, width: 1300, margin: '0 auto'}}>
-      <Title level={2} style={{color: '#1890ff', fontWeight: 'bold', marginBottom: 0}}>AI 低代码应用生成器</Title>
-      <Card style={{margin: '24px 0', position: "relative"}}>
+    <div style={{padding: 32, width: 1600, margin: '0 auto'}}>
+      <Title level={2} style={{color: '#1890ff', fontWeight: 'bold', marginBottom: 0, textAlign: "center"}}>AI 低代码应用生成器</Title>
+      <Card style={{margin: '50px auto', position: "relative", maxWidth: 700, maxHeight: 400, borderRadius: 30}}>
         {/*下拉选择应用生成类型*/}
         <div style={{marginBottom: '30px'}}>
           <Dropdown menu={{
@@ -78,7 +88,7 @@ const HomePage: React.FC = () => {
             </Button>
           </Dropdown>
         </div>
-        <TextArea rows={8} value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="输入你的应用名称"
+        <TextArea rows={4} value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="输入你的应用名称"
                   style={{resize: 'none', fontSize: '22px'}}/>
         <Button type="primary" loading={loading}
                 style={{marginTop: 8, position: "absolute", bottom: "40px", right: "40px"}} onClick={handleCreateApp}
@@ -97,15 +107,45 @@ const HomePage: React.FC = () => {
               </Space>
             </Button>
           </Dropdown>
-          {/*todo 标签查询*/}
-          <Button shape="round" size={"large"}>
-            全部
-          </Button>
-          <Button shape="round" size={"large"}>
-            管理系统
-          </Button>
+          <div style={{display: "flex", gap: '8px', flexWrap: 'wrap', alignItems: 'center'}}>
+            {/* 全部按钮 */}
+            <Button
+              shape="round"
+              size="large"
+              type={selectedAppType === 'all' ? 'primary' : 'default'}
+              onClick={() => setSelectedAppType('all')}
+            >
+              全部
+            </Button>
+            {/* 动态渲染应用类别按钮 - 默认显示前6个，点击展开后显示全部 */}
+            {appTypes
+              .slice(0, isExpanded ? appTypes.length : 6)
+              .map((appType) => (
+                <Button
+                  key={appType.code}
+                  shape="round"
+                  size="large"
+                  type={selectedAppType === appType.text ? 'primary' : 'default'}
+                  onClick={() => setSelectedAppType(appType.text || '')}
+                >
+                  {appType.text}
+                </Button>
+              ))}
+            {/* 展开/收起按钮 - 当类别超过6个时显示 */}
+            {appTypes.length > 6 && (
+              <Button
+                type="text"
+                size="large"
+                onClick={() => setIsExpanded(!isExpanded)}
+                icon={isExpanded ? <UpOutlined /> : <ChevronDownOutlined />}
+              >
+                {isExpanded ? '收起' : '展开'}
+              </Button>
+            )}
+          </div>
           {/*// @ts-ignore*/}
-          <Button type={"primary"} shape="round" icon={<DoubleRightOutlined/>} size={"large"} onClick={() => history.push("/cases")}>全部案例</Button>
+          <Button type={"primary"} shape="round" icon={<DoubleRightOutlined/>} size={"large"}
+                  onClick={() => history.push("/cases")}>全部案例</Button>
         </div>
         <Row gutter={16}>
           {featuredApps.map(app => (

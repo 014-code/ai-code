@@ -1,5 +1,6 @@
 package com.mashang.aicode.web.model.vo;
 
+import com.mybatisflex.annotation.Column;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -20,11 +21,17 @@ public class AppVO implements Serializable {
      * 应用名称
      */
     private String appName;
-
+    /**
+     * 应用类型
+     */
+    private String appType;
     /**
      * 应用描述
      */
     private String appDesc;
+
+    //浏览量
+    private Long pageViews;
 
     /**
      * 应用图标

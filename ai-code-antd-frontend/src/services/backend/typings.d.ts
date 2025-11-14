@@ -2,6 +2,7 @@ declare namespace API {
   type App = {
     id?: number;
     appName?: string;
+    appType?: string;
     cover?: string;
     initPrompt?: string;
     codeGenType?: string;
@@ -21,6 +22,7 @@ declare namespace API {
     appIcon?: string;
     appCover?: string;
     initPrompt?: string;
+    codeGenType?: string;
   };
 
   type AppDeployRequest = {
@@ -35,9 +37,17 @@ declare namespace API {
     id?: number;
     appName?: string;
     appDesc?: string;
+    codeGenType?: string;
     userId?: number;
     isFeatured?: number;
     searchKey?: string;
+  };
+
+  type AppTypeVO = {
+    code?: number;
+    text?: string;
+    category?: string;
+    categoryName?: string;
   };
 
   type AppUpdateRequest = {
@@ -52,15 +62,16 @@ declare namespace API {
   type AppVO = {
     id?: number;
     appName?: string;
+    appType?: string;
     appDesc?: string;
     appIcon?: string;
     appCover?: string;
     initPrompt?: string;
+    codeGenType?: string;
     userId?: number;
     user?: UserVO;
     cover?: string;
     deployKey?: string;
-    codeGenType?: string;
     priority?: number;
     isFeatured?: number;
     editTime?: string;
@@ -89,6 +100,12 @@ declare namespace API {
   type BaseResponseChatHistory = {
     code?: number;
     data?: ChatHistory;
+    message?: string;
+  };
+
+  type BaseResponseListAppTypeVO = {
+    code?: number;
+    data?: AppTypeVO[];
     message?: string;
   };
 
@@ -164,7 +181,6 @@ declare namespace API {
     userId?: number;
     messageType?: string;
     messageContent?: string;
-    errorInfo?: string;
     createTime?: string;
     updateTime?: string;
     isDelete?: number;
@@ -211,6 +227,10 @@ declare namespace API {
 
   type DeleteRequest = {
     id?: number;
+  };
+
+  type downloadAppCodeParams = {
+    appId: number;
   };
 
   type getAppByIdParams = {

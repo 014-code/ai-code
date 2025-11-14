@@ -1,8 +1,9 @@
-package com.mashang.aicode.web.ai;
+package com.mashang.aicode.web.ai.factory;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum;
+import com.mashang.aicode.web.ai.service.AiCodeGeneratorService;
 import com.mashang.aicode.web.exception.BusinessException;
 import com.mashang.aicode.web.exception.ErrorCode;
 import com.mashang.aicode.web.service.ChatHistoryService;
