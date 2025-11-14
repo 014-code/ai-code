@@ -1,6 +1,6 @@
 package com.mashang.aicode;
 
-import com.mashang.aicode.web.ai.AiCodeGeneratorService;
+import com.mashang.aicode.web.ai.service.AiCodeGeneratorService;
 import com.mashang.aicode.web.ai.model.HtmlCodeResult;
 import com.mashang.aicode.web.ai.model.MultiFileCodeResult;
 import jakarta.annotation.Resource;

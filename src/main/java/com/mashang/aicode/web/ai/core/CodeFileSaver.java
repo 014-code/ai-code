@@ -28,6 +28,7 @@ public class CodeFileSaver {
 
     /**
      * 创建文件夹方法
+     *
      * @param bizType
      * @return
      */
@@ -43,6 +44,7 @@ public class CodeFileSaver {
 
     /**
      * 写结果到文件里面方法
+     *
      * @param fileName
      * @param filePath
      * @param content
@@ -60,22 +62,24 @@ public class CodeFileSaver {
 
     /**
      * 保存单文件方法
+     *
      * @param result
      * @return
      */
     public static File saveHtmlCodeResult(HtmlCodeResult result, Long appId) {
-        String baseDirPath = buildUniqueDir(CodeGenTypeEnum.HTML.getValue(),  appId);
+        String baseDirPath = buildUniqueDir(CodeGenTypeEnum.HTML.getValue(), appId);
         writeFile("index.html", baseDirPath, result.getHtmlCode());
         return new File(baseDirPath);
     }
 
     /**
      * 保存多文件方法
+     *
      * @param result
      * @return
      */
     public static File saveMultiFileCodeResult(MultiFileCodeResult result, Long appId) {
-        String baseDirPath = buildUniqueDir(CodeGenTypeEnum.MULTI_FILE.getValue(),   appId);
+        String baseDirPath = buildUniqueDir(CodeGenTypeEnum.MULTI_FILE.getValue(), appId);
         writeFile("index.html", baseDirPath, result.getHtmlCode());
         writeFile("style.css", baseDirPath, result.getCssCode());
         writeFile("script.js", baseDirPath, result.getJsCode());

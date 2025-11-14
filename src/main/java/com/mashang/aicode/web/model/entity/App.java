@@ -31,6 +31,12 @@ public class App implements Serializable {
     //应用名称
     @Column("appName")
     private String appName;
+    //应用类型
+    @Column("appType")
+    private String appType;
+    //浏览量
+    @Column("pageViews")
+    private Long pageViews;
     //应用封面
     @Column("cover")
     private String cover;

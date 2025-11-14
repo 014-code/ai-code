@@ -1,6 +1,6 @@
 package com.mashang.aicode;
 
-import com.mashang.aicode.web.ai.AiCodeGenTypeRoutingService;
+import com.mashang.aicode.web.ai.service.AiCodeGenTypeRoutingService;
 import com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;

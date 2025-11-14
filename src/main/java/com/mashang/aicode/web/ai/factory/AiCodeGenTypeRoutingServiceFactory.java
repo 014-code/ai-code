@@ -1,5 +1,6 @@
-package com.mashang.aicode.web.ai;
+package com.mashang.aicode.web.ai.factory;
 
+import com.mashang.aicode.web.ai.service.AiCodeGenTypeRoutingService;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import jakarta.annotation.Resource;
