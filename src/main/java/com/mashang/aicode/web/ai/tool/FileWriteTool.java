@@ -1,4 +1,4 @@
-package com.mashang.aicode.web.utils;
+package com.mashang.aicode.web.ai.tool;
 
 import com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum;
 import com.mashang.aicode.web.constant.AppConstant;
@@ -8,7 +8,6 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 

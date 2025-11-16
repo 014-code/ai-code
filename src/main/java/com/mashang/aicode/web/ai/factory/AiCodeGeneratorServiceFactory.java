@@ -4,10 +4,12 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum;
 import com.mashang.aicode.web.ai.service.AiCodeGeneratorService;
+import com.mashang.aicode.web.ai.tool.*;
+import com.mashang.aicode.web.ai.tool.base.ToolManager;
 import com.mashang.aicode.web.exception.BusinessException;
 import com.mashang.aicode.web.exception.ErrorCode;
+import com.mashang.aicode.web.service.AppService;
 import com.mashang.aicode.web.service.ChatHistoryService;
-import com.mashang.aicode.web.utils.FileWriteTool;
 import dev.langchain4j.community.store.memory.chat.redis.RedisChatMemoryStore;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -47,6 +49,9 @@ public class AiCodeGeneratorServiceFactory {
     @Autowired
     private FileWriteTool fileWriteTool;
 
+    @Resource
+    private ToolManager toolManager;
+
     private final Cache<String, AiCodeGeneratorService> serviceCache = Caffeine.newBuilder()
             .maximumSize(1000)
             .expireAfterWrite(Duration.ofMinutes(30))
@@ -82,7 +87,7 @@ public class AiCodeGeneratorServiceFactory {
             case VUE_PROJECT -> AiServices.builder(AiCodeGeneratorService.class)
                     .streamingChatModel(reasoningStreamingChatModel)
                     .chatMemoryProvider(memoryId -> chatMemory)
-                    .tools(fileWriteTool)
+                    .tools(toolManager.getAllTools())
                     .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(
                             toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()
                     ))
@@ -91,7 +96,7 @@ public class AiCodeGeneratorServiceFactory {
             case REACT_PROJECT -> AiServices.builder(AiCodeGeneratorService.class)
                     .streamingChatModel(reasoningStreamingChatModel)
                     .chatMemoryProvider(memoryId -> chatMemory)
-                    .tools(fileWriteTool)
+                    .tools(toolManager.getAllTools())
                     .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(
                             toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()
                     ))
@@ -121,8 +126,6 @@ public class AiCodeGeneratorServiceFactory {
     private String buildCacheKey(long appId, CodeGenTypeEnum codeGenType) {
         return appId + "_" + codeGenType.getValue();
     }
-
-
 
 
     @Bean
