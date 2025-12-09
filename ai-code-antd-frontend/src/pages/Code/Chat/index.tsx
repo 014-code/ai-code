@@ -4,7 +4,6 @@ import {Button, Card, Input, message, Space, Typography, Avatar, Spin, Tag} from
 import {LoginOutlined, SendOutlined, ReloadOutlined} from '@ant-design/icons';
 import {deployApp, getAppVoById} from "@/services/backend/appController";
 import {history} from "@@/core/history";
-import {request} from '@umijs/max';
 import {
   listAppChatHistory,
   listLatestChatHistoryVo,
@@ -13,6 +12,8 @@ import {getLoginUser} from "@/services/backend/userController";
 import ReactMarkdown from 'react-markdown';
 import {getStaticPreviewUrl} from "@/constants/proUrlOperation";
 import {CODE_GEN_TYPE_CONFIG} from "@/constants/codeGenTypeEnum";
+import {VisualEditor, ElementInfo} from '@/utils/VisualEditor';
+import VisualEditorPanel from "@/components/VisualEditor";
 
 const {TextArea} = Input, {Title, Text} = Typography;
 
@@ -47,6 +48,12 @@ const ChatPage: React.FC = () => {
   //下载状态
   const [downloading, setDownloading] = useState<boolean>(false)
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const [isEditMode, setIsEditMode] = useState<boolean>(false);
+  const [selectedElements, setSelectedElements] = useState<ElementInfo[]>([]);
+
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const visualEditorRef = useRef<VisualEditor | null>(null);
 
   // 初始化页面数据
   useEffect(() => {
@@ -201,7 +208,6 @@ const ChatPage: React.FC = () => {
         method: 'GET',
         credentials: 'include',
       })
-
       if (!response.ok) {
         throw new Error(`下载失败: ${response.status}`)
       }
@@ -363,6 +369,90 @@ const ChatPage: React.FC = () => {
     setDeploying(false);
   };
 
+  // 初始化可视化编辑器
+  useEffect(() => {
+    if (!visualEditorRef.current) {
+      // @ts-ignore
+      visualEditorRef.current = new VisualEditor({
+        // @ts-ignore
+        onElementSelected: (elementInfo: ElementInfo) => {
+          console.log("选择的元素" + elementInfo)
+          //选择元素方法
+          setSelectedElements(prev => [...prev, elementInfo]);
+        },
+        onElementHover: (elementInfo: ElementInfo) => {
+          // 可以在这里实现悬浮时的效果，比如显示提示信息
+        }
+      });
+    }
+    if (iframeRef.current && visualEditorRef.current) {
+      visualEditorRef.current.init(iframeRef.current);
+    }
+    if (visualEditorRef.current) {
+      if (isEditMode) {
+        visualEditorRef.current.enableEditMode();
+      } else {
+        visualEditorRef.current.disableEditMode();
+      }
+    }
+    // 添加监听器
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [iframeRef.current, isEditMode])
+
+  // 切换可视化编辑模式
+  const toggleEditMode = () => {
+    const newMode = !isEditMode;
+    setIsEditMode(newMode);
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    !isEditMode ? message.info("进入编辑模式") : message.info("退出编辑模式")
+  };
+
+  // 监听iframe消息
+  const handleMessage = (event: MessageEvent) => {
+    if (visualEditorRef.current) {
+      visualEditorRef.current.handleIframeMessage(event);
+    }
+  };
+
+  // 移除选中的元素
+  const removeSelectedElement = (index: number) => {
+    setSelectedElements(prev => prev.filter((_, i) => i !== index));
+    if (visualEditorRef.current) {
+      visualEditorRef.current.clearSelection();
+    }
+  };
+
+  // 清除所有选中的元素
+  const clearAllSelectedElements = () => {
+    setSelectedElements([]);
+    if (visualEditorRef.current) {
+      visualEditorRef.current.clearSelection();
+    }
+  };
+
+  const getPreviewUrlWithVisualEdit = () => {
+    if (!appInfo?.codeGenType || !appInfo?.id) {
+      return '';
+    }
+    const baseUrl = getStaticPreviewUrl(
+      appInfo.codeGenType,
+      String(appInfo.id),
+      appInfo.deployKey || undefined
+    );
+    if (!baseUrl) {
+      return '';
+    }
+    return baseUrl.includes('?') ? `${baseUrl}&visualEdit=true` : `${baseUrl}?visualEdit=true`;
+  };
+
+
+  const codeGenTypeLabel = appInfo?.codeGenType
+    ? CODE_GEN_TYPE_CONFIG[appInfo.codeGenType as keyof typeof CODE_GEN_TYPE_CONFIG]?.label
+    : undefined;
+
   return (
     <div style={{height: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5'}}>
       <div style={{
@@ -375,7 +465,7 @@ const ChatPage: React.FC = () => {
       }}>
         <Space>
           <Title level={4} style={{margin: 0}}>应用对话</Title>
-          {/*<Tag color={"blue"}>{CODE_GEN_TYPE_CONFIG[appInfo?.codeGenType].label}</Tag>*/}
+          <Tag color={"blue"}>{codeGenTypeLabel || '未知类型'}</Tag>
         </Space>
         <Space>
           <Button type="primary" ghost loading={downloading} onClick={downloadCode}
@@ -389,7 +479,7 @@ const ChatPage: React.FC = () => {
                 message.warning('暂无可用预览地址，请先部署应用');
                 return;
               }
-              history.push(getStaticPreviewUrl(appInfo.codeGenType, String(appInfo.id), appInfo.deployKey));
+              history.push(getStaticPreviewUrl(appInfo.codeGenType, String(appInfo.id), appInfo.deployKey || ''));
             }}
           >
             新窗口打开
@@ -462,6 +552,12 @@ const ChatPage: React.FC = () => {
             <div ref={messagesEndRef}/>
           </div>
           <div style={{padding: 16, borderTop: '1px solid #f0f0f0', background: '#fff'}}>
+            {/*// @ts-*/}
+            <VisualEditorPanel isEditMode={isEditMode}
+                               selectedElements={selectedElements}
+                               onToggleEditMode={toggleEditMode}
+                               onRemoveElement={removeSelectedElement}
+                               onClearAllElements={clearAllSelectedElements}></VisualEditorPanel>
             <Space.Compact style={{width: '100%'}}>
               <TextArea rows={2} placeholder="请输入您的问题..." value={inputValue}
                         onChange={e => setInputValue(e.target.value)}
@@ -474,7 +570,7 @@ const ChatPage: React.FC = () => {
             <div style={{fontSize: 12, color: '#999', marginTop: 8}}>提示：Ctrl+Enter 发送</div>
           </div>
         </div>
-        {/* 右列 网页预览区 */}
+        {/*// 右列 网页预览区*/}
         <div style={{
           width: '50%',
           background: '#fafafa',
@@ -483,27 +579,30 @@ const ChatPage: React.FC = () => {
           alignItems: 'center',
           justifyContent: 'center'
         }}>
-          {`http://localhost:8080/${appInfo?.deployKey}/` || deployUrl ? (
+          {appInfo?.codeGenType && appInfo?.id ? (
             <iframe
+              ref={iframeRef}
               title="已部署应用预览"
               style={{border: '1px solid #eee', borderRadius: 8, width: '100%', height: '80vh', background: '#fff'}}
               sandbox="allow-scripts allow-same-origin"
-              src={
-                appInfo?.codeGenType && appInfo?.id
-                  ? getStaticPreviewUrl(appInfo.codeGenType, String(appInfo.id), appInfo.deployKey as string)
-                  : undefined
-              }
+              src={getPreviewUrlWithVisualEdit()}
+              onLoad={() => {
+                if (visualEditorRef.current) {
+                  visualEditorRef.current.onIframeLoad();
+                }
+              }}
             />
           ) : (
             <Card
               style={{height: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-              <Text type="secondary">请先点击上方“部署应用”按钮，完成部署后右侧将显示应用页面</Text>
+              <Text type="secondary">请先点击上方"部署应用"按钮，完成部署后右侧将显示应用页面</Text>
             </Card>
           )}
         </div>
       </div>
     </div>
   );
-};
+}
+
 
 export default ChatPage;
