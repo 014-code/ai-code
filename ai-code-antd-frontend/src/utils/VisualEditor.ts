@@ -125,20 +125,15 @@ export class VisualEditor {
       return;
     }
 
-    // 延迟注入脚本，确保iframe内容完全加载
-    setTimeout(() => {
-      console.log('VisualEditor: Delayed script injection starting');
+    // 由于跨域限制，只能通过postMessage方式通信
+    console.log('VisualEditor: Cross-origin iframe detected, using postMessage only');
 
-      // 直接注入脚本，由于跨域限制，主要依靠postMessage方式
-      this.injectEditScript();
-
-      // 如果当前处于编辑模式，重新启用
-      if (this.isEditMode) {
-        setTimeout(() => {
-          this.enableEditMode();
-        }, 1000);
-      }
-    }, 500);
+    // 如果当前处于编辑模式，发送消息通知iframe
+    if (this.isEditMode) {
+      setTimeout(() => {
+        this.enableEditMode();
+      }, 500);
+    }
   }
 
   /**
@@ -153,51 +148,24 @@ export class VisualEditor {
     const {type, data} = event.data || {};
     if (!type) return;
 
-    console.log('VisualEditor: iframe的内容:', type, data);
+    console.log('VisualEditor: 收到消息:', type, data);
 
     switch (type) {
-      case 'VISUAL_EDITOR_READY':
-        console.log('VisualEditor: Editor is ready in iframe');
-        this.options.onEditorReady?.();
-        // 如果应该处于编辑模式，确保启用
-        if (this.isEditMode) {
-          setTimeout(() => {
-            this.enableEditMode();
-          }, 100);
+      case 'element-selected':
+        if (this.options.onElementSelected && data?.element) {
+          console.log('VisualEditor: 元素被选中', data.element);
+          this.options.onElementSelected(data.element);
         }
         break;
-      //   todo 在对话页出现奇怪的类型？？？！
-      case 'iframe-click':
-        if (this.options.onElementSelected && data?.elementInfo) {
-          console.log('VisualEditor: 元素被选中', data.elementInfo);
-          this.options.onElementSelected(data.elementInfo);
-        }
-        break;
-      //   todo 在对话页出现奇怪的类型？？？！
-      case 'get-iframe-pos':
-        if (this.options.onElementSelected && data?.elementInfo) {
-          console.log('VisualEditor: 元素被选中', data.elementInfo);
-          this.options.onElementSelected(data.elementInfo);
-        }
-        break;
-      case 'ELEMENT_SELECTED':
-        if (this.options.onElementSelected && data?.elementInfo) {
-          console.log('VisualEditor: 元素被选中', data.elementInfo);
-          this.options.onElementSelected(data.elementInfo);
-        }
-        break;
-
       case 'ELEMENT_HOVER':
-        if (this.options.onElementHover && data?.elementInfo) {
-          console.log('VisualEditor: 元素被触摸', data.elementInfo)
-          this.options.onElementHover(data.elementInfo);
+        if (this.options.onElementHover && data?.element) {
+          console.log('VisualEditor: 元素悬停', data.element)
+          this.options.onElementHover(data.element);
         }
-        break;
-      case 'EDITOR_ERROR':
-        console.error('VisualEditor: 元素出现错误:', data);
         break;
       default:
-        console.log('VisualEditor: 未定义的事件类型:', type);
+        // 忽略其他消息类型
+        break;
     }
   }
 
@@ -324,7 +292,7 @@ export class VisualEditor {
   /**
    * 生成编辑器脚本
    */
-  private generateEditScript(): string {
+  generateEditScript(): string {
     return `
       (function() {
         'use strict';
