@@ -1,6 +1,7 @@
 package com.mashang.aicode.web.langgraph4j.state;
 
 import com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum;
+import com.mashang.aicode.web.langgraph4j.model.QualityResult;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -47,6 +48,9 @@ public class WorkflowContext implements Serializable {
 
     //构造返回结果路径
     private String buildResultDir;
+
+    //条件边校验结果
+    private QualityResult qualityResult;
 
     //失败消息
     private String errorMessage;

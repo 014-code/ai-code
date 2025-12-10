@@ -28,26 +28,22 @@ public class ProjectBuilderNode {
 
             String generatedCodeDir = context.getGeneratedCodeDir();
             CodeGenTypeEnum generationType = context.getGenerationType();
+
             String buildResultDir;
 
-            if (generationType == CodeGenTypeEnum.VUE_PROJECT) {
-                try {
-                    ProjectBuilder vueBuilder = SpringContextUtil.getBean(ProjectBuilder.class);
+            try {
+                ProjectBuilder vueBuilder = SpringContextUtil.getBean(ProjectBuilder.class);
 
-                    boolean buildSuccess = vueBuilder.buildProject(generatedCodeDir);
-                    if (buildSuccess) {
+                boolean buildSuccess = vueBuilder.buildProject(generatedCodeDir);
+                if (buildSuccess) {
 
-                        buildResultDir = generatedCodeDir + File.separator + "dist";
-                        log.info("Vue 项目构建成功，dist 目录: {}", buildResultDir);
-                    } else {
-                        throw new BusinessException(ErrorCode.SYSTEM_ERROR, "Vue/React 项目构建失败");
-                    }
-                } catch (Exception e) {
-                    log.error("Vue 项目构建异常: {}", e.getMessage(), e);
-                    buildResultDir = generatedCodeDir;
+                    buildResultDir = generatedCodeDir + File.separator + "dist";
+                    log.info("Vue/React 项目构建成功，dist 目录: {}", buildResultDir);
+                } else {
+                    throw new BusinessException(ErrorCode.SYSTEM_ERROR, "Vue 项目构建失败");
                 }
-            } else {
-
+            } catch (Exception e) {
+                log.error("Vue 项目构建异常: {}", e.getMessage(), e);
                 buildResultDir = generatedCodeDir;
             }
 
