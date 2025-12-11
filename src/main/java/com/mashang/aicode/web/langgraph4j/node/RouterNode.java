@@ -1,5 +1,6 @@
 package com.mashang.aicode.web.langgraph4j.node;
 
+import com.mashang.aicode.web.ai.factory.AiCodeGenTypeRoutingServiceFactory;
 import com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum;
 import com.mashang.aicode.web.ai.service.AiCodeGenTypeRoutingService;
 import com.mashang.aicode.web.langgraph4j.state.WorkflowContext;
@@ -24,7 +25,8 @@ public class RouterNode {
             CodeGenTypeEnum generationType;
             try {
 
-                AiCodeGenTypeRoutingService routingService = SpringContextUtil.getBean(AiCodeGenTypeRoutingService.class);
+                AiCodeGenTypeRoutingServiceFactory factory = SpringContextUtil.getBean(AiCodeGenTypeRoutingServiceFactory.class);
+                AiCodeGenTypeRoutingService routingService = factory.createAiCodeGenTypeRoutingService();
 
                 generationType = routingService.routeCodeGenType(context.getOriginalPrompt());
                 log.info("AI智能路由完成，选择类型: {} ({})", generationType.getValue(), generationType.getText());

@@ -1,6 +1,7 @@
 package com.mashang.aicode.web.ai.factory;
 
 import com.mashang.aicode.web.ai.service.AiCodeGenTypeRoutingService;
+import com.mashang.aicode.web.utils.SpringContextUtil;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import jakarta.annotation.Resource;
@@ -15,16 +16,22 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class AiCodeGenTypeRoutingServiceFactory {
 
-    @Resource
-    private ChatModel chatModel;
 
+    public AiCodeGenTypeRoutingService createAiCodeGenTypeRoutingService() {
 
-    @Bean
-    public AiCodeGenTypeRoutingService aiCodeGenTypeRoutingService() {
+        ChatModel chatModel = SpringContextUtil.getBean("routingChatModelPrototype", ChatModel.class);
         return AiServices.builder(AiCodeGenTypeRoutingService.class)
                 .chatModel(chatModel)
                 .build();
     }
+
+
+    @Bean
+    public AiCodeGenTypeRoutingService aiCodeGenTypeRoutingService() {
+        return createAiCodeGenTypeRoutingService();
+    }
 }
+
+
 
 

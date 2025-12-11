@@ -3,6 +3,7 @@ package com.mashang.aicode.web.controller;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
+import com.mashang.aicode.web.ai.factory.AiCodeGenTypeRoutingServiceFactory;
 import com.mashang.aicode.web.ai.service.AiCodeGenTypeRoutingService;
 import com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum;
 import com.mashang.aicode.web.model.enums.AppTypeEnum;
@@ -34,6 +35,7 @@ import com.mybatisflex.core.update.UpdateWrapper;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
@@ -67,6 +69,8 @@ public class AppController {
     private ProjectDownloadService projectDownloadService;
     @Resource
     private AiCodeGenTypeRoutingService aiCodeGenTypeRoutingService;
+    @Resource
+    private AiCodeGenTypeRoutingServiceFactory aiCodeGenTypeRoutingServiceFactory;
 
 
     /**
@@ -122,7 +126,8 @@ public class AppController {
         AppTypeEnum appTypeEnum = aiCodeGenTypeRoutingService.routeAppType(appName, initPrompt);
         app.setAppType(appTypeEnum.getText());
         //ai自动选择生成模式
-        CodeGenTypeEnum selectedCodeGenType = aiCodeGenTypeRoutingService.routeCodeGenType(initPrompt);
+        AiCodeGenTypeRoutingService routingService = aiCodeGenTypeRoutingServiceFactory.createAiCodeGenTypeRoutingService();
+        CodeGenTypeEnum selectedCodeGenType = routingService.routeCodeGenType(initPrompt);
         app.setCodeGenType(selectedCodeGenType.getValue());
 
 
@@ -225,6 +230,11 @@ public class AppController {
      * 【用户】分页查询精选的应用列表（支持根据名称查询，每页最多 20 个）
      */
     @PostMapping("/featured/list/page/vo")
+    @Cacheable(
+            value = "good_app_page",
+            key = "T(com.mashang.aicode.web.utils.CacheKeyUtils).generateKey(#appQueryRequest)",
+            condition = "#appQueryRequest.pageNum <= 10"
+    )
     public BaseResponse<Page<AppVO>> listFeaturedAppVOByPage(@RequestBody AppQueryRequest appQueryRequest) {
         ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);
 
