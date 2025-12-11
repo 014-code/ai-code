@@ -324,9 +324,6 @@ const ChatPage: React.FC = () => {
 
       eventSource.addEventListener('done', async () => {
         closeES();
-
-        // 由后端统一保存 AI 消息，前端不再重复保存
-
         setLoading(false);
 
         // 如果有至少2条对话记录，检查是否需要显示网站

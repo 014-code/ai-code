@@ -26,6 +26,8 @@ import com.mashang.aicode.web.model.enums.AppTypeEnum;
 import com.mashang.aicode.web.model.vo.AppVO;
 import com.mashang.aicode.web.model.vo.AppTypeVO;
 import com.mashang.aicode.web.model.vo.AppTypeVO;
+import com.mashang.aicode.web.ratelimiter.annotation.RateLimit;
+import com.mashang.aicode.web.ratelimiter.enums.RateLimitType;
 import com.mashang.aicode.web.service.AppService;
 import com.mashang.aicode.web.service.ChatHistoryService;
 import com.mashang.aicode.web.service.ProjectDownloadService;
@@ -230,11 +232,7 @@ public class AppController {
      * 【用户】分页查询精选的应用列表（支持根据名称查询，每页最多 20 个）
      */
     @PostMapping("/featured/list/page/vo")
-    @Cacheable(
-            value = "good_app_page",
-            key = "T(com.mashang.aicode.web.utils.CacheKeyUtils).generateKey(#appQueryRequest)",
-            condition = "#appQueryRequest.pageNum <= 10"
-    )
+    @Cacheable(value = "good_app_page", key = "T(com.mashang.aicode.web.utils.CacheKeyUtils).generateKey(#appQueryRequest)", condition = "#appQueryRequest.pageNum <= 10")
     public BaseResponse<Page<AppVO>> listFeaturedAppVOByPage(@RequestBody AppQueryRequest appQueryRequest) {
         ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);
 
@@ -367,6 +365,8 @@ public class AppController {
      * @return
      */
     @GetMapping(value = "/chat/gen/code", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    //redisson令牌桶限流
+    @RateLimit(limitType = RateLimitType.USER, rate = 5, rateInterval = 60, message = "AI 对话请求过于频繁，请稍后再试")
     public Flux<ServerSentEvent<String>> chatToGenCode(@RequestParam Long appId, @RequestParam String message, HttpServletRequest request) {
         ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID无效");
         ThrowUtils.throwIf(StrUtil.isBlank(message), ErrorCode.PARAMS_ERROR, "用户消息不能为空");
