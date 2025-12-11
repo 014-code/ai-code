@@ -36,7 +36,7 @@ public class JsonMessageStreamHandler {
 
 
     /**
-     * 处理 TokenStream（VUE_PROJECT）
+     * 处理 TokenStream（PROJECT）
      * 解析 JSON 消息并重组为完整的响应格式
      *
      * @param originFlux         原始流
