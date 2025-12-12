@@ -1,6 +1,7 @@
 import { Link } from 'expo-router';
 import React, { useState } from 'react';
-import { Button, ImageBackground, StyleSheet, TextInput, View } from 'react-native';
+import { ImageBackground, StyleSheet, View } from 'react-native';
+import { Button, Icon, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { register } from '../../api/user';
 
@@ -66,38 +67,39 @@ export default function Register() {
 
     return (
         <ImageBackground source={image} resizeMode="cover">
-            <SafeAreaView style={styles.container}>
-
-                {/* 下方输入表单 */}
-                <TextInput
-                    placeholder='请输入你的账号'
-                    style={styles.input}
-                    value={loginForm.userAccount}
-                    onChangeText={(text) => setLoginForm({ ...loginForm, userAccount: text })}
-                />
-                <TextInput
-                    placeholder='请输入你的密码'
-                    style={styles.input}
-                    value={loginForm.userPassword}
-                    onChangeText={(text) => setLoginForm({ ...loginForm, userPassword: text })}
-                    secureTextEntry={true}
-                />
-                <TextInput
-                    placeholder='请再次输入你的密码'
-                    style={styles.input}
-                    value={loginForm.checkPassword}
-                    onChangeText={(text) => setLoginForm({ ...loginForm, checkPassword: text })}
-                    secureTextEntry={true}
-                />
-                <View style={{ flex: 3 }}>
-                    <Button title='注册' onPress={handleSubmit}></Button>
+            <SafeAreaView style={{ height: 900, padding: 20 }}>
+                <View style={{ marginTop: 150, gap: 30 }}>
+                    {/* 下方输入表单 */}
+                    <TextInput
+                        label="账号"
+                        placeholder='请输入你的账号'
+                        value={loginForm.userAccount}
+                        left={<Icon source="person" size={24} />}
+                        onChangeText={(text) => setLoginForm({ ...loginForm, userAccount: text })}
+                    />
+                    <TextInput
+                        value={loginForm.userPassword}
+                        label="密码"
+                        placeholder='请输入你的密码'
+                        secureTextEntry
+                        onChangeText={(text) => setLoginForm({ ...loginForm, userPassword: text })}
+                        right={<TextInput.Icon icon="eye" />}
+                    />
+                    <TextInput
+                        value={loginForm.checkPassword}
+                        label="确认密码"
+                        placeholder='请再次输入你的密码'
+                        secureTextEntry
+                        onChangeText={(text) => setLoginForm({ ...loginForm, checkPassword: text })}
+                        right={<TextInput.Icon icon="eye" />}
+                    />
+                    <Button mode='elevated' onPress={handleSubmit}>注册</Button>
+                    <View style={{ margin: 'auto' }}>
+                        <Link href={'/user/login'} style={{ color: 'blue' }}>已有账号，去登录</Link>
+                    </View>
                 </View>
-                <View>
-                    <Link href={'/user/login'} style={{ color: 'blue' }}>已有账号，去登录</Link>
-                </View>
-
             </SafeAreaView>
-        </ImageBackground>
+        </ImageBackground >
     )
 }
 

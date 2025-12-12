@@ -5,7 +5,7 @@ import {
 	removeToken
 } from "./cookies";
 import { push } from './navigationManager';
-const BASE_URL = "http://localhost:8123"
+const BASE_URL = "http://localhost:8123/api"
 
 export default async function (options: any = {}) {
 	let {
