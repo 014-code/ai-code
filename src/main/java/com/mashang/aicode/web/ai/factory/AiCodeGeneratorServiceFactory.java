@@ -2,6 +2,7 @@ package com.mashang.aicode.web.ai.factory;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.mashang.aicode.web.ai.guardrail.PromptSafetyInputGuardrail;
 import com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum;
 import com.mashang.aicode.web.ai.service.AiCodeGeneratorService;
 import com.mashang.aicode.web.ai.tool.*;
@@ -36,12 +37,6 @@ public class AiCodeGeneratorServiceFactory {
     private ChatModel chatModel;
 
     @Resource
-    private StreamingChatModel openAiStreamingChatModel;
-
-    @Resource
-    private StreamingChatModel reasoningStreamingChatModel;
-
-    @Resource
     private RedisChatMemoryStore redisChatMemoryStore;
 
     @Autowired
@@ -53,18 +48,13 @@ public class AiCodeGeneratorServiceFactory {
     @Resource
     private ToolManager toolManager;
 
-    private final Cache<String, AiCodeGeneratorService> serviceCache = Caffeine.newBuilder()
-            .maximumSize(1000)
-            .expireAfterWrite(Duration.ofMinutes(30))
-            .expireAfterAccess(Duration.ofMinutes(10))
-            .removalListener((key, value, cause) -> {
-                log.debug("AI 服务实例被移除，key: {}, 原因: {}", key, cause);
-            })
-            .build();
+    private final Cache<String, AiCodeGeneratorService> serviceCache = Caffeine.newBuilder().maximumSize(1000).expireAfterWrite(Duration.ofMinutes(30)).expireAfterAccess(Duration.ofMinutes(10)).removalListener((key, value, cause) -> {
+        log.debug("AI 服务实例被移除，key: {}, 原因: {}", key, cause);
+    }).build();
 
 
     public AiCodeGeneratorService getAiCodeGeneratorService(long appId) {
-        // 默认使用 MULTI_FILE 类型（向后兼容）
+        // 默认使用 MULTI_FILE 类型
         return getAiCodeGeneratorService(appId, CodeGenTypeEnum.MULTI_FILE);
     }
 
@@ -74,12 +64,7 @@ public class AiCodeGeneratorServiceFactory {
      */
     private AiCodeGeneratorService createAiCodeGeneratorService(long appId, CodeGenTypeEnum codeGenType) {
         // 根据 appId 构建独立的对话记忆
-        MessageWindowChatMemory chatMemory = MessageWindowChatMemory
-                .builder()
-                .id(appId)
-                .chatMemoryStore(redisChatMemoryStore)
-                .maxMessages(20)
-                .build();
+        MessageWindowChatMemory chatMemory = MessageWindowChatMemory.builder().id(appId).chatMemoryStore(redisChatMemoryStore).maxMessages(20).build();
         // 从数据库加载历史对话到记忆中
         chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, 20);
         // 根据代码生成类型选择不同的模型配置
@@ -92,9 +77,11 @@ public class AiCodeGeneratorServiceFactory {
                         .streamingChatModel(reasoningStreamingChatModel)
                         .chatMemoryProvider(memoryId -> chatMemory)
                         .tools(toolManager.getAllTools())
-                        .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(
-                                toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()
-                        ))
+                        //设置工具调用次数上限为20次
+                        .maxSequentialToolsInvocations(20)
+                        //提示词输入护轨检查
+                        .inputGuardrails(new PromptSafetyInputGuardrail())
+                        .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()))
                         .build();
             }
             // React 项目生成使用推理模型
@@ -105,10 +92,11 @@ public class AiCodeGeneratorServiceFactory {
                         .streamingChatModel(reasoningStreamingChatModel)
                         .chatMemoryProvider(memoryId -> chatMemory)
                         .tools(toolManager.getAllTools())
-                        .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(
-                                toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()
-                        ))
-                        .build();
+                        //设置工具调用次数上限为20次
+                        .maxSequentialToolsInvocations(20)
+                        //提示词输入护轨检查
+                        .inputGuardrails(new PromptSafetyInputGuardrail())
+                        .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name())).build();
             }
             // HTML 和多文件生成使用默认模型
             case HTML, MULTI_FILE -> {
@@ -118,10 +106,12 @@ public class AiCodeGeneratorServiceFactory {
                         .chatModel(chatModel)
                         .streamingChatModel(openAiStreamingChatModel)
                         .chatMemory(chatMemory)
+                        //提示词输入护轨检查
+                        .inputGuardrails(new PromptSafetyInputGuardrail())
                         .build();
             }
-            default -> throw new BusinessException(ErrorCode.SYSTEM_ERROR,
-                    "不支持的代码生成类型: " + codeGenType.getValue());
+            default ->
+                    throw new BusinessException(ErrorCode.SYSTEM_ERROR, "不支持的代码生成类型: " + codeGenType.getValue());
         };
     }
 

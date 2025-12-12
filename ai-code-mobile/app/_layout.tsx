@@ -1,28 +1,42 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
-
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+import { Platform } from 'react-native';
 
 /**
- * 通用主题配置
+ * 通用布局页面
  * @returns 
  */
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: '模态框' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <Stack>
+      <Stack.Screen name='index' options={{ headerShown: false }} />
+      <Stack.Screen name='user/login' options={{
+        title: '登录',
+        headerShown: false,
+        // 可选：淡入淡出动画
+        animation: 'fade',
+        // 完全自定义内容容器
+        contentStyle: {
+          flex: 1,
+          backgroundColor: '#fff',
+          paddingTop: Platform.OS === 'ios' ? 44 : 0, // 手动设置顶部
+          paddingBottom: Platform.OS === 'ios' ? 20 : 0, // 手动设置底部
+        }
+      }} />
+      <Stack.Screen name='user/register' options={{
+        title: "注册",
+        headerShown: false,
+        // 可选：淡入淡出动画
+        animation: 'fade',
+        // 完全自定义内容容器
+        contentStyle: {
+          flex: 1,
+          backgroundColor: '#fff',
+          paddingTop: Platform.OS === 'ios' ? 44 : 0, // 手动设置顶部
+          paddingBottom: Platform.OS === 'ios' ? 20 : 0, // 手动设置底部
+        }
+      }} />
+      <Stack.Screen name='ai-app/home' options={{ title: "主页", headerBackVisible: false, gestureEnabled: false, }} />
+    </Stack>
   );
 }
