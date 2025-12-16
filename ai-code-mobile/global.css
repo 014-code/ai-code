@@ -1,0 +1,4 @@
+/* 根目录创建 global.css 并写入以下配置： */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

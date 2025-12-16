@@ -1,4 +1,5 @@
-import { getUserInfo } from "@/api/user";
+import { getUserInfo } from "../api/user";
+
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
 // 获取用户信息的异步 action

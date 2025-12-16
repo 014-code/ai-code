@@ -31,6 +31,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 /**
  * Handles response from a language model for AI Service that is streamed token-by-token. Handles both regular (text)
  * responses and responses with the request to execute one or multiple tools.
+ * 在原版基础上增加了对 partialToolExecutionRequestHandler 的判空，以避免 NPE。
  */
 @Internal
 class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler {
@@ -103,12 +104,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         } else {
             partialResponseHandler.accept(partialResponse);
         }
-    }
-
-    @Override
-    public void onPartialToolExecutionRequest(int index, ToolExecutionRequest partialToolExecutionRequest) {
-        // If we're using output guardrails, then buffer the partial response until the guardrails have completed
-        partialToolExecutionRequestHandler.accept(index, partialToolExecutionRequest);
     }
 
     @Override
@@ -229,3 +224,4 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         }
     }
 }
+

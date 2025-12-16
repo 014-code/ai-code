@@ -1,6 +1,7 @@
+import '@/global.css';
 import { Link, useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { ImageBackground, StyleSheet, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, ImageBackground, StyleSheet, View } from 'react-native';
 import { Button, Icon, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { login } from '../../api/user';
@@ -18,6 +19,18 @@ export default function Login() {
 
     const router = useRouter();
 
+    //弹跳动画
+    const bounceAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        Animated.spring(bounceAnim, {
+            toValue: 1,
+            friction: 3,  // 弹跳次数，值越小弹跳越多
+            tension: 40,  // 弹跳力度
+            useNativeDriver: true,
+        }).start();
+    }, []);
+
     /**
     * 登录
     */
@@ -30,17 +43,38 @@ export default function Login() {
                 await setToken(res.data);
             }
             //执行跳转
-            router.push('/ai-app/home');
+            router.push('/tabs/ai-app/home');
         } catch (err: any) {
             //提示出错
-            alert(err.msg || '登录失败');
+            alert(err.message || '登录失败');
         }
     };
 
     return (
-        <ImageBackground resizeMode="cover">
+        <ImageBackground resizeMode="cover" source={require('@/assets/images/login-bac.png')}>
             <SafeAreaView style={{ height: 900, padding: 20 }}>
-                <View style={{ marginTop: 150, gap: 30 }}>
+                <Animated.Text style={[
+                    styles.title,
+                    {
+                        transform: [{
+                            translateY: bounceAnim.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [-50, 0] // 3. 应用动画：从-50到0
+                            })
+                        }]
+                    }
+                ]}>欢迎来到ai零代码生成应用</Animated.Text>
+                <Animated.View style={[
+                    {
+                        marginTop: 150, gap: 30,
+                        transform: [{
+                            translateY: bounceAnim.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [-50, 0] // 3. 应用动画：从-50到0
+                            })
+                        }]
+                    },
+                ]}>
                     {/* 下方输入表单 */}
                     <TextInput
                         placeholder='请输入你的账号'
@@ -61,12 +95,17 @@ export default function Login() {
                     <View>
                         <Link href={'/user/register'} style={{ margin: 'auto', color: 'blue' }}>还没账号？去注册</Link>
                     </View>
-                </View>
+                </Animated.View>
             </SafeAreaView>
         </ImageBackground>
     )
 }
 
 const styles = StyleSheet.create({
-
+    title: {
+        fontSize: 28,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        color: 'white',
+    },
 });

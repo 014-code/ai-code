@@ -71,20 +71,18 @@ public class AiCodeGeneratorFacade {
         Flux<String> result = aiCodeGeneratorService.generateHtmlCodeStream(userMessage);
 
         StringBuilder codeBuilder = new StringBuilder();
-        return result
-                .doOnNext(codeBuilder::append)
-                .doOnComplete(() -> {
+        return result.doOnNext(codeBuilder::append).doOnComplete(() -> {
 
-                    try {
-                        String completeHtmlCode = codeBuilder.toString();
-                        HtmlCodeResult htmlCodeResult = CodeParser.parseHtmlCode(completeHtmlCode);
+            try {
+                String completeHtmlCode = codeBuilder.toString();
+                HtmlCodeResult htmlCodeResult = CodeParser.parseHtmlCode(completeHtmlCode);
 
-                        File savedDir = CodeFileSaver.saveHtmlCodeResult(htmlCodeResult, appId);
-                        log.info("保存成功，路径为：" + savedDir.getAbsolutePath());
-                    } catch (Exception e) {
-                        log.error("保存失败: {}", e.getMessage());
-                    }
-                });
+                File savedDir = CodeFileSaver.saveHtmlCodeResult(htmlCodeResult, appId);
+                log.info("保存成功，路径为：" + savedDir.getAbsolutePath());
+            } catch (Exception e) {
+                log.error("保存失败: {}", e.getMessage());
+            }
+        });
     }
 
     /**
@@ -97,17 +95,15 @@ public class AiCodeGeneratorFacade {
         AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId);
         Flux<String> result = aiCodeGeneratorService.generateMultiFileCodeStream(userMessage);
         StringBuilder codeBuilder = new StringBuilder();
-        return result
-                .doOnNext(codeBuilder::append)
-                .doOnComplete(() -> {
-                    try {
-                        String completeMultiFileCode = codeBuilder.toString();
-                        MultiFileCodeResult multiFileResult = CodeParser.parseMultiFileCode(completeMultiFileCode);
-                        File savedDir = CodeFileSaver.saveMultiFileCodeResult(multiFileResult, appId);
-                    } catch (Exception e) {
-                        log.error("保存失败: {}", e.getMessage(), e);
-                    }
-                });
+        return result.doOnNext(codeBuilder::append).doOnComplete(() -> {
+            try {
+                String completeMultiFileCode = codeBuilder.toString();
+                MultiFileCodeResult multiFileResult = CodeParser.parseMultiFileCode(completeMultiFileCode);
+                File savedDir = CodeFileSaver.saveMultiFileCodeResult(multiFileResult, appId);
+            } catch (Exception e) {
+                log.error("保存失败: {}", e.getMessage(), e);
+            }
+        });
     }
 
     /**
@@ -128,34 +124,30 @@ public class AiCodeGeneratorFacade {
             case HTML -> {
                 Flux<String> codeStream = aiCodeGeneratorService.generateHtmlCodeStream(userMessage);
                 StringBuilder codeBuilder = new StringBuilder();
-                yield codeStream
-                        .doOnNext(codeBuilder::append)
-                        .doOnComplete(() -> {
-                            try {
-                                String completeHtmlCode = codeBuilder.toString();
-                                HtmlCodeResult htmlCodeResult = CodeParser.parseHtmlCode(completeHtmlCode);
-                                File savedDir = CodeFileSaver.saveHtmlCodeResult(htmlCodeResult, appId);
-                                log.info("保存成功，路径为：" + savedDir.getAbsolutePath());
-                            } catch (Exception e) {
-                                log.error("保存失败: {}", e.getMessage());
-                            }
-                        });
+                yield codeStream.doOnNext(codeBuilder::append).doOnComplete(() -> {
+                    try {
+                        String completeHtmlCode = codeBuilder.toString();
+                        HtmlCodeResult htmlCodeResult = CodeParser.parseHtmlCode(completeHtmlCode);
+                        File savedDir = CodeFileSaver.saveHtmlCodeResult(htmlCodeResult, appId);
+                        log.info("保存成功，路径为：" + savedDir.getAbsolutePath());
+                    } catch (Exception e) {
+                        log.error("保存失败: {}", e.getMessage());
+                    }
+                });
             }
             case MULTI_FILE -> {
                 Flux<String> codeStream = aiCodeGeneratorService.generateMultiFileCodeStream(userMessage);
                 StringBuilder codeBuilder = new StringBuilder();
-                yield codeStream
-                        .doOnNext(codeBuilder::append)
-                        .doOnComplete(() -> {
-                            try {
-                                String completeMultiFileCode = codeBuilder.toString();
-                                MultiFileCodeResult multiFileResult = CodeParser.parseMultiFileCode(completeMultiFileCode);
-                                File savedDir = CodeFileSaver.saveMultiFileCodeResult(multiFileResult, appId);
-                                log.info("保存成功，路径为：" + savedDir.getAbsolutePath());
-                            } catch (Exception e) {
-                                log.error("保存失败: {}", e.getMessage(), e);
-                            }
-                        });
+                yield codeStream.doOnNext(codeBuilder::append).doOnComplete(() -> {
+                    try {
+                        String completeMultiFileCode = codeBuilder.toString();
+                        MultiFileCodeResult multiFileResult = CodeParser.parseMultiFileCode(completeMultiFileCode);
+                        File savedDir = CodeFileSaver.saveMultiFileCodeResult(multiFileResult, appId);
+                        log.info("保存成功，路径为：" + savedDir.getAbsolutePath());
+                    } catch (Exception e) {
+                        log.error("保存失败: {}", e.getMessage(), e);
+                    }
+                });
             }
             case VUE_PROJECT -> {
                 // Vue 项目使用 FileWriteTool 在流式生成过程中直接写入文件，无需额外处理
@@ -176,37 +168,6 @@ public class AiCodeGeneratorFacade {
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, errorMessage);
             }
         };
-    }
-
-    /**
-     * 将 TokenStream 转换为 Flux<String>，并传递工具调用信息
-     *
-     * @param tokenStream TokenStream 对象
-     * @return Flux<String> 流式响应
-     */
-    private Flux<String> processTokenStream(TokenStream tokenStream) {
-        return Flux.create(sink -> {
-            tokenStream.onPartialResponse((String partialResponse) -> {
-                        AiResponseMessage aiResponseMessage = new AiResponseMessage(partialResponse);
-                        sink.next(JSONUtil.toJsonStr(aiResponseMessage));
-                    })
-                    .onPartialToolExecutionRequest((index, toolExecutionRequest) -> {
-                        ToolRequestMessage toolRequestMessage = new ToolRequestMessage(toolExecutionRequest);
-                        sink.next(JSONUtil.toJsonStr(toolRequestMessage));
-                    })
-                    .onToolExecuted((ToolExecution toolExecution) -> {
-                        ToolExecutedMessage toolExecutedMessage = new ToolExecutedMessage(toolExecution);
-                        sink.next(JSONUtil.toJsonStr(toolExecutedMessage));
-                    })
-                    .onCompleteResponse((ChatResponse response) -> {
-                        sink.complete();
-                    })
-                    .onError((Throwable error) -> {
-                        error.printStackTrace();
-                        sink.error(error);
-                    })
-                    .start();
-        });
     }
 
 

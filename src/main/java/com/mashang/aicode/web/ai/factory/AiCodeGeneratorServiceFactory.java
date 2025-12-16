@@ -5,13 +5,20 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.mashang.aicode.web.ai.guardrail.PromptSafetyInputGuardrail;
 import com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum;
 import com.mashang.aicode.web.ai.service.AiCodeGeneratorService;
-import com.mashang.aicode.web.ai.tool.*;
+import com.mashang.aicode.web.ai.tool.CommandTool;
+import com.mashang.aicode.web.ai.tool.FileDeleteTool;
+import com.mashang.aicode.web.ai.tool.FileDirReadTool;
+import com.mashang.aicode.web.ai.tool.FileModifyTool;
+import com.mashang.aicode.web.ai.tool.FileReadTool;
+import com.mashang.aicode.web.ai.tool.FileWriteTool;
 import com.mashang.aicode.web.ai.tool.base.ToolManager;
+
 import com.mashang.aicode.web.exception.BusinessException;
 import com.mashang.aicode.web.exception.ErrorCode;
 import com.mashang.aicode.web.service.AppService;
 import com.mashang.aicode.web.service.ChatHistoryService;
 import com.mashang.aicode.web.utils.SpringContextUtil;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.community.store.memory.chat.redis.RedisChatMemoryStore;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -45,8 +52,24 @@ public class AiCodeGeneratorServiceFactory {
     @Autowired
     private FileWriteTool fileWriteTool;
 
+    @Autowired
+    private FileReadTool fileReadTool;
+
+    @Autowired
+    private FileModifyTool fileModifyTool;
+
+    @Autowired
+    private FileDirReadTool fileDirReadTool;
+
+    @Autowired
+    private FileDeleteTool fileDeleteTool;
+
+    @Autowired
+    private CommandTool commandTool;
+
     @Resource
     private ToolManager toolManager;
+
 
     private final Cache<String, AiCodeGeneratorService> serviceCache = Caffeine.newBuilder().maximumSize(1000).expireAfterWrite(Duration.ofMinutes(30)).expireAfterAccess(Duration.ofMinutes(10)).removalListener((key, value, cause) -> {
         log.debug("AI 服务实例被移除，key: {}, 原因: {}", key, cause);
@@ -70,44 +93,29 @@ public class AiCodeGeneratorServiceFactory {
         // 根据代码生成类型选择不同的模型配置
         return switch (codeGenType) {
             // Vue 项目生成使用推理模型
-            case VUE_PROJECT -> {
-                //使用流式推理模型
-                StreamingChatModel reasoningStreamingChatModel = SpringContextUtil.getBean("reasoningStreamingChatModelPrototype", StreamingChatModel.class);
+            case VUE_PROJECT, REACT_PROJECT -> {
+                StreamingChatModel streamingChatModel = SpringContextUtil.getBean("streamingChatModelPrototype", StreamingChatModel.class);
+
                 yield AiServices.builder(AiCodeGeneratorService.class)
-                        .streamingChatModel(reasoningStreamingChatModel)
+                        .streamingChatModel(streamingChatModel)
                         .chatMemoryProvider(memoryId -> chatMemory)
-                        .tools(toolManager.getAllTools())
-                        //设置工具调用次数上限为20次
-                        .maxSequentialToolsInvocations(20)
-                        //提示词输入护轨检查
+                        .tools(getLangchainTools())
                         .inputGuardrails(new PromptSafetyInputGuardrail())
-                        .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()))
-                        .build();
-            }
-            // React 项目生成使用推理模型
-            case REACT_PROJECT -> {
-                //使用流式推理模型
-                StreamingChatModel reasoningStreamingChatModel = SpringContextUtil.getBean("reasoningStreamingChatModelPrototype", StreamingChatModel.class);
-                yield AiServices.builder(AiCodeGeneratorService.class)
-                        .streamingChatModel(reasoningStreamingChatModel)
-                        .chatMemoryProvider(memoryId -> chatMemory)
-                        .tools(toolManager.getAllTools())
-                        //设置工具调用次数上限为20次
                         .maxSequentialToolsInvocations(20)
-                        //提示词输入护轨检查
-                        .inputGuardrails(new PromptSafetyInputGuardrail())
-                        .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name())).build();
+                        //出路工具调用幻觉问题
+                        .hallucinatedToolNameStrategy(toolExecutionRequest ->
+                                ToolExecutionResultMessage.from(
+                                        toolExecutionRequest, "Error: there is no called" +
+                                                toolExecutionRequest.name()
+                                )).build();
             }
-            // HTML 和多文件生成使用默认模型
             case HTML, MULTI_FILE -> {
-                //使用流式推理模型
-                StreamingChatModel openAiStreamingChatModel = SpringContextUtil.getBean("streamingChatModelPrototype", StreamingChatModel.class);
+                StreamingChatModel openAiModel = SpringContextUtil.getBean("streamingChatModelPrototype", StreamingChatModel.class);
                 yield AiServices.builder(AiCodeGeneratorService.class)
                         .chatModel(chatModel)
-                        .streamingChatModel(openAiStreamingChatModel)
+                        .streamingChatModel(openAiModel)
                         .chatMemory(chatMemory)
-                        //提示词输入护轨检查
-                        .inputGuardrails(new PromptSafetyInputGuardrail())
+//                        .inputGuardrails(new PromptSafetyInputGuardrail())
                         .build();
             }
             default ->
@@ -134,6 +142,22 @@ public class AiCodeGeneratorServiceFactory {
     @Bean
     public AiCodeGeneratorService aiCodeGeneratorService() {
         return getAiCodeGeneratorService(0L);
+    }
+
+    /**
+     * 所有工具类
+     *
+     * @return
+     */
+    private Object[] getLangchainTools() {
+        return new Object[]{
+                fileWriteTool,
+                fileReadTool,
+                fileModifyTool,
+                fileDirReadTool,
+                fileDeleteTool,
+                commandTool
+        };
     }
 
 }

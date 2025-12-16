@@ -1,6 +1,6 @@
 import { Link } from 'expo-router';
-import React, { useState } from 'react';
-import { ImageBackground, StyleSheet, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, ImageBackground, StyleSheet, View } from 'react-native';
 import { Button, Icon, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { register } from '../../api/user';
@@ -27,8 +27,17 @@ export default function Register() {
         checkPassword: ''
     });
 
-    //背景图
-    const image = { uri: 'https://legacy.reactjs.org/logo-og.png' };
+    //弹跳动画
+    const bounceAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        Animated.spring(bounceAnim, {
+            toValue: 1,
+            friction: 3,  // 弹跳次数，值越小弹跳越多
+            tension: 40,  // 弹跳力度
+            useNativeDriver: true,
+        }).start();
+    }, []);
 
     // 校验规则
     const validate = () => {
@@ -66,9 +75,17 @@ export default function Register() {
     };
 
     return (
-        <ImageBackground source={image} resizeMode="cover">
+        <ImageBackground source={require('@/assets/images/login-bac.png')} resizeMode="cover">
             <SafeAreaView style={{ height: 900, padding: 20 }}>
-                <View style={{ marginTop: 150, gap: 30 }}>
+                <Animated.View style={{
+                    marginTop: 150, gap: 30,
+                    transform: [{
+                        translateY: bounceAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [-50, 0] // 3. 应用动画：从-50到0
+                        })
+                    }]
+                }}>
                     {/* 下方输入表单 */}
                     <TextInput
                         label="账号"
@@ -97,7 +114,7 @@ export default function Register() {
                     <View style={{ margin: 'auto' }}>
                         <Link href={'/user/login'} style={{ color: 'blue' }}>已有账号，去登录</Link>
                     </View>
-                </View>
+                </Animated.View>
             </SafeAreaView>
         </ImageBackground >
     )

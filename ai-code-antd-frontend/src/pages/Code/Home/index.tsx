@@ -72,7 +72,17 @@ const HomePage: React.FC = () => {
 
   return (
     <div style={{padding: 32, width: 1600, margin: '0 auto'}}>
-      <Title level={2} style={{color: '#1890ff', fontWeight: 'bold', marginBottom: 0, textAlign: "center"}}>AI 低代码应用生成器</Title>
+      <Title level={2} style={{
+        background: 'linear-gradient(135deg, #1890ff, #52c41a)',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+        fontWeight: 'bold',
+        marginBottom: 0,
+        textAlign: 'center',
+        fontSize: '42px',
+        // 可选：加粗或字体优化
+        fontFamily: 'Arial, sans-serif'
+      }}>AI 低代码应用生成器</Title>
       <Card style={{margin: '50px auto', position: "relative", maxWidth: 700, maxHeight: 400, borderRadius: 30}}>
         {/*下拉选择应用生成类型*/}
         <div style={{marginBottom: '30px'}}>
@@ -137,7 +147,7 @@ const HomePage: React.FC = () => {
                 type="text"
                 size="large"
                 onClick={() => setIsExpanded(!isExpanded)}
-                icon={isExpanded ? <UpOutlined /> : <ChevronDownOutlined />}
+                icon={isExpanded ? <UpOutlined/> : <ChevronDownOutlined/>}
               >
                 {isExpanded ? '收起' : '展开'}
               </Button>
