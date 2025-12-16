@@ -77,18 +77,6 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     @Override
-    public TokenStream onPartialToolExecutionRequest(BiConsumer<Integer, ToolExecutionRequest> toolExecutionRequestHandler) {
-        this.partialToolExecutionRequestHandler = toolExecutionRequestHandler;
-        return this;
-    }
-
-    @Override
-    public TokenStream onCompleteToolExecutionRequest(BiConsumer<Integer, ToolExecutionRequest> completedHandler) {
-        this.completeToolExecutionRequestHandler = completedHandler;
-        return this;
-    }
-
-    @Override
     public TokenStream onRetrieved(Consumer<List<Content>> contentsHandler) {
         this.contentsHandler = contentsHandler;
         this.onRetrievedInvoked++;
@@ -190,3 +178,5 @@ public class AiServiceTokenStream implements TokenStream {
         return chatMemory;
     }
 }
+
+

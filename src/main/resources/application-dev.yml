@@ -18,3 +18,33 @@ langchain4j:
       max-tokens: 8192
       log-requests: true
       log-responses: true
+    #   使用思考模型必须新增think好像是这样的字段接收ai返回结果才可以，不然直接报
+    reasoning-streaming-chat-model:
+      base-url: https://api.deepseek.com
+      api-key: sk-d233d52274e64873ac330c58bd90d85e
+      model-name: deepseek-reasoner
+      max-tokens: 32768
+      temperature: 0.1
+      log-requests: true
+      log-responses: true
+    routing-chat-model:
+      base-url: https://api.deepseek.com
+      api-key: sk-d233d52274e64873ac330c58bd90d85e
+      model-name: deepseek-chat
+      log-requests: true
+      log-responses: true
+#腾讯云存储
+cos:
+  client:
+    host: "https://linan-1374870268.cos.ap-guangzhou.myqcloud.com"
+    secretId: "AKIDiJgw0qcJtGPYCm7B1eCWeYFhvzpRq1zj"
+    secretKey: "Zy96pJIBrJXXHmcJn36vXu1yhBRSGIJ8"
+    region: "ap-guangzhou"
+    bucket: "linan-1374870268"
+#图片搜索api
+pexels:
+  api-key: "azlpf9nVX1r4PGKu0hS3Xavv6EaW6pGmKHq5u6bT8g4zUXhMeTls45GU"
+#阿里灵机大模型
+dashscope:
+  api-key: sk-8bf76e45372c4ab38c67fb16f4018050
+  image-model: wan2.2-t2i-flash

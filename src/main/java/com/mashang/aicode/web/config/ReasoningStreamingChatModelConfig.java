@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Scope;
 import java.util.List;
 
 /**
- * 流式推理模型配置类
+ * 流式推理模型配置类-暂时不用思考模型
  */
 @Configuration
 @ConfigurationProperties(prefix = "langchain4j.open-ai.reasoning-streaming-chat-model")
@@ -49,7 +49,7 @@ public class ReasoningStreamingChatModelConfig {
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 //监控指标监听器-收集各类数据
-                .listeners(List.of(aiModelMonitorListener))
+//                .listeners(List.of(aiModelMonitorListener))
                 .build();
     }
 }

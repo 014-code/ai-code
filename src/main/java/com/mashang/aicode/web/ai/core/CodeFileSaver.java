@@ -50,6 +50,10 @@ public class CodeFileSaver {
      * @param content
      */
     private static void writeFile(String fileName, String filePath, String content) {
+        // 防御性处理：如果内容为 null，则写入空字符串，避免底层 Writer 对 null 调用 length() 抛出 NPE
+        if (content == null) {
+            content = "";
+        }
         //拼接File.separator通用分隔符
         String file = filePath + File.separator + fileName;
         try {

@@ -30,6 +30,7 @@ public class AiModelMonitorListener implements ChatModelListener {
 
     /**
      * 请求收集时触发
+     *
      * @param requestContext
      */
     @Override
@@ -38,6 +39,10 @@ public class AiModelMonitorListener implements ChatModelListener {
         requestContext.attributes().put(REQUEST_START_TIME_KEY, Instant.now());
 
         MonitorContext context = MonitorContextHolder.getContext();
+        if (context == null) {
+            log.warn("MonitorContext not available in onRequest, skip metrics");
+            return;
+        }
         String userId = context.getUserId();
         String appId = context.getAppId();
         requestContext.attributes().put(MONITOR_CONTEXT_KEY, context);
@@ -45,10 +50,12 @@ public class AiModelMonitorListener implements ChatModelListener {
         String modelName = requestContext.chatRequest().modelName();
 
         aiModelMetricsCollector.recordRequest(userId, appId, modelName, "started");
+
     }
 
     /**
      * 响应时触发
+     *
      * @param responseContext
      */
     @Override
@@ -57,6 +64,10 @@ public class AiModelMonitorListener implements ChatModelListener {
         Map<Object, Object> attributes = responseContext.attributes();
 
         MonitorContext context = (MonitorContext) attributes.get(MONITOR_CONTEXT_KEY);
+        if (context == null) {
+            log.warn("MonitorContext missing in onResponse, skip metrics");
+            return;
+        }
         String userId = context.getUserId();
         String appId = context.getAppId();
 
@@ -67,16 +78,25 @@ public class AiModelMonitorListener implements ChatModelListener {
         recordResponseTime(attributes, userId, appId, modelName);
 
         recordTokenUsage(responseContext, userId, appId, modelName);
+
     }
 
     /**
      * 错误时触发
+     *
      * @param errorContext
      */
     @Override
     public void onError(ChatModelErrorContext errorContext) {
 
-        MonitorContext context = MonitorContextHolder.getContext();
+        MonitorContext context = (MonitorContext) errorContext.attributes().get(MONITOR_CONTEXT_KEY);
+        if (context == null) {
+            context = MonitorContextHolder.getContext();
+        }
+        if (context == null) {
+            log.warn("MonitorContext missing, skip metrics");
+            return;
+        }
         String userId = context.getUserId();
         String appId = context.getAppId();
 
@@ -93,6 +113,7 @@ public class AiModelMonitorListener implements ChatModelListener {
 
     /**
      * 收集响应时间统计
+     *
      * @param attributes
      * @param userId
      * @param appId
@@ -100,12 +121,18 @@ public class AiModelMonitorListener implements ChatModelListener {
      */
     private void recordResponseTime(Map<Object, Object> attributes, String userId, String appId, String modelName) {
         Instant startTime = (Instant) attributes.get(REQUEST_START_TIME_KEY);
+        if (startTime == null) {
+            log.warn("Request start time missing, skip response time metric for model {}", modelName);
+            return;
+        }
         Duration responseTime = Duration.between(startTime, Instant.now());
         aiModelMetricsCollector.recordResponseTime(userId, appId, modelName, responseTime);
     }
 
+
     /**
      * 记录token消耗数
+     *
      * @param responseContext
      * @param userId
      * @param appId

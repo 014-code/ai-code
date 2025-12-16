@@ -1,5 +1,7 @@
-import { ChatHistory, ChatHistoryVO } from "@/api/vo/chat";
-import { UserVo } from "@/api/vo/user";
+import { ChatHistory, ChatHistoryVO } from "./chat";
+import { UserVO } from "./user";
+
+
 
 type App = {
     id?: number;
@@ -36,7 +38,8 @@ export type AppVO = {
     initPrompt?: string;
     codeGenType?: string;
     userId?: number;
-    user?: UserVo;
+    user?: UserVO;
+
     cover?: string;
     deployKey?: string;
     priority?: number;

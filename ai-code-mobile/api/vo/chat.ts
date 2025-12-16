@@ -1,5 +1,6 @@
-import { AppVO } from "@/api/vo/app";
-import { UserVO } from "@/api/vo/user";
+import { AppVO } from "./app";
+import { UserVO } from "./user";
+
 
 export type ChatHistoryVO = {
     id?: number;
