@@ -268,6 +268,8 @@ const ChatPage: React.FC = () => {
         user: loginUser
       };
 
+      console.log("应用id！！！", userMessage.appId)
+
       // 将用户消息添加到列表
       setMessages(prev => [...prev, userMessage]);
       setLoading(true);
@@ -286,7 +288,11 @@ const ChatPage: React.FC = () => {
       setMessages(prev => [...prev, aiMessage]);
 
       // 调用AI生成代码接口
-      const url = `/api/app/chat/gen/code?appId=${appId}&message=${encodeURIComponent(messageContent)}`;
+      // const url = `/api/app/chat/gen/code?appId=${appId}&message=${encodeURIComponent(messageContent)}`;
+
+      //调用工作流ai生成代码
+      const url = `/api/workflow/execute-flux?prompt=${messageContent}&appId=${appId}`
+
       let eventSource: EventSource | null = null;
       let closed = false;
       let aiResponse = '';
@@ -571,7 +577,6 @@ const ChatPage: React.FC = () => {
         <div style={{
           width: '50%',
           background: '#fafafa',
-          padding: 24,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center'
@@ -580,7 +585,7 @@ const ChatPage: React.FC = () => {
             <iframe
               ref={iframeRef}
               title="已部署应用预览"
-              style={{border: '1px solid #eee', borderRadius: 8, width: '100%', height: '80vh', background: '#fff'}}
+              style={{border: '1px solid #eee', borderRadius: 8, width: '100%', height: '92vh', background: '#fff'}}
               sandbox="allow-scripts allow-same-origin"
               src={getPreviewUrlWithVisualEdit()}
               onLoad={() => {

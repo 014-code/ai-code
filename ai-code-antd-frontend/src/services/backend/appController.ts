@@ -186,6 +186,14 @@ export async function listAllAppTypes(options?: { [key: string]: any }) {
   });
 }
 
+/** 获取所有预设提示词列表 GET /app/preset-prompts */
+export async function listAllPresetPrompts(options?: { [key: string]: any }) {
+  return request<API.BaseResponseListPresetPromptVO>('/app/preset-prompts', {
+    method: 'GET',
+    ...(options || {}),
+  });
+}
+
 /** 此处后端没有提供注释 POST /app/update */
 export async function updateAppByAdmin(
   body: API.AppUpdateRequest,

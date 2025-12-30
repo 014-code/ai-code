@@ -75,11 +75,12 @@ public class GlobalExceptionHandler {
                 String errorJson = JSONUtil.toJsonStr(errorData);
 
                 String sseData = "event: business-error\ndata: " + errorJson + "\n\n";
-                response.getWriter().write(sseData);
-                response.getWriter().flush();
+                response.getOutputStream().write(sseData.getBytes("UTF-8"));
+                response.getOutputStream().flush();
 
-                response.getWriter().write("event: done\ndata: {}\n\n");
-                response.getWriter().flush();
+                String doneEvent = "event: done\ndata: {}\n\n";
+                response.getOutputStream().write(doneEvent.getBytes("UTF-8"));
+                response.getOutputStream().flush();
 
                 return true;
             } catch (IOException ioException) {

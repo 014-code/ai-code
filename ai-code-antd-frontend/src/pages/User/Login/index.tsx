@@ -65,9 +65,9 @@ const Login: React.FC = () => {
             minWidth: 280,
             maxWidth: '75vw',
           }}
-          logo={<img alt="xioner" style={{height: '100%'}}
-                     src="https://img1.baidu.com/it/u=2779309258,3593895266&fm=253&fmt=auto&app=120&f=JPEG?w=667&h=500"/>}
-          title="熊二ai零代码生成平台"
+          logo={<img alt="014" style={{height: '100%'}}
+                     src="@/assets/logo.png"/>}
+          title="014-ai零代码生成平台"
           subTitle={'快速开发属于自己的前端项目'}
           initialValues={{
             autoLogin: true,

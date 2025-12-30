@@ -24,8 +24,9 @@ import com.mashang.aicode.web.model.entity.App;
 import com.mashang.aicode.web.model.entity.User;
 import com.mashang.aicode.web.model.enums.AppTypeEnum;
 import com.mashang.aicode.web.model.vo.AppVO;
+import com.mashang.aicode.web.model.enums.PresetPromptEnum;
 import com.mashang.aicode.web.model.vo.AppTypeVO;
-import com.mashang.aicode.web.model.vo.AppTypeVO;
+import com.mashang.aicode.web.model.vo.PresetPromptVO;
 import com.mashang.aicode.web.ratelimiter.annotation.RateLimit;
 import com.mashang.aicode.web.ratelimiter.enums.RateLimitType;
 import com.mashang.aicode.web.service.AppService;
@@ -206,7 +207,7 @@ public class AppController {
         // 浏览量增加
         App updateApp = new App();
         updateApp.setId(app.getId());
-        updateApp.setPriority(app.getPriority() + 1);
+        updateApp.setPageViews(app.getPageViews() != null ? app.getPageViews() + 1 : 1L);
         appService.updateById(updateApp);
 
 
@@ -232,7 +233,6 @@ public class AppController {
      * 【用户】分页查询精选的应用列表（支持根据名称查询，每页最多 20 个）
      */
     @PostMapping("/featured/list/page/vo")
-    @Cacheable(value = "good_app_page", key = "T(com.mashang.aicode.web.utils.CacheKeyUtils).generateKey(#appQueryRequest)", condition = "#appQueryRequest.pageNum <= 10")
     public BaseResponse<Page<AppVO>> listFeaturedAppVOByPage(@RequestBody AppQueryRequest appQueryRequest) {
         ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);
 
@@ -412,6 +412,20 @@ public class AppController {
             return appTypeVO;
         }).collect(Collectors.toList());
         return ResultUtils.success(appTypeList);
+    }
+
+    /**
+     * 获取所有预设提示词列表
+     */
+    @GetMapping("/preset-prompts")
+    public BaseResponse<List<PresetPromptVO>> listAllPresetPrompts() {
+        List<PresetPromptVO> promptList = Arrays.stream(PresetPromptEnum.values()).map(prompt -> {
+            PresetPromptVO vo = new PresetPromptVO();
+            vo.setLabel(prompt.getLabel());
+            vo.setPrompt(prompt.getPrompt());
+            return vo;
+        }).collect(Collectors.toList());
+        return ResultUtils.success(promptList);
     }
 
 

@@ -48,8 +48,8 @@ public class ReasoningStreamingChatModelConfig {
                 .temperature(temperature)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
-                //监控指标监听器-收集各类数据
-//                .listeners(List.of(aiModelMonitorListener))
+//                监控指标监听器-收集各类数据
+                .listeners(List.of(aiModelMonitorListener))
                 .build();
     }
 }

@@ -48,5 +48,20 @@ public class AppQueryRequest extends PageRequest implements Serializable {
      */
     private String searchKey;
 
+    /**
+     * 应用类型
+     */
+    private String appType;
+
+    /**
+     * 排序字段（pageViews-浏览量，createTime-创建时间）
+     */
+    private String sortField;
+
+    /**
+     * 排序方式（asc-升序，desc-降序）
+     */
+    private String sortOrder;
+
     private static final long serialVersionUID = 1L;
 }

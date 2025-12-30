@@ -72,8 +72,6 @@ public class ProjectBuilder {
      */
     public boolean buildProject(String projectPath) {
         File projectDir = new File(projectPath);
-        //todo 地址得改成code_deploy的
-
 
         if (!projectDir.exists() || !projectDir.isDirectory()) {
             log.error("项目目录不存在: {}", projectPath);
