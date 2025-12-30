@@ -36,49 +36,37 @@ public class CodeGenWorkflow {
     public CompiledGraph<MessagesState<String>> createWorkflow() {
         try {
             return new MessagesStateGraph<String>()
-
                     .addNode("image_collector", ImageCollectorNode.create())
                     .addNode("prompt_enhancer", PromptEnhancerNode.create())
                     .addNode("router", RouterNode.create())
                     .addNode("code_generator", CodeGeneratorNode.create())
                     .addNode("project_builder", ProjectBuilderNode.create())
-                    //代码校验节点
                     .addNode("code_quality_check", CodeQualityCheckNode.create())
-
 
                     .addEdge(START, "image_collector")
                     .addEdge("image_collector", "prompt_enhancer")
                     .addEdge("prompt_enhancer", "router")
                     .addEdge("router", "code_generator")
 
-                    //条件边配置，如原生类项目则不需要npm构建等，具体逻辑在routeBuildOrSkip方法
-                    .addConditionalEdges("code_generator",
-                            edge_async(this::routeBuildOrSkip),
-                            Map.of(
-                                    "build", "project_builder",
-                                    "skip_build", END
-                            ))
-                    .addEdge("project_builder", END)
-
-
-                    .addEdge("code_generator", "project_builder")
-
-                    //生成代码节点-这边是把校验过后的进行生成-因为有问题就要去修改代码也是生成
+                    // code_generator 只输出到 code_quality_check
                     .addEdge("code_generator", "code_quality_check")
 
+                    // code_quality_check 决定下一步
                     .addConditionalEdges("code_quality_check",
                             edge_async(this::routeAfterQualityCheck),
                             Map.of(
                                     "build", "project_builder",
                                     "skip_build", END,
-                                    "fail", "code_generator"
+                                    "fail", "code_generator"  // 回到 code_generator 重试
                             ))
-                    .addEdge("project_builder", END)
 
+                    // project_builder 完成后结束
+                    .addEdge("project_builder", END)
 
                     .compile();
         } catch (GraphStateException e) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "工作流创建失败");
+            log.error("工作流创建失败", e);
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "工作流创建失败: " + e.getMessage());
         }
     }
 
@@ -88,12 +76,13 @@ public class CodeGenWorkflow {
      * @param originalPrompt
      * @return
      */
-    public WorkflowContext executeWorkflow(String originalPrompt) {
+    public WorkflowContext executeWorkflow(String originalPrompt, Long appId) {
         CompiledGraph<MessagesState<String>> workflow = createWorkflow();
 
 
         WorkflowContext initialContext = WorkflowContext.builder()
                 .originalPrompt(originalPrompt)
+                .appId(appId != null ? appId : 0L)
                 .currentStep("初始化")
                 .build();
 
@@ -160,13 +149,14 @@ public class CodeGenWorkflow {
      * @param originalPrompt
      * @return
      */
-    public Flux<String> executeWorkflowWithFlux(String originalPrompt) {
+    public Flux<String> executeWorkflowWithFlux(String originalPrompt, Long appId) {
         return Flux.create(sink -> {
             Thread.startVirtualThread(() -> {
                 try {
                     CompiledGraph<MessagesState<String>> workflow = createWorkflow();
                     WorkflowContext initialContext = WorkflowContext.builder()
                             .originalPrompt(originalPrompt)
+                            .appId(appId != null ? appId : 0L)
                             .currentStep("初始化")
                             .build();
                     sink.next(formatSseEvent("workflow_start", Map.of(

@@ -24,6 +24,16 @@ public class AppTableDef extends TableDef {
     public final QueryColumn APP_NAME = new QueryColumn(this, "appName");
 
     /**
+     * 应用类型
+     */
+    public final QueryColumn APP_TYPE = new QueryColumn(this, "appType");
+
+    /**
+     * 浏览量
+     */
+    public final QueryColumn PAGE_VIEWS = new QueryColumn(this, "pageViews");
+
+    /**
      * 应用描述
      */
     public final QueryColumn APP_DESC = new QueryColumn(this, "appDesc");

@@ -14,16 +14,16 @@ public class WorkflowSseController {
 
 
     @PostMapping("/execute")
-    public WorkflowContext executeWorkflow(@RequestParam String prompt) {
-        log.info("收到同步工作流执行请求: {}", prompt);
-        return new CodeGenWorkflow().executeWorkflow(prompt);
+    public WorkflowContext executeWorkflow(@RequestParam String prompt, @RequestParam(required = false) Long appId) {
+        log.info("收到同步工作流执行请求: prompt={}, appId={}", prompt, appId);
+        return new CodeGenWorkflow().executeWorkflow(prompt, appId);
     }
 
 
     @GetMapping(value = "/execute-flux", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<String> executeWorkflowWithFlux(@RequestParam String prompt) {
-        log.info("收到 Flux 工作流执行请求: {}", prompt);
-        return new CodeGenWorkflow().executeWorkflowWithFlux(prompt);
+    public Flux<String> executeWorkflowWithFlux(@RequestParam String prompt, @RequestParam Long appId) {
+        log.info("收到 Flux 工作流执行请求: prompt={}, appId={}", prompt, appId);
+        return new CodeGenWorkflow().executeWorkflowWithFlux(prompt, appId);
     }
 }
 

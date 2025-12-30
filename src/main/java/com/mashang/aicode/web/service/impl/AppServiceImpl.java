@@ -131,6 +131,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         Long userId = appQueryRequest.getUserId();
         Integer isFeatured = appQueryRequest.getIsFeatured();
         String searchKey = appQueryRequest.getSearchKey();
+        String appType = appQueryRequest.getAppType();
 
         // 正确的写法
         QueryWrapper queryWrapper = QueryWrapper.create();
@@ -147,6 +148,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         }
         if (isFeatured != null) {
             queryWrapper.and(APP.PRIORITY.eq(isFeatured));
+        }
+        if (StrUtil.isNotBlank(appType)) {
+            queryWrapper.and(APP.APP_TYPE.eq(appType));
         }
         if (StrUtil.isNotBlank(appName)) {
             queryWrapper.and(APP.APP_NAME.like("%" + appName + "%"));
@@ -204,7 +208,24 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             pageSize = 20;
         }
 
-        Page<App> appPage = this.page(Page.of(pageNum, pageSize), getQueryWrapper(appQueryRequest));
+        QueryWrapper queryWrapper = getQueryWrapper(appQueryRequest);
+
+        // 添加排序逻辑
+        String sortField = appQueryRequest.getSortField();
+        String sortOrder = appQueryRequest.getSortOrder();
+        if (StrUtil.isNotBlank(sortField)) {
+            boolean isAsc = "asc".equalsIgnoreCase(sortOrder);
+            if ("pageViews".equalsIgnoreCase(sortField)) {
+                queryWrapper.orderBy(APP.PAGE_VIEWS, isAsc);
+            } else if ("createTime".equalsIgnoreCase(sortField)) {
+                queryWrapper.orderBy(APP.CREATE_TIME, isAsc);
+            }
+        } else {
+            // 默认按创建时间降序
+            queryWrapper.orderBy(APP.CREATE_TIME, false);
+        }
+
+        Page<App> appPage = this.page(Page.of(pageNum, pageSize), queryWrapper);
 
         // 数据转换
         Page<AppVO> appVOPage = new Page<>(pageNum, pageSize, appPage.getTotalRow());
@@ -224,16 +245,16 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
      */
     @Override
     public Flux<String> chatToGenCode(Long appId, String message, User loginUser) {
+        // ✅ 在这里校验原始输入（这才是用户真正输入的！）
+        if (message == null || message.length() > 1000) {
+            return Flux.error(new BusinessException(ErrorCode.PARAMS_ERROR, "输入内容过长，不要超过 1000 字"));
+        }
         App app = this.getById(appId);
         String codeGenTypeStr = app.getCodeGenType();
         CodeGenTypeEnum codeGenTypeEnum = CodeGenTypeEnum.getEnumByValue(codeGenTypeStr);
         if (codeGenTypeEnum == null) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "不支持的代码生成类型");
         }
-        // 暂时设置为 VUE 工程生成
-//        app.setCodeGenType(CodeGenTypeEnum.VUE_PROJECT.getValue());
-        // 暂时设置为 REACT 工程生成
-//        app.setCodeGenType(CodeGenTypeEnum.REACT_PROJECT.getValue());
         // 5. 通过校验后，添加用户消息到对话历史
         chatHistoryService.addChatMessage(appId, message, ChatHistoryMessageTypeEnum.USER.getValue(), loginUser.getId());
 
@@ -345,9 +366,6 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
         // 先删除关联的对话历史
         boolean chatHistoryDeleted = chatHistoryService.deleteByAppId(appId);
-        if (!chatHistoryDeleted) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "删除对话历史失败");
-        }
 
         // 再删除应用
         boolean appDeleted = this.removeById(appId);

@@ -5,7 +5,9 @@
 import * as appController from './appController';
 import * as chatHistoryController from './chatHistoryController';
 import * as userController from './userController';
+import * as workflowSseController from './workflowSseController';
 export default {
+  workflowSseController,
   userController,
   chatHistoryController,
   appController,

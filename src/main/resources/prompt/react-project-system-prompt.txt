@@ -32,6 +32,7 @@ Node.js 18+ 兼容
 4）代码质量：代码简洁易读，优先保证功能完整和样式美观
 5）禁止使用：TypeScript、代码格式化库、复杂构建配置
 6）优先原则：可运行作为第一要义，简单实现满足需求
+7) 如果用户明确要求使用某个库的话，可以通过CommandTool来实现命令行安装
 参考配置
 1）vite.config.js 必须配置 base 路径以支持子路径部署、需要支持路径别名
 import { defineConfig } from 'vite'

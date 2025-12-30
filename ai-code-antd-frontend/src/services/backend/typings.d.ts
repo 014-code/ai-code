@@ -3,6 +3,7 @@ declare namespace API {
     id?: number;
     appName?: string;
     appType?: string;
+    pageViews?: number;
     cover?: string;
     initPrompt?: string;
     codeGenType?: string;
@@ -64,6 +65,7 @@ declare namespace API {
     appName?: string;
     appType?: string;
     appDesc?: string;
+    pageViews?: number;
     appIcon?: string;
     appCover?: string;
     initPrompt?: string;
@@ -233,6 +235,14 @@ declare namespace API {
     appId: number;
   };
 
+  type executeWorkflowParams = {
+    prompt: string;
+  };
+
+  type executeWorkflowWithFluxParams = {
+    prompt: string;
+  };
+
   type getAppByIdParams = {
     id: number;
   };
@@ -251,6 +261,12 @@ declare namespace API {
 
   type getUserVOByIdParams = {
     id: number;
+  };
+
+  type ImageResource = {
+    category?: 'CONTENT' | 'LOGO' | 'ILLUSTRATION' | 'ARCHITECTURE';
+    description?: string;
+    url?: string;
   };
 
   type listAppChatHistoryParams = {
@@ -319,6 +335,12 @@ declare namespace API {
     optimizeCountQuery?: boolean;
   };
 
+  type QualityResult = {
+    isValid?: boolean;
+    errors?: string[];
+    suggestions?: string[];
+  };
+
   type ServerSentEventString = true;
 
   type User = {
@@ -382,5 +404,18 @@ declare namespace API {
     userProfile?: string;
     userRole?: string;
     createTime?: string;
+  };
+
+  type WorkflowContext = {
+    currentStep?: string;
+    originalPrompt?: string;
+    imageListStr?: string;
+    imageList?: ImageResource[];
+    enhancedPrompt?: string;
+    generationType?: 'HTML' | 'MULTI_FILE' | 'VUE_PROJECT' | 'REACT_PROJECT';
+    generatedCodeDir?: string;
+    buildResultDir?: string;
+    qualityResult?: QualityResult;
+    errorMessage?: string;
   };
 }
