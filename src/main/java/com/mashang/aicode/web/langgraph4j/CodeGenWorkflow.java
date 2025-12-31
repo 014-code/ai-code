@@ -39,6 +39,8 @@ public class CodeGenWorkflow {
                     .addNode("image_collector", ImageCollectorNode.create())
                     .addNode("prompt_enhancer", PromptEnhancerNode.create())
                     .addNode("router", RouterNode.create())
+                    //检查之前是否已经存在该项目节点-不然ai没法在原有项目上修改
+                    .addNode("existing_project_checker", ExistingProjectCheckerNode.create())
                     .addNode("code_generator", CodeGeneratorNode.create())
                     .addNode("project_builder", ProjectBuilderNode.create())
                     .addNode("code_quality_check", CodeQualityCheckNode.create())
@@ -46,7 +48,8 @@ public class CodeGenWorkflow {
                     .addEdge(START, "image_collector")
                     .addEdge("image_collector", "prompt_enhancer")
                     .addEdge("prompt_enhancer", "router")
-                    .addEdge("router", "code_generator")
+                    .addEdge("router", "existing_project_checker")
+                    .addEdge("existing_project_checker", "code_generator")
 
                     // code_generator 只输出到 code_quality_check
                     .addEdge("code_generator", "code_quality_check")

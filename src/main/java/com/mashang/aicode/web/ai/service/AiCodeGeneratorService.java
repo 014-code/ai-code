@@ -4,6 +4,7 @@ import com.mashang.aicode.web.ai.model.HtmlCodeResult;
 import com.mashang.aicode.web.ai.model.MultiFileCodeResult;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
+import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.UserMessage;
 import reactor.core.publisher.Flux;
 
@@ -70,7 +71,7 @@ public interface AiCodeGeneratorService {
      * @return 生成过程的流式响应
      */
     @SystemMessage(fromResource = "prompt/vue-project-system-prompt.txt")
-    Flux<String> generateVueProjectCodeStream(
+    TokenStream generateVueProjectCodeStream(
             //MemoryId对应后续生成vue项目的appid
             @MemoryId long appId, @UserMessage String userMessage
     );
@@ -82,7 +83,7 @@ public interface AiCodeGeneratorService {
      * @return 生成过程的流式响应
      */
     @SystemMessage(fromResource = "prompt/react-project-system-prompt.txt")
-    Flux<String> generateReactProjectCodeStream(
+    TokenStream generateReactProjectCodeStream(
             //MemoryId对应后续生成react项目的appid
             @MemoryId long appId, @UserMessage String userMessage
     );
