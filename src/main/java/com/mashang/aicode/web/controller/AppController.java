@@ -38,6 +38,7 @@ import com.mybatisflex.core.update.UpdateWrapper;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
@@ -57,6 +58,7 @@ import java.util.stream.Collectors;
  */
 @RestController
 @RequestMapping("/app")
+@Slf4j
 public class AppController {
 
     @Resource
@@ -372,11 +374,14 @@ public class AppController {
         ThrowUtils.throwIf(StrUtil.isBlank(message), ErrorCode.PARAMS_ERROR, "用户消息不能为空");
         User loginUser = userService.getLoginUser(request);
         Flux<String> contentFlux = appService.chatToGenCode(appId, message, loginUser);
-        return contentFlux.map(chunk -> {
-            Map<String, String> wrapper = Map.of("d", chunk);
-            String jsonData = JSONUtil.toJsonStr(wrapper);
-            return ServerSentEvent.<String>builder().data(jsonData).build();
-        }).concatWith(Mono.just(ServerSentEvent.<String>builder().event("done").data("").build()));
+        return contentFlux
+                .doOnNext(chunk -> log.info("SSE 发送消息: {}", chunk))
+                .map(chunk -> {
+                    Map<String, String> wrapper = Map.of("d", chunk);
+                    String jsonData = JSONUtil.toJsonStr(wrapper);
+                    return ServerSentEvent.<String>builder().data(jsonData).build();
+                })
+                .concatWith(Mono.just(ServerSentEvent.<String>builder().event("done").data("").build()));
     }
 
     /**

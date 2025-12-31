@@ -150,24 +150,56 @@ public class AiCodeGeneratorFacade {
                 });
             }
             case VUE_PROJECT -> {
-                // Vue 项目使用 FileWriteTool 在流式生成过程中直接写入文件，无需额外处理
-                Flux<String> codeStream = aiCodeGeneratorService.generateVueProjectCodeStream(appId, userMessage);
-                yield codeStream.doOnComplete(() -> {
-                    log.info("Vue 项目代码生成完成，文件已通过 FileWriteTool 写入");
-                });
+                TokenStream tokenStream = aiCodeGeneratorService.generateVueProjectCodeStream(appId, userMessage);
+                yield processTokenStream(tokenStream, appId);
             }
             case REACT_PROJECT -> {
-                // React 项目使用 FileWriteTool 在流式生成过程中直接写入文件，无需额外处理
-                Flux<String> codeStream = aiCodeGeneratorService.generateReactProjectCodeStream(appId, userMessage);
-                yield codeStream.doOnComplete(() -> {
-                    log.info("React 项目代码生成完成，文件已通过 FileWriteTool 写入");
-                });
+                TokenStream tokenStream = aiCodeGeneratorService.generateReactProjectCodeStream(appId, userMessage);
+                yield processTokenStream(tokenStream, appId);
             }
             default -> {
                 String errorMessage = "不支持的生成类型：" + codeGenTypeEnum.getValue();
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, errorMessage);
             }
         };
+    }
+    /**
+     * 将 TokenStream 转换为 Flux<String>，并传递工具调用信息
+     *
+     * @param tokenStream TokenStream 对象
+     * @param appId       应用 ID
+     * @return Flux<String> 流式响应
+     */
+    private Flux<String> processTokenStream(TokenStream tokenStream, Long appId) {
+        return Flux.create(sink -> {
+            log.info("processTokenStream called, appId: {}", appId);
+            tokenStream.onPartialResponse((String partialResponse) -> {
+                        log.debug("onPartialResponse called, partialResponse: {}", partialResponse);
+                        AiResponseMessage aiResponseMessage = new AiResponseMessage(partialResponse);
+                        sink.next(JSONUtil.toJsonStr(aiResponseMessage));
+                    })
+                    .onPartialToolExecutionRequest((index, toolExecutionRequest) -> {
+                        log.info("onPartialToolExecutionRequest called, index: {}, toolName: {}, arguments: {}", index, toolExecutionRequest.name(), toolExecutionRequest.arguments());
+                        ToolRequestMessage toolRequestMessage = new ToolRequestMessage(toolExecutionRequest);
+                        String json = JSONUtil.toJsonStr(toolRequestMessage);
+                        log.info("Sending tool request message: {}", json);
+                        sink.next(json);
+                    })
+                    .onToolExecuted((ToolExecution toolExecution) -> {
+                        log.info("onToolExecuted called, toolName: {}", toolExecution.request().name());
+                        ToolExecutedMessage toolExecutedMessage = new ToolExecutedMessage(toolExecution);
+                        sink.next(JSONUtil.toJsonStr(toolExecutedMessage));
+                    })
+                    .onCompleteResponse((ChatResponse response) -> {
+                        log.info("项目代码生成完成，appId: {}", appId);
+                        sink.complete();
+                    })
+                    .onError((Throwable error) -> {
+                        log.error("项目代码生成失败: {}", error.getMessage(), error);
+                        sink.error(error);
+                    })
+                    .start();
+        });
     }
 
 

@@ -209,7 +209,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         }
 
         QueryWrapper queryWrapper = getQueryWrapper(appQueryRequest);
-
+        
         // 添加排序逻辑
         String sortField = appQueryRequest.getSortField();
         String sortOrder = appQueryRequest.getSortOrder();

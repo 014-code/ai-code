@@ -12,6 +12,7 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /***
  * 工作流上下文对象-就是工作流每个节点和边都可以共享的数据
@@ -58,6 +59,10 @@ public class WorkflowContext implements Serializable {
     //失败消息
     private String errorMessage;
 
+    //SSE消息发送回调（transient表示不序列化）
+    @Serial
+    private transient Consumer<String> sseMessageCallback;
+
     @Serial
     private static final long serialVersionUID = 1L;
 
@@ -79,6 +84,17 @@ public class WorkflowContext implements Serializable {
      */
     public static Map<String, Object> saveContext(WorkflowContext context) {
         return Map.of(WORKFLOW_CONTEXT_KEY, context);
+    }
+
+    /**
+     * 发送SSE消息
+     *
+     * @param message
+     */
+    public void sendSseMessage(String message) {
+        if (sseMessageCallback != null) {
+            sseMessageCallback.accept(message);
+        }
     }
 }
 
