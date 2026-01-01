@@ -1,8 +1,10 @@
 package com.mashang.aicode.web.langgraph4j.node;
 
+import cn.hutool.json.JSONUtil;
 import com.mashang.aicode.web.ai.core.AiCodeGeneratorFacade;
 import com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum;
 import com.mashang.aicode.web.constant.AppConstant;
+import com.mashang.aicode.web.langgraph4j.WorkflowContextHolder;
 import com.mashang.aicode.web.langgraph4j.state.WorkflowContext;
 import com.mashang.aicode.web.monitor.MonitorContext;
 import com.mashang.aicode.web.monitor.MonitorContextHolder;
@@ -15,6 +17,9 @@ import org.bsc.langgraph4j.prebuilt.MessagesState;
 import reactor.core.publisher.Flux;
 
 import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.function.Consumer;
 
 import static org.bsc.langgraph4j.action.AsyncNodeAction.node_async;
 
@@ -59,11 +64,24 @@ public class CodeGeneratorNode {
             }
 
             try {
-                Flux<String> codeStream = codeGeneratorFacade.generateAndSaveCodeStream(userMessage, generationType, appId);
+                Consumer<String> sseCallback = WorkflowContextHolder.getSseMessageCallback();
+                log.info("开始流式发送AI生成内容，sseMessageCallback是否为空: {}", sseCallback == null);
 
-                codeStream.blockLast(Duration.ofMinutes(10));
+                Flux<String> codeStream = codeGeneratorFacade.generateAndSaveCodeStream(userMessage, generationType, appId, sseCallback);
+
+                CountDownLatch latch = new CountDownLatch(1);
+                codeStream.doOnNext(chunk -> {
+                    log.info("接收到AI生成内容，长度: {}", chunk.length());
+                }).doOnComplete(() -> {
+                    log.info("AI代码流式发送完成");
+                    latch.countDown();
+                }).doOnError(error -> {
+                    log.error("AI代码流式发送失败: {}", error.getMessage(), error);
+                    latch.countDown();
+                }).subscribe();
+
+                latch.await();
             } finally {
-                // 清除监控上下文
                 MonitorContextHolder.clearContext();
             }
 

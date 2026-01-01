@@ -153,19 +153,20 @@ public class CodeGenWorkflow {
      * @return
      */
     public Flux<String> executeWorkflowWithFlux(String originalPrompt, Long appId) {
-        return Flux.create(sink -> {
+        return Flux.push(sink -> {
             Thread.startVirtualThread(() -> {
                 try {
+                    WorkflowContextHolder.setContext(WorkflowContextHolder.WorkflowContext.builder()
+                            .sseMessageCallback(message -> sink.next(message))
+                            .build());
+
                     CompiledGraph<MessagesState<String>> workflow = createWorkflow();
                     WorkflowContext initialContext = WorkflowContext.builder()
                             .originalPrompt(originalPrompt)
                             .appId(appId != null ? appId : 0L)
                             .currentStep("初始化")
                             .build();
-                    sink.next(formatSseEvent("workflow_start", Map.of(
-                            "message", "开始执行代码生成工作流",
-                            "originalPrompt", originalPrompt
-                    )));
+                    sink.next(formatSseEvent("workflow_start", "开始执行代码生成工作流"));
                     GraphRepresentation graph = workflow.getGraph(GraphRepresentation.Type.MERMAID);
                     log.info("工作流图:\n{}", graph.content());
 
@@ -175,17 +176,14 @@ public class CodeGenWorkflow {
                         log.info("--- 第 {} 步完成 ---", stepCounter);
                         WorkflowContext currentContext = WorkflowContext.getContext(step.state());
                         if (currentContext != null) {
-                            sink.next(formatSseEvent("step_completed", Map.of(
-                                    "stepNumber", stepCounter,
-                                    "currentStep", currentContext.getCurrentStep()
-                            )));
+                            String sseEvent = formatSseEvent("step_completed", 
+                                    "第 " + stepCounter + " 步完成: " + currentContext.getCurrentStep());
+                            sink.next(sseEvent);
                             log.info("当前步骤上下文: {}", currentContext);
                         }
                         stepCounter++;
                     }
-                    sink.next(formatSseEvent("workflow_completed", Map.of(
-                            "message", "代码生成工作流执行完成！"
-                    )));
+                    sink.next(formatSseEvent("workflow_completed", "代码生成工作流执行完成！"));
                     log.info("代码生成工作流执行完成！");
                     sink.complete();
                 } catch (Exception e) {
@@ -195,6 +193,8 @@ public class CodeGenWorkflow {
                             "message", "工作流执行失败"
                     )));
                     sink.error(e);
+                } finally {
+                    WorkflowContextHolder.clearContext();
                 }
             });
         });
@@ -210,7 +210,12 @@ public class CodeGenWorkflow {
      */
     private String formatSseEvent(String eventType, Object data) {
         try {
-            String jsonData = JSONUtil.toJsonStr(data);
+            String jsonData;
+            if (data instanceof String) {
+                jsonData = JSONUtil.toJsonStr(Map.of("message", data));
+            } else {
+                jsonData = JSONUtil.toJsonStr(data);
+            }
             return "event: " + eventType + "\ndata: " + jsonData + "\n\n";
         } catch (Exception e) {
             log.error("格式化 SSE 事件失败: {}", e.getMessage(), e);
