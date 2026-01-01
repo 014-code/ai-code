@@ -1,7 +1,9 @@
+import { AnimatedBounceView } from '@/components/AnimatedBounceView';
+import { StarryBackground } from '@/components/StarryBackground';
 import { Link } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
-import { Animated, ImageBackground, StyleSheet, View } from 'react-native';
-import { Button, Icon, TextInput } from 'react-native-paper';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Button, Icon, Input } from 'react-native-elements';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { register } from '../../api/user';
 
@@ -27,18 +29,6 @@ export default function Register() {
         checkPassword: ''
     });
 
-    //弹跳动画
-    const bounceAnim = useRef(new Animated.Value(0)).current;
-
-    useEffect(() => {
-        Animated.spring(bounceAnim, {
-            toValue: 1,
-            friction: 3,  // 弹跳次数，值越小弹跳越多
-            tension: 40,  // 弹跳力度
-            useNativeDriver: true,
-        }).start();
-    }, []);
-
     // 校验规则
     const validate = () => {
         let valid = true;
@@ -46,19 +36,19 @@ export default function Register() {
 
         // 账号校验
         if (!loginForm.userAccount || loginForm.userAccount.length < 3) {
-            errors.userAccount = '账号至少需要3位字符';
+            newErrors.userAccount = '账号至少需要3位字符';
             valid = false;
         }
 
         // 密码校验
         if (!loginForm.userPassword || loginForm.userPassword.length < 6) {
-            errors.userPassword = '密码至少需要6位字符';
+            newErrors.userPassword = '密码至少需要6位字符';
             valid = false;
         }
 
         // 确认密码校验
-        if (loginForm.checkPassword !== loginForm.checkPassword) {
-            errors.checkPassword = '两次输入的密码不一致';
+        if (loginForm.checkPassword !== loginForm.userPassword) {
+            newErrors.checkPassword = '两次输入的密码不一致';
             valid = false;
         }
         setErrors(newErrors);
@@ -75,72 +65,95 @@ export default function Register() {
     };
 
     return (
-        <ImageBackground source={require('@/assets/images/login-bac.png')} resizeMode="cover">
-            <SafeAreaView style={{ height: 900, padding: 20 }}>
-                <Animated.View style={{
-                    marginTop: 150, gap: 30,
-                    transform: [{
-                        translateY: bounceAnim.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [-50, 0] // 3. 应用动画：从-50到0
-                        })
-                    }]
-                }}>
-                    {/* 下方输入表单 */}
-                    <TextInput
-                        label="账号"
-                        placeholder='请输入你的账号'
-                        value={loginForm.userAccount}
-                        left={<Icon source="person" size={24} />}
-                        onChangeText={(text) => setLoginForm({ ...loginForm, userAccount: text })}
-                    />
-                    <TextInput
-                        value={loginForm.userPassword}
-                        label="密码"
-                        placeholder='请输入你的密码'
-                        secureTextEntry
-                        onChangeText={(text) => setLoginForm({ ...loginForm, userPassword: text })}
-                        right={<TextInput.Icon icon="eye" />}
-                    />
-                    <TextInput
-                        value={loginForm.checkPassword}
-                        label="确认密码"
-                        placeholder='请再次输入你的密码'
-                        secureTextEntry
-                        onChangeText={(text) => setLoginForm({ ...loginForm, checkPassword: text })}
-                        right={<TextInput.Icon icon="eye" />}
-                    />
-                    <Button mode='elevated' onPress={handleSubmit}>注册</Button>
-                    <View style={{ margin: 'auto' }}>
-                        <Link href={'/user/login'} style={{ color: 'blue' }}>已有账号，去登录</Link>
+        <SafeAreaView style={styles.container}>
+            <StarryBackground>
+                <View style={styles.imageContainer}>
+                    <View style={styles.titleOverlay}>
+                        <AnimatedBounceView containerStyle={styles.titleContainer}>
+                            <Text style={styles.title}>注册新账号</Text>
+                        </AnimatedBounceView>
                     </View>
-                </Animated.View>
-            </SafeAreaView>
-        </ImageBackground >
+                </View>
+                <View style={styles.formContainer}>
+                    <ScrollView showsVerticalScrollIndicator={false}>
+                        <AnimatedBounceView containerStyle={styles.formContent}>
+                            <Input
+                                label="账号"
+                                placeholder='请输入你的账号'
+                                value={loginForm.userAccount}
+                                leftIcon={<Icon name="person" size={24} />}
+                                onChangeText={(text) => setLoginForm({ ...loginForm, userAccount: text })}
+                                containerStyle={styles.inputContainer}
+                            />
+                            <Input
+                                value={loginForm.userPassword}
+                                label="密码"
+                                placeholder='请输入你的密码'
+                                secureTextEntry
+                                onChangeText={(text) => setLoginForm({ ...loginForm, userPassword: text })}
+                                rightIcon={<Icon name="eye" size={24} />}
+                                containerStyle={styles.inputContainer}
+                            />
+                            <Input
+                                value={loginForm.checkPassword}
+                                label="确认密码"
+                                placeholder='请再次输入你的密码'
+                                secureTextEntry
+                                onChangeText={(text) => setLoginForm({ ...loginForm, checkPassword: text })}
+                                rightIcon={<Icon name="eye" size={24} />}
+                                containerStyle={styles.inputContainer}
+                            />
+                            <Button title="注册" onPress={handleSubmit} />
+                            <View style={{ margin: 'auto' }}>
+                                <Link href={'/user/login'} style={{ color: '#87CEEB' }}>已有账号，去登录</Link>
+                            </View>
+                        </AnimatedBounceView>
+                    </ScrollView>
+                </View>
+            </StarryBackground>
+        </SafeAreaView>
     )
 }
 
 const styles = StyleSheet.create({
     container: {
-        // flex: 1,
-        resizeMode: 'cover',
-        justifyContent: 'center',
+        flex: 1,
+        position: 'relative',
+    },
+    imageContainer: {
+        height: '35%',
+        width: '100%',
+        position: 'relative',
+    },
+    backgroundImage: {
+        width: '100%',
+        height: '100%',
+    },
+    titleOverlay: {
         alignItems: 'center',
-        margin: 30,
     },
-    input: {
-        height: 50,
-        width: 200,
-        borderColor: 'blue',
-        borderWidth: 0.5,
-        marginBottom: 5,
-        padding: 5,
-        borderRadius: 20,
-        // flex: 0.5
+    formContainer: {
+        paddingTop: 50,
+        height: '100%',
+        backgroundColor: '#ffffff',
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
     },
-    tinyLogo: {
-        width: 50,
-        height: 50,
-        marginBottom: 20,
+    // 输入框
+    inputContainer: {
+        width: 300,
+    },
+    titleContainer: {
+        alignItems: 'center',
+    },
+    title: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        color: 'white',
+        marginTop: 50
+    },
+    formContent: {
+        gap: 20,
     },
 });

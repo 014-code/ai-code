@@ -20,6 +20,8 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.io.File;
+import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * ai生成代码门面类
@@ -163,6 +165,64 @@ public class AiCodeGeneratorFacade {
             }
         };
     }
+
+    /**
+     * 统一流式返回方法（带SSE回调）
+     *
+     * @param userMessage
+     * @param codeGenTypeEnum
+     * @param appId
+     * @param sseCallback SSE消息回调
+     * @return
+     */
+    public Flux<String> generateAndSaveCodeStream(String userMessage, CodeGenTypeEnum codeGenTypeEnum, Long appId, Consumer<String> sseCallback) {
+        if (codeGenTypeEnum == null) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "生成类型为空");
+        }
+        AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId, codeGenTypeEnum);
+        return switch (codeGenTypeEnum) {
+            case HTML -> {
+                Flux<String> codeStream = aiCodeGeneratorService.generateHtmlCodeStream(userMessage);
+                StringBuilder codeBuilder = new StringBuilder();
+                yield codeStream.doOnNext(codeBuilder::append).doOnComplete(() -> {
+                    try {
+                        String completeHtmlCode = codeBuilder.toString();
+                        HtmlCodeResult htmlCodeResult = CodeParser.parseHtmlCode(completeHtmlCode);
+                        File savedDir = CodeFileSaver.saveHtmlCodeResult(htmlCodeResult, appId);
+                        log.info("保存成功，路径为：" + savedDir.getAbsolutePath());
+                    } catch (Exception e) {
+                        log.error("保存失败: {}", e.getMessage());
+                    }
+                });
+            }
+            case MULTI_FILE -> {
+                Flux<String> codeStream = aiCodeGeneratorService.generateMultiFileCodeStream(userMessage);
+                StringBuilder codeBuilder = new StringBuilder();
+                yield codeStream.doOnNext(codeBuilder::append).doOnComplete(() -> {
+                    try {
+                        String completeMultiFileCode = codeBuilder.toString();
+                        MultiFileCodeResult multiFileResult = CodeParser.parseMultiFileCode(completeMultiFileCode);
+                        File savedDir = CodeFileSaver.saveMultiFileCodeResult(multiFileResult, appId);
+                        log.info("保存成功，路径为：" + savedDir.getAbsolutePath());
+                    } catch (Exception e) {
+                        log.error("保存失败: {}", e.getMessage());
+                    }
+                });
+            }
+            case VUE_PROJECT -> {
+                TokenStream tokenStream = aiCodeGeneratorService.generateVueProjectCodeStream(appId, userMessage);
+                yield processTokenStreamWithCallback(tokenStream, appId, sseCallback);
+            }
+            case REACT_PROJECT -> {
+                TokenStream tokenStream = aiCodeGeneratorService.generateReactProjectCodeStream(appId, userMessage);
+                yield processTokenStreamWithCallback(tokenStream, appId, sseCallback);
+            }
+            default -> {
+                String errorMessage = "不支持的生成类型：" + codeGenTypeEnum.getValue();
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, errorMessage);
+            }
+        };
+    }
     /**
      * 将 TokenStream 转换为 Flux<String>，并传递工具调用信息
      *
@@ -189,6 +249,60 @@ public class AiCodeGeneratorFacade {
                         log.info("onToolExecuted called, toolName: {}", toolExecution.request().name());
                         ToolExecutedMessage toolExecutedMessage = new ToolExecutedMessage(toolExecution);
                         sink.next(JSONUtil.toJsonStr(toolExecutedMessage));
+                    })
+                    .onCompleteResponse((ChatResponse response) -> {
+                        log.info("项目代码生成完成，appId: {}", appId);
+                        sink.complete();
+                    })
+                    .onError((Throwable error) -> {
+                        log.error("项目代码生成失败: {}", error.getMessage(), error);
+                        sink.error(error);
+                    })
+                    .start();
+        });
+    }
+
+    /**
+     * 将 TokenStream 转换为 Flux<String>，并传递工具调用信息（带SSE回调）
+     *
+     * @param tokenStream TokenStream 对象
+     * @param appId       应用 ID
+     * @param sseCallback SSE消息回调
+     * @return Flux<String> 流式响应
+     */
+    private Flux<String> processTokenStreamWithCallback(TokenStream tokenStream, Long appId, Consumer<String> sseCallback) {
+        return Flux.create(sink -> {
+            log.info("processTokenStreamWithCallback called, appId: {}, sseCallback: {}", appId, sseCallback != null);
+            tokenStream.onPartialResponse((String partialResponse) -> {
+                        log.info("onPartialResponse called, partialResponse: {}", partialResponse);
+                        if (sseCallback != null) {
+                            sseCallback.accept(partialResponse);
+                        }
+                        sink.next(partialResponse);
+                    })
+                    .onPartialToolExecutionRequest((index, toolExecutionRequest) -> {
+                        log.info("onPartialToolExecutionRequest called, index: {}, toolName: {}, arguments: {}", index, toolExecutionRequest.name(), toolExecutionRequest.arguments());
+                        ToolRequestMessage toolRequestMessage = new ToolRequestMessage(toolExecutionRequest);
+                        String json = JSONUtil.toJsonStr(toolRequestMessage);
+                        log.info("Sending tool request message: {}", json);
+                        log.info("sseCallback是否为null: {}", sseCallback == null);
+                        if (sseCallback != null) {
+                            log.info("正在调用sseCallback.accept()");
+                            sseCallback.accept(json);
+                            log.info("sseCallback.accept()调用完成");
+                        } else {
+                            log.warn("sseCallback为null，无法发送SSE消息");
+                        }
+                        sink.next(json);
+                    })
+                    .onToolExecuted((ToolExecution toolExecution) -> {
+                        log.info("onToolExecuted called, toolName: {}", toolExecution.request().name());
+                        ToolExecutedMessage toolExecutedMessage = new ToolExecutedMessage(toolExecution);
+                        String json = JSONUtil.toJsonStr(toolExecutedMessage);
+                        if (sseCallback != null) {
+                            sseCallback.accept(json);
+                        }
+                        sink.next(json);
                     })
                     .onCompleteResponse((ChatResponse response) -> {
                         log.info("项目代码生成完成，appId: {}", appId);
