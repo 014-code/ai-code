@@ -183,7 +183,25 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             pageSize = 20;
         }
 
-        Page<App> appPage = this.page(Page.of(pageNum, pageSize), getQueryWrapper(appQueryRequest));
+        QueryWrapper queryWrapper = getQueryWrapper(appQueryRequest);
+
+        // 添加排序逻辑
+        String sortField = appQueryRequest.getSortField();
+        String sortOrder = appQueryRequest.getSortOrder();
+        if (StrUtil.isNotBlank(sortField)) {
+            boolean isAsc = "asc".equalsIgnoreCase(sortOrder);
+            if ("pageViews".equalsIgnoreCase(sortField)) {
+                queryWrapper.orderBy(APP.PAGE_VIEWS, isAsc);
+            } else if ("createTime".equalsIgnoreCase(sortField)) {
+                queryWrapper.orderBy(APP.CREATE_TIME, isAsc);
+            }
+        } else {
+            // 默认按创建时间降序
+            queryWrapper.orderBy(APP.CREATE_TIME, false);
+        }
+
+
+        Page<App> appPage = this.page(Page.of(pageNum, pageSize), queryWrapper);
 
         // 数据转换
         Page<AppVO> appVOPage = new Page<>(pageNum, pageSize, appPage.getTotalRow());
@@ -209,7 +227,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         }
 
         QueryWrapper queryWrapper = getQueryWrapper(appQueryRequest);
-        
+
         // 添加排序逻辑
         String sortField = appQueryRequest.getSortField();
         String sortOrder = appQueryRequest.getSortOrder();

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Card, message, Row, Typography, Input, Select, Space } from 'antd';
 import { listFeaturedAppVoByPage, listAllAppTypes } from '@/services/backend/appController';
 import AppCard from '@/pages/Code/Home/components/AppCard';
@@ -10,18 +10,28 @@ const { Option } = Select;
 
 const CasesPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [apps, setApps] = useState<API.AppVO[]>([]);
   const [searchKey, setSearchKey] = useState<string>('');
   const [selectedAppType, setSelectedAppType] = useState<string>('all');
   const [sortField, setSortField] = useState<string>('createTime');
   const [sortOrder, setSortOrder] = useState<string>('desc');
   const [appTypes, setAppTypes] = useState<API.AppTypeVO[]>([]);
+  const [pageNum, setPageNum] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [total, setTotal] = useState(0);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  const fetchApps = React.useCallback(async () => {
-    setLoading(true);
+  const fetchApps = React.useCallback(async (isLoadMore: boolean = false) => {
+    if (isLoadMore) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
     try {
       const params: any = {
-        pageNum: 1,
+        pageNum: isLoadMore ? pageNum : 1,
         pageSize: 24,
         appType: selectedAppType === 'all' ? undefined : selectedAppType,
         searchKey: searchKey || undefined,
@@ -30,7 +40,19 @@ const CasesPage: React.FC = () => {
       };
       const res = await listFeaturedAppVoByPage(params);
       if (res.code === 0) {
-        setApps(res.data?.records ?? []);
+        const newApps = res.data?.records ?? [];
+        const totalCount = res.data?.totalRow ?? 0;
+        
+        if (isLoadMore) {
+          setApps(prev => [...prev, ...newApps]);
+          setPageNum(prev => prev + 1);
+        } else {
+          setApps(newApps);
+          setPageNum(2);
+        }
+        
+        setTotal(totalCount);
+        setHasMore(apps.length + newApps.length < totalCount);
       } else {
         message.error(res.message ?? '加载失败');
       }
@@ -38,19 +60,49 @@ const CasesPage: React.FC = () => {
       message.error(error?.message ?? '加载失败');
     }
     setLoading(false);
-  }, [selectedAppType, searchKey, sortField, sortOrder]);
+    setLoadingMore(false);
+  }, [selectedAppType, searchKey, sortField, sortOrder, pageNum, apps.length]);
 
   useEffect(() => {
     listAllAppTypes().then(({ data }) => setAppTypes(data || []));
   }, []);
 
   useEffect(() => {
-    fetchApps();
-  }, [selectedAppType, sortField, sortOrder, fetchApps]);
+    fetchApps(false);
+  }, [selectedAppType, sortField, sortOrder]);
+
+  const loadMore = useCallback(() => {
+    if (!loadingMore && hasMore) {
+      fetchApps(true);
+    }
+  }, [loadingMore, hasMore, fetchApps]);
+
+  useEffect(() => {
+    const element = loadMoreRef.current;
+    if (!element) return;
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observerRef.current.observe(element);
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [loadMore]);
 
   const handleSearch = (value: string) => {
     setSearchKey(value);
-    // 搜索时直接调用 fetchApps，使用新的 value
+    setPageNum(1);
+    setHasMore(true);
     setTimeout(async () => {
       setLoading(true);
       try {
@@ -64,7 +116,12 @@ const CasesPage: React.FC = () => {
         };
         const res = await listFeaturedAppVoByPage(params);
         if (res.code === 0) {
-          setApps(res.data?.records ?? []);
+          const newApps = res.data?.records ?? [];
+          const totalCount = res.data?.totalRow ?? 0;
+          setApps(newApps);
+          setTotal(totalCount);
+          setPageNum(2);
+          setHasMore(newApps.length < totalCount);
         } else {
           message.error(res.message ?? '加载失败');
         }
@@ -151,6 +208,20 @@ const CasesPage: React.FC = () => {
         {!apps.length && !loading && (
           <div style={{ textAlign: 'center', padding: '48px 0', color: '#999' }}>
             暂无案例，稍后再来看看吧～
+          </div>
+        )}
+        {hasMore && apps.length > 0 && (
+          <div ref={loadMoreRef} style={{ textAlign: 'center', padding: '20px 0' }}>
+            {loadingMore ? (
+              <span style={{ color: '#999' }}>加载中...</span>
+            ) : (
+              <span style={{ color: '#ccc' }}>下拉加载更多</span>
+            )}
+          </div>
+        )}
+        {!hasMore && apps.length > 0 && (
+          <div style={{ textAlign: 'center', padding: '20px 0', color: '#999' }}>
+            已加载全部 {total} 条数据
           </div>
         )}
       </Card>

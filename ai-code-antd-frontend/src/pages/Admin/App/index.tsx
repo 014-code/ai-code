@@ -193,7 +193,8 @@ const AppAdminPage: React.FC = () => {
           const sortOrder = sort?.[sortField] ?? undefined;
 
           const {data, code} = await listAllAppsByPage({
-            ...params,
+            pageNum: params.current,
+            pageSize: params.pageSize,
             sortField,
             sortOrder,
             ...filter,
@@ -203,7 +204,7 @@ const AppAdminPage: React.FC = () => {
             success: code === 0,
             data: data?.records || [],
             // @ts-ignore
-            total: parseInt(data?.total as string) || 0,
+            total: parseInt(data?.totalRow as string) || 0,
           };
         }}
         columns={columns}
