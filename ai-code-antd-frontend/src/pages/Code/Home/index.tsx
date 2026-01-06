@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { addApp, listMyAppVoByPage, listFeaturedAppVoByPage, listAllAppTypes, listAllPresetPrompts } from '@/services/backend/appController';
-import { Button, Card, Input, message, Typography, Row, Tag, Dropdown, Space, MenuProps } from 'antd';
+import { Button, Card, Input, message, Typography, Row, Tag, Dropdown, Space, MenuProps, Pagination } from 'antd';
 import { history } from '@umijs/max';
 import AppCard from "@/pages/Code/Home/components/AppCard";
 import {
@@ -21,15 +21,14 @@ const HomePage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [myApps, setMyApps] = useState<any[]>([]);
   const [featuredApps, setFeaturedApps] = useState<any[]>([]);
-  // 应用类别列表
+  const [myAppsTotal, setMyAppsTotal] = useState(0);
+  const [myAppsPageNum, setMyAppsPageNum] = useState(1);
+  const [myAppsPageSize, setMyAppsPageSize] = useState(8);
+  const [myAppsLoading, setMyAppsLoading] = useState(false);
   const [appTypes, setAppTypes] = useState<API.AppTypeVO[]>([]);
-  // 当前选中的应用类别
   const [selectedAppType, setSelectedAppType] = useState<string>('all');
-  // 选择的应用类型
   const [codeType, setCodeType] = useState<string>(CodeGenTypeEnum.HTML);
-  // 是否展开所有类别
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
-  // 预设提示词列表
   const [presetPrompts, setPresetPrompts] = useState<API.PresetPromptVO[]>([]);
 
   // 下拉框选项值
@@ -58,6 +57,24 @@ const HomePage: React.FC = () => {
     setLoading(false);
   };
 
+  const loadMyApps = async (pageNum: number = 1, pageSize: number = 8) => {
+    setMyAppsLoading(true);
+    try {
+      const { data } = await listMyAppVoByPage({ pageNum, pageSize });
+      setMyApps(data?.records || []);
+      setMyAppsTotal(data?.totalRow || 0);
+    } catch (error: any) {
+      message.error('加载我的应用失败');
+    }
+    setMyAppsLoading(false);
+  };
+
+  const handlePageChange = (page: number, pageSize: number) => {
+    setMyAppsPageNum(page);
+    setMyAppsPageSize(pageSize);
+    loadMyApps(page, pageSize);
+  };
+
   /**
    * 复制提示词到输入框内
    */
@@ -66,15 +83,13 @@ const HomePage: React.FC = () => {
   }
 
   useEffect(() => {
-    listMyAppVoByPage({ pageNum: 1, pageSize: 8 }).then(({ data }) => setMyApps(data?.records || []));
+    loadMyApps(1, 8);
     listFeaturedAppVoByPage({
       pageNum: 1,
-      pageSize: 8,
+      pageSize: 10,
       appType: selectedAppType === 'all' ? undefined : selectedAppType
     }).then(({ data }) => setFeaturedApps(data?.records || []));
-    // 加载应用类别
     listAllAppTypes().then(({ data }) => setAppTypes(data || []));
-    // 加载预设提示词
     listAllPresetPrompts().then(({ data }) => setPresetPrompts(data || []));
   }, [selectedAppType]);
 
@@ -173,13 +188,31 @@ const HomePage: React.FC = () => {
           ))}
         </Row>
       </Card>
-      <Card title="我的应用" style={{ marginBottom: 24, marginTop: 24 }}>
+      <Card title="我的应用" style={{ marginBottom: 24, marginTop: 24 }} loading={myAppsLoading}>
         <Row gutter={16}>
           {myApps.map(app => (
-            // eslint-disable-next-line react/jsx-key
-            <AppCard app={app} onCopy={inputCopy}></AppCard>
+            <AppCard key={app.id} app={app} onCopy={inputCopy}></AppCard>
           ))}
         </Row>
+        {myAppsTotal > 0 && (
+          <div style={{ textAlign: 'center', marginTop: 24 }}>
+            <Pagination
+              current={myAppsPageNum}
+              pageSize={myAppsPageSize}
+              total={myAppsTotal}
+              onChange={handlePageChange}
+              showSizeChanger
+              showQuickJumper
+              showTotal={(total) => `共 ${total} 条`}
+              pageSizeOptions={[8, 12, 16, 20]}
+            />
+          </div>
+        )}
+        {myAppsTotal === 0 && !myAppsLoading && (
+          <div style={{ textAlign: 'center', padding: '48px 0', color: '#999' }}>
+            暂无应用，快去创建一个吧～
+          </div>
+        )}
       </Card>
     </div>
   );

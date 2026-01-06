@@ -29,7 +29,7 @@ export default function List() {
 
     // 查询参数
     const [listParams, setListParams] = useState<AppQueryParams>({
-        pageNum: 1, 
+        pageNum: 1,
         pageSize: 10,
         appName: '',
         codeGenType: ''
@@ -46,7 +46,7 @@ export default function List() {
                 pageNum: 1 // 重置页码
             }));
         }, 500); // 500ms 防抖
-        
+
         return () => clearTimeout(timer);
     }, [searchKeyword]);
 
@@ -63,7 +63,7 @@ export default function List() {
         featuredList(listParams).then((res: any) => {
             const records = res.data?.records || []
             const total = res.data?.total || 0
-            
+
             if (listParams.pageNum === 1) {
                 // 第一页，直接设置数据
                 setAppData(records)
@@ -71,7 +71,7 @@ export default function List() {
                 // 加载更多，追加数据
                 setAppData(prev => [...prev, ...records])
             }
-            
+
             // 判断是否还有更多数据
             setHasMore(appData.length + records.length < total)
         }).catch(err => {
@@ -119,7 +119,7 @@ export default function List() {
         console.log("app.id:", app.id);
         console.log("app.codeGenType:", app.codeGenType);
         console.log("app.deployKey:", app.deployKey);
-        
+
         if (app.id && app.codeGenType && app.deployKey) {
             const url = getStaticPreviewUrl(app.codeGenType, app.id.toString(), app.deployKey)
             console.log("生成的URL:", url);
@@ -137,9 +137,9 @@ export default function List() {
      */
     const renderAppCard = ({ item, index }: { item: AppVO, index: number }) => {
         return (
-            <AppCard 
-                app={item} 
-                key={index} 
+            <AppCard
+                app={item}
+                key={index}
                 onViewApp={() => handleViewApp(item)}
             />
         )
@@ -182,6 +182,8 @@ export default function List() {
                 platform="default"
                 lightTheme={true}
                 showLoading={loading}
+                containerStyle={styles.searchContainer}
+                inputContainerStyle={styles.searchInputContainer}
                 onClear={() => {
                     setSearchKeyword('')
                 }}
@@ -189,7 +191,7 @@ export default function List() {
                     getAppList();
                 }}
             />
-            
+
             {/* 应用列表 */}
             {loading && appData.length === 0 ? (
                 <View style={styles.loadingContainer}>
@@ -218,9 +220,9 @@ export default function List() {
 
             {/* WebView */}
             {showWebView && (
-                <AppWebView 
-                    uri={webViewUrl} 
-                    onClose={() => setShowWebView(false)} 
+                <AppWebView
+                    uri={webViewUrl}
+                    onClose={() => setShowWebView(false)}
                 />
             )}
         </View>
@@ -246,6 +248,16 @@ const styles = StyleSheet.create({
     emptyText: {
         fontSize: 16,
         color: '#999',
+    },
+    searchContainer: {
+        backgroundColor: '#f5f5f5',
+        borderTopWidth: 0,
+        borderBottomWidth: 0,
+        paddingHorizontal: 16,
+    },
+    searchInputContainer: {
+        backgroundColor: '#fff',
+        borderRadius: 8,
     },
     listContent: {
         paddingHorizontal: 16,
