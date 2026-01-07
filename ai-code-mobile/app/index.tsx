@@ -18,7 +18,7 @@ export default function IndexPage() {
         const checkAuthAndRedirect = async () => {
             try {
                 const hasValidToken = await hasToken();
-                if (!hasValidToken) {
+                if (hasValidToken) {
                     // 有token，跳转到主页面
                     router.replace('/tabs/ai-app/home');
                 } else {

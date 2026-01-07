@@ -1,4 +1,4 @@
-import { MaterialIcons } from "@expo/vector-icons";
+import { Icon } from 'react-native-elements';
 import { Tabs } from "expo-router";
 
 /**
@@ -30,8 +30,9 @@ export default function TabLayout() {
                 options={{
                     title: "对话",
                     tabBarIcon: ({ color, focused }) => (
-                        <MaterialIcons 
-                            name="list" 
+                        <Icon 
+                            name="chat" 
+                            type="material" 
                             size={24} 
                             color={color} 
                         />
@@ -44,8 +45,9 @@ export default function TabLayout() {
                 options={{
                     title: "应用市场",
                     tabBarIcon: ({ color, focused }) => (
-                        <MaterialIcons 
-                            name="history" 
+                        <Icon 
+                            name="apps" 
+                            type="material" 
                             size={24} 
                             color={color} 
                         />
@@ -58,8 +60,9 @@ export default function TabLayout() {
                 options={{
                     title: "我的",
                     tabBarIcon: ({ color, focused }) => (
-                        <MaterialIcons 
-                            name="user" 
+                        <Icon 
+                            name="person" 
+                            type="material" 
                             size={24} 
                             color={color} 
                         />

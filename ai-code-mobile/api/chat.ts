@@ -26,10 +26,21 @@ export function saveAIMessage(data: ChatHistoryAddParams) {
 /**
  * 获取某应用最新历史对话信息
  */
-export function listLatestChatHistory(appId: number) {
+export function listLatestChatHistory(appId: string) {
 	return request({
 		url: '/api/chat/history/list/latest/vo',
-		method: "PUT",
+		method: "GET",
 		params: { appId },
+	})
+}
+
+/**
+ * 获取应用详情
+ */
+export function getAppVOById(id: string) {
+	return request({
+		url: '/api/app/get/vo',
+		method: "GET",
+		params: { id }
 	})
 }

@@ -72,8 +72,8 @@ const Login: React.FC = () => {
           initialValues={{
             autoLogin: true,
           }}
-          onFinish={async (values) => {
-            await handleSubmit(values as API.UserLoginRequest);
+          onFinish={(values) => {
+            handleSubmit(values as API.UserLoginRequest);
           }}
         >
           <Tabs

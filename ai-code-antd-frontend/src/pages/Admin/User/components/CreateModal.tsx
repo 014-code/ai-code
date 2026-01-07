@@ -15,18 +15,17 @@ interface Props {
  * 添加节点
  * @param fields
  */
-const handleAdd = async (fields: API.UserAddRequest) => {
+const handleAdd = (fields: API.UserAddRequest) => {
   const hide = message.loading('正在添加');
-  try {
-    await addUser(fields);
+  return addUser(fields).then(() => {
     hide();
     message.success('创建成功');
     return true;
-  } catch (error: any) {
+  }).catch((error: any) => {
     hide();
     message.error('创建失败，' + error.message);
     return false;
-  }
+  });
 };
 
 /**
@@ -50,11 +49,12 @@ const CreateModal: React.FC<Props> = (props) => {
       <ProTable
         type="form"
         columns={columns}
-        onSubmit={async (values: API.UserAddRequest) => {
-          const success = await handleAdd(values);
-          if (success) {
-            onSubmit?.(values);
-          }
+        onSubmit={(values: API.UserAddRequest) => {
+          handleAdd(values).then(success => {
+            if (success) {
+              onSubmit?.(values);
+            }
+          });
         }}
       />
     </Modal>

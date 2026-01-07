@@ -1,6 +1,6 @@
-import { getUserInfo, userLogout } from '@/api/user'
 import { myAppList } from '@/api/app'
 import { AppQueryParams } from '@/api/params/appParams'
+import { getUserInfo, userLogout } from '@/api/user'
 import { AppVO } from '@/api/vo/app'
 import { LoginUserVO } from '@/api/vo/user'
 import AppCard from '@/components/AppCard'
@@ -9,8 +9,10 @@ import { getStaticPreviewUrl } from '@/utils/deployUrl'
 import React, { useEffect, useState } from 'react'
 import { ActivityIndicator, Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { Avatar, Button, Divider, Icon, SearchBar } from 'react-native-elements'
+import { useRouter } from 'expo-router'
 
 export default function Mine() {
+    const router = useRouter()
     const [userInfo, setUserInfo] = useState<LoginUserVO | null>(null)
     const [loading, setLoading] = useState<boolean>(false)
     
@@ -114,6 +116,14 @@ export default function Mine() {
         }
     }
 
+    const handleViewConversation = (app: AppVO) => {
+        if (app.id) {
+            router.push({ pathname: '/code/chat', params: { appId: app.id.toString() } })
+        } else {
+            Alert.alert('提示', '应用ID不存在，无法查看对话')
+        }
+    }
+
     const handleLogout = () => {
         Alert.alert(
             '退出登录',
@@ -141,6 +151,7 @@ export default function Mine() {
                 app={item} 
                 key={index} 
                 onViewApp={() => handleViewApp(item)}
+                onViewConversation={() => handleViewConversation(item)}
             />
         )
     }
@@ -246,8 +257,8 @@ export default function Mine() {
             ) : (
                 <View style={styles.notLoggedInContainer}>
                     <Icon
-                        name="user-circle"
-                        type="font-awesome"
+                        name="account-circle"
+                        type="material"
                         size={80}
                         color="#ccc"
                     />

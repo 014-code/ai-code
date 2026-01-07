@@ -50,11 +50,12 @@ const CreateModal: React.FC<Props> = (props) => {
       <ProTable
         type="form"
         columns={columns}
-        onSubmit={async (values: API.AppAddRequest) => {
-          const success = await handleAdd(values);
-          if (success) {
-            onSubmit?.(values);
-          }
+        onSubmit={(values: API.AppAddRequest) => {
+          handleAdd(values).then(success => {
+            if (success) {
+              onSubmit?.(values);
+            }
+          });
         }}
       />
     </Modal>

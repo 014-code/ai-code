@@ -17,18 +17,17 @@ interface Props {
  *
  * @param fields
  */
-const handleUpdate = async (fields: API.UserUpdateRequest) => {
+const handleUpdate = (fields: API.UserUpdateRequest) => {
   const hide = message.loading('正在更新');
-  try {
-    await updateUser(fields);
+  return updateUser(fields).then(() => {
     hide();
     message.success('更新成功');
     return true;
-  } catch (error: any) {
+  }).catch((error: any) => {
     hide();
     message.error('更新失败，' + error.message);
     return false;
-  }
+  });
 };
 
 /**
@@ -59,14 +58,15 @@ const UpdateModal: React.FC<Props> = (props) => {
         form={{
           initialValues: oldData,
         }}
-        onSubmit={async (values: API.UserAddRequest) => {
-          const success = await handleUpdate({
+        onSubmit={(values: API.UserAddRequest) => {
+          handleUpdate({
             ...values,
             id: oldData.id as any,
+          }).then(success => {
+            if (success) {
+              onSubmit?.(values);
+            }
           });
-          if (success) {
-            onSubmit?.(values);
-          }
         }}
       />
     </Modal>

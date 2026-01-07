@@ -5,7 +5,6 @@ import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button, Icon, Input } from 'react-native-elements';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { login } from '../../api/user';
 import { setToken } from '../../utils/cookies';
 
@@ -40,7 +39,7 @@ export default function Login() {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             <StarryBackground>
                 <View style={styles.imageContainer}>
                     <View style={styles.titleOverlay}>
@@ -56,7 +55,7 @@ export default function Login() {
                                 placeholder='请输入你的账号'
                                 label="账号"
                                 value={loginForm.userAccount}
-                                leftIcon={<Icon name="person" size={24} />}
+                                leftIcon={<Icon name="person" type="material" size={24} />}
                                 onChangeText={(text) => setLoginForm({ ...loginForm, userAccount: text })}
                                 containerStyle={styles.inputContainer}
                             />
@@ -66,7 +65,7 @@ export default function Login() {
                                 placeholder='请输入你的密码'
                                 secureTextEntry
                                 onChangeText={(text) => setLoginForm({ ...loginForm, userPassword: text })}
-                                rightIcon={<Icon name="eye" size={24} />}
+                                rightIcon={<Icon name="visibility" type="material" size={24} />}
                                 containerStyle={styles.inputContainer}
                             />
                             <Button title="登录" onPress={handleSubmit} />
@@ -77,7 +76,7 @@ export default function Login() {
                     </ScrollView>
                 </View>
             </StarryBackground>
-        </SafeAreaView>
+        </View>
     )
 }
 

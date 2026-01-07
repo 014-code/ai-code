@@ -1,250 +1,305 @@
-import React, {useState, useEffect, useRef} from 'react';
-import {useParams} from '@umijs/max';
-import {Button, Card, Input, message, Space, Typography, Avatar, Spin, Tag} from 'antd';
-import {LoginOutlined, SendOutlined, ReloadOutlined} from '@ant-design/icons';
-import {deployApp, getAppVoById} from "@/services/backend/appController";
-import {history} from "@@/core/history";
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams } from '@umijs/max';
+import { Button, Card, Input, message, Space, Typography, Avatar, Spin, Tag } from 'antd';
+import { LoginOutlined, SendOutlined, ReloadOutlined } from '@ant-design/icons';
+import { deployApp, getAppVoById } from "@/services/backend/appController";
+import { history } from "@@/core/history";
 import {
   listAppChatHistory,
   listLatestChatHistoryVo,
 } from "@/services/backend/chatHistoryController";
-import {getLoginUser} from "@/services/backend/userController";
+import { getLoginUser } from "@/services/backend/userController";
 import ReactMarkdown from 'react-markdown';
-import {getStaticPreviewUrl} from "@/constants/proUrlOperation";
-import {CODE_GEN_TYPE_CONFIG} from "@/constants/codeGenTypeEnum";
-import {VisualEditor, ElementInfo} from '@/utils/VisualEditor';
+import { getStaticPreviewUrl } from "@/constants/proUrlOperation";
+import { CODE_GEN_TYPE_CONFIG } from "@/constants/codeGenTypeEnum";
+import { VisualEditor, ElementInfo } from '@/utils/VisualEditor';
 import VisualEditorPanel from "@/components/VisualEditor";
 
-const {TextArea} = Input, {Title, Text} = Typography;
+// 从antd组件库中解构出需要的组件
+const { TextArea } = Input, { Title, Text } = Typography;
 
+// ==================== 布局常量定义 ====================
+const PAGE_WIDTH = '100%';           // 页面总宽度
+const CHAT_WIDTH = '50%';            // 聊天区域宽度
+const PREVIEW_WIDTH = '50%';         // 预览区域宽度
+const HEADER_PADDING = 16;          // 头部内边距
+const CHAT_PADDING = 24;            // 聊天区域内边距
+const MAX_MESSAGE_WIDTH = 500;       // 消息最大宽度
+const LOAD_MORE_PAGE_SIZE = 10;      // 加载更多消息的每页数量
+const AUTO_LOAD_HISTORY_COUNT = 10;  // 自动加载历史消息的数量
+
+// ==================== 类型定义 ====================
+/** 加载更多状态接口 */
 interface LoadMoreState {
-  hasMore: boolean;
-  loading: boolean;
-  lastCreateTime?: string;
+  hasMore: boolean;          // 是否还有更多历史消息
+  loading: boolean;          // 是否正在加载
+  lastCreateTime?: string;   // 最后一条消息的创建时间，用于分页
 }
 
+// ==================== 聊天页面组件 ====================
 const ChatPage: React.FC = () => {
-  //当前appid
-  const {appId} = useParams<{ appId: string }>();
-  //聊天消息列表
-  const [messages, setMessages] = useState<API.ChatHistoryVO[]>([]);
-  //输入框值
-  const [inputValue, setInputValue] = useState('');
-  //ai回复加载效果
-  const [loading, setLoading] = useState(false);
-  //部署地址
-  const [deployUrl, setDeployUrl] = useState<string>('');
-  //部署状态
-  const [deploying, setDeploying] = useState(false);
-  //应用信息
-  const [appInfo, setAppInfo] = useState<API.AppVO>();
-  //登录用户信息
-  const [loginUser, setLoginUser] = useState<API.LoginUserVO>();
-  //加载更多状态
-  const [loadMore, setLoadMore] = useState<LoadMoreState>({
+  // 从路由参数中获取应用ID
+  const { appId } = useParams<{ appId: string }>();
+  
+  // ==================== 状态管理 ====================
+  const [messages, setMessages] = useState<API.ChatHistoryVO[]>([]);      // 聊天消息列表
+  const [inputValue, setInputValue] = useState('');                        // 输入框内容
+  const [loading, setLoading] = useState(false);                            // AI回复加载状态
+  const [deployUrl, setDeployUrl] = useState<string>('');                  // 部署后的URL
+  const [deploying, setDeploying] = useState(false);                        // 部署中状态
+  const [appInfo, setAppInfo] = useState<API.AppVO>();                      // 应用信息
+  const [loginUser, setLoginUser] = useState<API.LoginUserVO>();           // 当前登录用户信息
+  const [loadMore, setLoadMore] = useState<LoadMoreState>({                // 加载更多状态
     hasMore: false,
     loading: false,
   });
-  //下载状态
-  const [downloading, setDownloading] = useState<boolean>(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [downloading, setDownloading] = useState<boolean>(false);          // 下载代码状态
+  const [isEditMode, setIsEditMode] = useState<boolean>(false);            // 是否处于编辑模式
+  const [selectedElements, setSelectedElements] = useState<ElementInfo[]>([]); // 选中的元素列表
 
-  const [isEditMode, setIsEditMode] = useState<boolean>(false);
-  const [selectedElements, setSelectedElements] = useState<ElementInfo[]>([]);
+  // ==================== Ref引用 ====================
+  const messagesEndRef = useRef<HTMLDivElement>(null);                      // 消息列表底部引用，用于自动滚动
+  const iframeRef = useRef<HTMLIFrameElement>(null);                       // 预览iframe引用
+  const visualEditorRef = useRef<VisualEditor | null>(null);               // 可视化编辑器引用
 
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const visualEditorRef = useRef<VisualEditor | null>(null);
-
-  // 初始化页面数据
+  // ==================== 副作用钩子 ====================
+  // 当appId变化时，初始化页面数据
   useEffect(() => {
     if (appId) {
-      // eslint-disable-next-line @typescript-eslint/no-use-before-define
       initPageData();
     }
   }, [appId]);
 
-  // 滚动到底部
+  // 当消息列表更新时，自动滚动到底部
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({behavior: 'smooth'});
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // 初始化页面数据
-  const initPageData = async () => {
-    try {
-      // 获取登录用户信息
-      const userRes = await getLoginUser();
+  // 初始化可视化编辑器并管理编辑模式
+  useEffect(() => {
+    // 首次创建VisualEditor实例
+    if (!visualEditorRef.current) {
+      visualEditorRef.current = new VisualEditor({
+        onElementSelected: (elementInfo: ElementInfo) => {
+          console.log("选择的元素" + elementInfo);
+          setSelectedElements(prev => [...prev, elementInfo]);
+        },
+        onElementHover: (elementInfo: ElementInfo) => {
+        }
+      });
+    }
+    // 初始化iframe
+    if (iframeRef.current && visualEditorRef.current) {
+      visualEditorRef.current.init(iframeRef.current);
+    }
+    // 根据编辑模式状态启用或禁用编辑功能
+    if (visualEditorRef.current) {
+      if (isEditMode) {
+        visualEditorRef.current.enableEditMode();
+      } else {
+        visualEditorRef.current.disableEditMode();
+      }
+    }
+    // 监听来自iframe的消息
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [iframeRef.current, isEditMode]);
+
+  // ==================== 数据初始化 ====================
+  /**
+   * 初始化页面数据
+   * 获取当前登录用户信息、应用信息和最新对话历史
+   */
+  const initPageData = () => {
+    getLoginUser().then(userRes => {
       if (userRes.code === 0) {
         setLoginUser(userRes.data);
       }
+    }).catch(error => {
+      message.error('获取用户信息失败：' + error.message);
+    });
 
-      // 获取应用信息
-      // @ts-ignore
-      const appRes = await getAppVoById({id: appId});
+    getAppVoById({ id: appId }).then(appRes => {
       if (appRes.code === 0) {
         setAppInfo(appRes.data);
       }
+    }).catch(error => {
+      message.error('获取应用信息失败：' + error.message);
+    });
 
-      // 加载最近10条对话历史
-      // eslint-disable-next-line @typescript-eslint/no-use-before-define
-      await loadLatestChatHistory();
-
-    } catch (error: any) {
-      message.error('初始化页面失败：' + error.message);
-    }
+    loadLatestChatHistory();
   };
 
-  // 加载最近10条对话历史
-  const loadLatestChatHistory = async () => {
-    try {
-      // @ts-ignore
-      const res = await listLatestChatHistoryVo({appId: appId});
+  /**
+   * 加载最新对话历史
+   * 获取当前应用的最新对话记录，并按时间排序
+   */
+  const loadLatestChatHistory = () => {
+    if (!appId) return;
+    
+    // 调用API获取最新对话历史
+    listLatestChatHistoryVo({ appId: appId }).then(res => {
       if (res.code === 0 && res.data) {
-        // 按创建时间升序排列
+        // 按创建时间升序排序消息
         const sortedMessages = [...res.data].sort((a, b) =>
           new Date(a.createTime!).getTime() - new Date(b.createTime!).getTime()
         );
         setMessages(sortedMessages);
 
-        // 如果有对话记录，检查是否需要显示网站
+        // 如果有至少2条消息，检查是否需要显示网站预览
         if (sortedMessages.length >= 2) {
-          // eslint-disable-next-line @typescript-eslint/no-use-before-define
           checkAndShowWebsite();
         }
 
-        // 检查是否需要自动发送初始消息
+        // 如果没有消息且当前用户是应用创建者，自动发送初始消息
         if (sortedMessages.length === 0 && appInfo && loginUser &&
           appInfo.userId === loginUser.id) {
-          // eslint-disable-next-line @typescript-eslint/no-use-before-define
           autoSendInitMessage();
         }
       }
-    } catch (error: any) {
+    }).catch(error => {
       message.error('加载对话历史失败：' + error.message);
-    }
+    });
   };
 
-  // 加载更多历史消息（游标查询）
-  const loadMoreHistory = async () => {
+  /**
+   * 加载更多历史消息
+   * 分页加载更早的对话历史记录
+   */
+  const loadMoreHistory = () => {
+    if (!appId) return;
+    
+    // 如果没有更多数据或正在加载，直接返回
     if (!loadMore.hasMore || loadMore.loading) return;
 
-    setLoadMore(prev => ({...prev, loading: true}));
+    setLoadMore(prev => ({ ...prev, loading: true }));
 
-    try {
-      const res = await listAppChatHistory({
-        // @ts-ignore
-        appId,
-        pageSize: 10,
-        lastCreateTime: loadMore.lastCreateTime
-      });
-
+    // 调用API获取更多历史消息
+    listAppChatHistory({
+      appId: appId,
+      pageSize: LOAD_MORE_PAGE_SIZE,
+      lastCreateTime: loadMore.lastCreateTime
+    }).then(res => {
       if (res.code === 0 && res.data?.records) {
         const newMessages = res.data.records;
         if (newMessages.length > 0) {
-          // 按创建时间升序排列新消息
+          // 按创建时间升序排序新消息
           const sortedNewMessages = [...newMessages].sort((a, b) =>
             new Date(a.createTime!).getTime() - new Date(b.createTime!).getTime()
           );
 
-          // 合并消息列表，保持升序
+          // 将新消息添加到现有消息列表前面
           const allMessages = [...sortedNewMessages, ...messages];
           setMessages(allMessages);
 
-          // 更新游标状态
+          // 更新加载状态
           const lastMessage = newMessages[newMessages.length - 1];
           setLoadMore({
-            hasMore: newMessages.length === 10,
+            hasMore: newMessages.length === LOAD_MORE_PAGE_SIZE,
             loading: false,
             lastCreateTime: lastMessage.createTime
           });
         } else {
-          setLoadMore({hasMore: false, loading: false});
+          // 没有更多数据
+          setLoadMore({ hasMore: false, loading: false });
         }
       }
-    } catch (error: any) {
+    }).catch(error => {
       message.error('加载更多消息失败：' + error.message);
-      setLoadMore(prev => ({...prev, loading: false}));
-    }
+      setLoadMore(prev => ({ ...prev, loading: false }));
+    });
   };
 
-  // 检查并显示网站
-  const checkAndShowWebsite = async () => {
+  /**
+   * 检查并显示网站
+   * 检查是否需要显示部署后的网站预览
+   */
+  const checkAndShowWebsite = () => {
+    // 检查是否需要显示网站预览
     if (!deployUrl && appId) {
-      try {
-        // 这里可以调用获取部署状态的接口
-        // 暂时留空，根据实际业务逻辑实现
-      } catch (error) {
-        console.error('检查网站状态失败：', error);
-      }
-    }
-  };
-
-  // 自动发送初始消息
-  const autoSendInitMessage = async () => {
-    if (!appInfo?.initPrompt || !loginUser) return;
-
-    try {
-      // 由后端统一保存，前端不再重复保存用户消息
-
-      // 触发AI回复
-      // eslint-disable-next-line @typescript-eslint/no-use-before-define
-      await handleSendMessage(appInfo.initPrompt, true);
-    } catch (error: any) {
-      console.error('自动发送初始消息失败：', error);
+      // TODO: 实现显示网站预览的逻辑
     }
   };
 
   /**
-   * 下载代码方法
+   * 自动发送初始消息
+   * 如果应用配置了初始提示词，自动发送第一条消息
    */
-  const downloadCode = async () => {
+  const autoSendInitMessage = () => {
+    if (!appInfo?.initPrompt || !loginUser) return;
+
+    // 调用发送消息函数，传入初始提示词
+    handleSendMessage(appInfo.initPrompt, true).catch(error => {
+      console.error('自动发送初始消息失败：', error);
+    });
+  };
+
+  /**
+   * 下载应用代码
+   * 从服务器下载当前应用的源代码压缩包
+   */
+  const downloadCode = () => {
     if (!appId) {
-      message.error("应用不存在")
+      message.error("应用不存在");
       return;
     }
     setDownloading(true);
-    try {
-      // 使用fetch直接调用后端接口，避免代理问题
-      const response = await fetch(`http://localhost:8123/api/app/download/${appId}`, {
-        method: 'GET',
-        credentials: 'include',
-      })
+
+    // 发起下载请求
+    fetch(`http://localhost:8123/api/app/download/${appId}`, {
+      method: 'GET',
+      credentials: 'include',
+    }).then(response => {
       if (!response.ok) {
-        throw new Error(`下载失败: ${response.status}`)
+        throw new Error(`下载失败: ${response.status}`);
       }
 
-      // 解析文件名从Content-Disposition头
-      const contentDisposition = response.headers.get('Content-Disposition')
-      let fileName = `app-${appId}.zip`
+      // 从响应头中提取文件名
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let fileName = `app-${appId}.zip`;
       if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="?(.+?)"?$/)
+        const filenameMatch = contentDisposition.match(/filename="?(.+?)"?$/);
         if (filenameMatch && filenameMatch[1]) {
-          fileName = decodeURIComponent(filenameMatch[1])
+          fileName = decodeURIComponent(filenameMatch[1]);
         }
       }
 
-      // 创建下载链接
-      const blob = await response.blob()
-      const downloadUrl = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = downloadUrl
-      link.download = fileName
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
+      // 将响应转换为Blob对象
+      return response.blob().then(blob => ({ blob, fileName }));
+    }).then(({ blob, fileName }) => {
+      // 创建下载链接并触发下载
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
-      URL.revokeObjectURL(downloadUrl)
-      message.success('代码下载成功')
-    } catch (e: any) {
-      message.error("下载失败: " + (e.message || e))
-    } finally {
+      // 释放URL对象
+      URL.revokeObjectURL(downloadUrl);
+      message.success('代码下载成功');
+    }).catch(e => {
+      message.error("下载失败: " + (e.message || e));
+    }).finally(() => {
       setDownloading(false);
-    }
-  }
+    });
+  };
 
   /**
-   * 发送消息给ai方法
+   * 处理发送消息
+   * 发送用户消息到AI，并通过SSE流式接收AI的回复
+   * @param customMessage 自定义消息内容（可选）
+   * @param isAutoSend 是否为自动发送（用于初始消息）
    */
-  const handleSendMessage = async (customMessage?: string, isAutoSend = false) => {
+  const handleSendMessage = (customMessage?: string, isAutoSend = false) => {
+    if (!appId) {
+      message.error('应用不存在');
+      return;
+    }
+
     const normalized = typeof customMessage === 'string' ? customMessage : undefined;
     const messageContent = (normalized ?? inputValue).trim();
     if (!messageContent) {
@@ -256,171 +311,146 @@ const ChatPage: React.FC = () => {
       setInputValue('');
     }
 
-    try {
-      // 创建用户消息对象
-      const userMessage: API.ChatHistoryVO = {
-        id: Date.now(),
-        // @ts-ignore
-        appId,
-        messageType: 'user',
-        messageContent: messageContent,
-        createTime: new Date().toISOString(),
-        user: loginUser
-      };
+    // 创建用户消息对象
+    const userMessage: API.ChatHistoryVO = {
+      id: Date.now(),
+      appId: appId,
+      messageType: 'user',
+      messageContent: messageContent,
+      createTime: new Date().toISOString(),
+      user: loginUser as any
+    };
 
-      console.log("应用id！！！", userMessage.appId)
+    console.log("应用id！！！", userMessage.appId);
 
-      // 将用户消息添加到列表
-      setMessages(prev => [...prev, userMessage]);
-      setLoading(true);
+    // 将用户消息添加到消息列表
+    setMessages(prev => [...prev, userMessage]);
+    setLoading(true);
 
-      // 创建AI消息占位符
-      const aiMessageId = Date.now() + 1;
-      const aiMessage: API.ChatHistoryVO = {
-        id: aiMessageId,
-        // @ts-ignore
-        appId,
-        messageType: 'ai',
-        messageContent: '',
-        createTime: new Date().toISOString(),
-      };
+    // 创建AI消息占位符
+    const aiMessageId = Date.now() + 1;
+    const aiMessage: API.ChatHistoryVO = {
+      id: aiMessageId,
+      appId: appId,
+      messageType: 'ai',
+      messageContent: '',
+      createTime: new Date().toISOString(),
+    };
 
-      setMessages(prev => [...prev, aiMessage]);
+    // 将AI消息占位符添加到消息列表
+    setMessages(prev => [...prev, aiMessage]);
 
-      // 调用AI生成代码接口
-      // const url = `/api/app/chat/gen/code?appId=${appId}&message=${encodeURIComponent(messageContent)}`;
+    // 构建SSE连接URL
+    const url = `/api/workflow/execute-flux?prompt=${messageContent}&appId=${appId}`;
 
-      //调用工作流ai生成代码
-      const url = `/api/workflow/execute-flux?prompt=${messageContent}&appId=${appId}`
+    // 初始化SSE连接相关变量
+    let eventSource: EventSource | null = null;
+    let closed = false;
+    let aiResponse = '';
 
-      let eventSource: EventSource | null = null;
-      let closed = false;
-      let aiResponse = '';
+    // 关闭SSE连接的辅助函数
+    const closeES = () => {
+      if (!closed && eventSource) {
+        eventSource.close();
+        closed = true;
+      }
+    };
 
-      // 封装事件回调（避免重复注册等问题）
-      function closeES() {
-        if (!closed && eventSource) {
-          eventSource.close();
-          closed = true;
+    // 创建SSE连接
+    eventSource = new EventSource(url);
+    // SSE连接建立时的回调
+    eventSource.onopen = () => console.log('SSE 连接已建立');
+    // 接收SSE消息的回调
+    eventSource.onmessage = (event: MessageEvent) => {
+      let chunk = '';
+      try {
+        // 尝试解析JSON格式的消息
+        const parsed = typeof event.data === 'string' ? JSON.parse(event.data) : null;
+        if (parsed && typeof parsed.d === 'string') {
+          chunk = parsed.d;
+        }
+      } catch (_) {
+        // 如果解析失败，直接使用原始数据
+        if (typeof event.data === 'string') {
+          chunk = event.data;
         }
       }
+      // 累积AI回复内容并更新消息列表
+      if (chunk) {
+        aiResponse += chunk;
+        setMessages(prev => prev.map(msg =>
+          msg.id === aiMessageId ? { ...msg, messageContent: aiResponse } : msg
+        ));
+      }
+    };
 
-      eventSource = new EventSource(url, {withCredentials: true} as any);
-      eventSource.onopen = () => console.log('SSE 连接已建立');
-      eventSource.onmessage = (event: MessageEvent) => {
-        let chunk = '';
-        try {
-          const parsed = typeof event.data === 'string' ? JSON.parse(event.data) : null;
-          if (parsed && typeof parsed.d === 'string') {
-            chunk = parsed.d;
-          }
-        } catch (_) {
-          // 非 JSON，直接作为文本追加
-          if (typeof event.data === 'string') {
-            chunk = event.data;
-          }
-        }
-        if (chunk) {
-          aiResponse += chunk;
-          setMessages(prev => prev.map(msg =>
-            msg.id === aiMessageId ? {...msg, messageContent: aiResponse} : msg
-          ));
-        }
-      };
-
-      eventSource.addEventListener('done', async () => {
-        closeES();
-        setLoading(false);
-
-        // 如果有至少2条对话记录，检查是否需要显示网站
-        if (messages.length + 2 >= 2) {
-          checkAndShowWebsite();
-        }
-      });
-
-      eventSource.onerror = (event) => {
-        closeES();
-        setLoading(false);
-        message.error('AI 生成中断或网络错误');
-        console.error('SSE 连接出错', event);
-      };
-    } catch (error: any) {
-      message.error('发送失败：' + error.message);
-      setMessages(prev => prev.filter(msg => msg.messageType === 'user'));
+    // 监听SSE完成事件
+    eventSource.addEventListener('done', () => {
+      closeES();
       setLoading(false);
-    }
+
+      if (messages.length + 2 >= 2) {
+        checkAndShowWebsite();
+      }
+    });
+
+    // 监听SSE错误事件
+    eventSource.onerror = (event) => {
+      closeES();
+      setLoading(false);
+      message.error('AI 生成中断或网络错误');
+      console.error('SSE 连接出错', event);
+    };
   };
 
-  // 部署应用按钮点击事件
-  const handleDeploy = async () => {
+  /**
+   * 处理部署应用
+   * 调用后端API部署当前应用，获取部署后的访问URL
+   */
+  const handleDeploy = () => {
     if (!appId) return;
     setDeploying(true);
-    try {
-      const res = await deployApp({
-        // @ts-ignore
-        appId,
-      });
+
+    deployApp({ appId }).then(res => {
       if (res?.data) {
         setDeployUrl(res.data);
         message.success('部署成功');
       } else {
         throw new Error('无部署地址');
       }
-    } catch (e: any) {
+    }).catch(e => {
       message.error('部署失败：' + (e.message || e));
-    }
-    setDeploying(false);
+    }).finally(() => {
+      setDeploying(false);
+    });
   };
 
-  // 初始化可视化编辑器
-  useEffect(() => {
-    if (!visualEditorRef.current) {
-      // @ts-ignore
-      visualEditorRef.current = new VisualEditor({
-        // @ts-ignore
-        onElementSelected: (elementInfo: ElementInfo) => {
-          console.log("选择的元素" + elementInfo)
-          //选择元素方法
-          setSelectedElements(prev => [...prev, elementInfo]);
-        },
-        onElementHover: (elementInfo: ElementInfo) => {
-          // 可以在这里实现悬浮时的效果，比如显示提示信息
-        }
-      });
-    }
-    if (iframeRef.current && visualEditorRef.current) {
-      visualEditorRef.current.init(iframeRef.current);
-    }
-    if (visualEditorRef.current) {
-      if (isEditMode) {
-        visualEditorRef.current.enableEditMode();
-      } else {
-        visualEditorRef.current.disableEditMode();
-      }
-    }
-    // 添加监听器
-    window.addEventListener('message', handleMessage);
-    return () => {
-      window.removeEventListener('message', handleMessage);
-    };
-  }, [iframeRef.current, isEditMode])
-
-  // 切换可视化编辑模式
+  /**
+   * 切换编辑模式
+   * 切换可视化编辑模式的开启/关闭状态
+   */
   const toggleEditMode = () => {
     const newMode = !isEditMode;
     setIsEditMode(newMode);
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-    !isEditMode ? message.info("进入编辑模式") : message.info("退出编辑模式")
+    !isEditMode ? message.info("进入编辑模式") : message.info("退出编辑模式");
   };
 
-  // 监听iframe消息
+  /**
+   * 处理来自iframe的消息
+   * 接收并处理iframe发送的消息，主要用于可视化编辑功能
+   * @param event 消息事件对象
+   */
   const handleMessage = (event: MessageEvent) => {
     if (visualEditorRef.current) {
       visualEditorRef.current.handleIframeMessage(event);
     }
   };
 
-  // 移除选中的元素
+  /**
+   * 移除选中的元素
+   * 从选中元素列表中移除指定索引的元素
+   * @param index 要移除的元素索引
+   */
   const removeSelectedElement = (index: number) => {
     setSelectedElements(prev => prev.filter((_, i) => i !== index));
     if (visualEditorRef.current) {
@@ -428,7 +458,10 @@ const ChatPage: React.FC = () => {
     }
   };
 
-  // 清除所有选中的元素
+  /**
+   * 清除所有选中的元素
+   * 清空选中元素列表并清除iframe中的选中状态
+   */
   const clearAllSelectedElements = () => {
     setSelectedElements([]);
     if (visualEditorRef.current) {
@@ -436,6 +469,11 @@ const ChatPage: React.FC = () => {
     }
   };
 
+  /**
+   * 获取带可视化编辑参数的预览URL
+   * 在预览URL中添加visualEdit=true参数，用于启用可视化编辑功能
+   * @returns 完整的预览URL字符串
+   */
   const getPreviewUrlWithVisualEdit = () => {
     if (!appInfo?.codeGenType || !appInfo?.id) {
       return '';
@@ -451,15 +489,14 @@ const ChatPage: React.FC = () => {
     return baseUrl.includes('?') ? `${baseUrl}&visualEdit=true` : `${baseUrl}?visualEdit=true`;
   };
 
-
   const codeGenTypeLabel = appInfo?.codeGenType
     ? CODE_GEN_TYPE_CONFIG[appInfo.codeGenType as keyof typeof CODE_GEN_TYPE_CONFIG]?.label
     : undefined;
 
   return (
-    <div style={{height: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5'}}>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
       <div style={{
-        padding: 16,
+        padding: HEADER_PADDING,
         borderBottom: '1px solid #f0f0f0',
         background: '#fff',
         display: 'flex',
@@ -467,16 +504,16 @@ const ChatPage: React.FC = () => {
         alignItems: 'center'
       }}>
         <Space>
-          <Title level={4} style={{margin: 0}}>应用对话</Title>
+          <Title level={4} style={{ margin: 0 }}>应用对话</Title>
           <Tag color={"blue"}>{codeGenTypeLabel || '未知类型'}</Tag>
         </Space>
         <Space>
           <Button type="primary" ghost loading={downloading} onClick={downloadCode}
-                  style={{minWidth: 100}}>下载代码</Button>
-          <Button type="primary" loading={deploying} onClick={handleDeploy} style={{minWidth: 100}}>部署应用</Button>
+            style={{ minWidth: 100 }}>下载代码</Button>
+          <Button type="primary" loading={deploying} onClick={handleDeploy} style={{ minWidth: 100 }}>部署应用</Button>
           <Button
             type="dashed"
-            icon={<LoginOutlined/>}
+            icon={<LoginOutlined />}
             onClick={() => {
               if (!appInfo?.codeGenType || !appInfo?.id) {
                 message.warning('暂无可用预览地址，请先部署应用');
@@ -489,16 +526,14 @@ const ChatPage: React.FC = () => {
           </Button>
         </Space>
       </div>
-      <div style={{flex: 1, display: 'flex', minHeight: 0}}>
-        {/* 左列 聊天区 */}
-        <div style={{width: '50%', borderRight: '1px solid #eee', display: 'flex', flexDirection: 'column'}}>
-          <div style={{flex: 1, overflow: 'auto', padding: 24}}>
-            {/* 加载更多按钮 */}
+      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+        <div style={{ width: CHAT_WIDTH, borderRight: '1px solid #eee', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, overflow: 'auto', padding: CHAT_PADDING }}>
             {loadMore.hasMore && (
-              <div style={{display: 'flex', justifyContent: 'center', marginBottom: 16}}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
                 <Button
                   type="dashed"
-                  icon={<ReloadOutlined/>}
+                  icon={<ReloadOutlined />}
                   loading={loadMore.loading}
                   onClick={loadMoreHistory}
                 >
@@ -507,34 +542,33 @@ const ChatPage: React.FC = () => {
               </div>
             )}
 
-            {/* 消息列表 */}
             {messages.map(msg => (
               <div key={msg.id}
-                   style={{
-                     display: 'flex',
-                     justifyContent: msg.messageType === 'user' ? 'flex-end' : 'flex-start',
-                     marginBottom: 16
-                   }}>
+                style={{
+                  display: 'flex',
+                  justifyContent: msg.messageType === 'user' ? 'flex-end' : 'flex-start',
+                  marginBottom: 16
+                }}>
                 <div style={{
-                  maxWidth: 500,
+                  maxWidth: MAX_MESSAGE_WIDTH,
                   display: 'flex',
                   alignItems: 'flex-start',
                   gap: 8,
                   flexDirection: msg.messageType === 'user' ? 'row-reverse' : 'row'
                 }}>
-                  <Avatar style={{background: msg.messageType === 'user' ? '#1890ff' : '#52c41a'}}>
+                  <Avatar style={{ background: msg.messageType === 'user' ? '#1890ff' : '#52c41a' }}>
                     {msg.messageType === 'user' ? 'U' : 'AI'}
                   </Avatar>
                   <Card size="small" style={{
                     background: msg.messageType === 'user' ? '#e6f7ff' : '#f6ffed',
                     border: msg.messageType === 'user' ? '1px solid #91d5ff' : '1px solid #b7eb8f'
                   }}>
-                    <Text style={{whiteSpace: 'pre-wrap'}}>
+                    <Text style={{ whiteSpace: 'pre-wrap' }}>
                       <ReactMarkdown>
                         {msg.messageContent}
                       </ReactMarkdown>
                     </Text>
-                    <div style={{fontSize: 12, color: '#999', marginTop: 4}}>
+                    <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
                       {msg.createTime ? new Date(msg.createTime).toLocaleTimeString() : ''}
                     </div>
                   </Card>
@@ -542,40 +576,37 @@ const ChatPage: React.FC = () => {
               </div>
             ))}
 
-            {/* AI回复加载状态 */}
             {loading && (
-              <div style={{display: 'flex', marginBottom: 16}}>
-                <Avatar style={{background: '#52c41a'}}>AI</Avatar>
-                <Card size="small" style={{background: '#f6ffed'}}>
-                  <Spin size="small"/>
-                  <Text style={{marginLeft: 8}}>AI正在思考中...</Text>
+              <div style={{ display: 'flex', marginBottom: 16 }}>
+                <Avatar style={{ background: '#52c41a' }}>AI</Avatar>
+                <Card size="small" style={{ background: '#f6ffed' }}>
+                  <Spin size="small" />
+                  <Text style={{ marginLeft: 8 }}>AI正在思考中...</Text>
                 </Card>
               </div>
             )}
-            <div ref={messagesEndRef}/>
+            <div ref={messagesEndRef} />
           </div>
-          <div style={{padding: 16, borderTop: '1px solid #f0f0f0', background: '#fff'}}>
-            {/*// @ts-*/}
+          <div style={{ padding: 16, borderTop: '1px solid #f0f0f0', background: '#fff' }}>
             <VisualEditorPanel isEditMode={isEditMode}
-                               selectedElements={selectedElements}
-                               onToggleEditMode={toggleEditMode}
-                               onRemoveElement={removeSelectedElement}
-                               onClearAllElements={clearAllSelectedElements}></VisualEditorPanel>
-            <Space.Compact style={{width: '100%'}}>
+              selectedElements={selectedElements}
+              onToggleEditMode={toggleEditMode}
+              onRemoveElement={removeSelectedElement}
+              onClearAllElements={clearAllSelectedElements}></VisualEditorPanel>
+            <Space.Compact style={{ width: '100%' }}>
               <TextArea rows={2} placeholder="请输入您的问题..." value={inputValue}
-                        onChange={e => setInputValue(e.target.value)}
-                        onPressEnter={e => {
-                          if (e.ctrlKey || e.metaKey) handleSendMessage();
-                        }}/>
-              <Button type="primary" icon={<SendOutlined/>} loading={loading}
-                      onClick={() => handleSendMessage()}>发送</Button>
+                onChange={e => setInputValue(e.target.value)}
+                onPressEnter={e => {
+                  if (e.ctrlKey || e.metaKey) handleSendMessage();
+                }} />
+              <Button type="primary" icon={<SendOutlined />} loading={loading}
+                onClick={() => handleSendMessage()}>发送</Button>
             </Space.Compact>
-            <div style={{fontSize: 12, color: '#999', marginTop: 8}}>提示：Ctrl+Enter 发送</div>
+            <div style={{ fontSize: 12, color: '#999', marginTop: 8 }}>提示：Ctrl+Enter 发送</div>
           </div>
         </div>
-        {/*// 右列 网页预览区*/}
         <div style={{
-          width: '50%',
+          width: PREVIEW_WIDTH,
           background: '#fafafa',
           display: 'flex',
           alignItems: 'center',
@@ -585,7 +616,7 @@ const ChatPage: React.FC = () => {
             <iframe
               ref={iframeRef}
               title="已部署应用预览"
-              style={{border: '1px solid #eee', borderRadius: 8, width: '100%', height: '92vh', background: '#fff'}}
+              style={{ border: '1px solid #eee', borderRadius: 8, width: '100%', height: '92vh', background: '#fff' }}
               sandbox="allow-scripts allow-same-origin"
               src={getPreviewUrlWithVisualEdit()}
               onLoad={() => {
@@ -596,7 +627,7 @@ const ChatPage: React.FC = () => {
             />
           ) : (
             <Card
-              style={{height: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+              style={{ height: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Text type="secondary">请先点击上方"部署应用"按钮，完成部署后右侧将显示应用页面</Text>
             </Card>
           )}
@@ -604,7 +635,6 @@ const ChatPage: React.FC = () => {
       </div>
     </div>
   );
-}
-
+};
 
 export default ChatPage;

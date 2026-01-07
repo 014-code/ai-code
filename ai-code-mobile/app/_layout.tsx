@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 /**
  * 通用布局页面
@@ -7,21 +8,23 @@ import { Stack } from 'expo-router';
 export default function RootLayout() {
 
   return (
-    <Stack>
-      <Stack.Screen name='index' options={{ headerShown: false }} />
-      <Stack.Screen name='user/login' options={{
-        title: '登录',
-        headerShown: false,
-        // 可选：淡入淡出动画
-        animation: 'fade',
-      }} />
-      <Stack.Screen name='user/register' options={{
-        title: "注册",
-        headerShown: false,
-        // 可选：淡入淡出动画
-        animation: 'fade',
-      }} />
-      <Stack.Screen name='tabs/ai-app/home' options={{ title: "主页", headerBackVisible: false, gestureEnabled: false, }} />
-    </Stack>
+    <SafeAreaProvider>
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+        <Stack>
+          <Stack.Screen name='index' options={{ headerShown: false }} />
+          <Stack.Screen name='user/login' options={{
+            title: '登录',
+            headerShown: false,
+            animation: 'fade',
+          }} />
+          <Stack.Screen name='user/register' options={{
+            title: "注册",
+            headerShown: false,
+            animation: 'fade',
+          }} />
+          <Stack.Screen name='tabs' options={{ headerShown: false }} />
+        </Stack>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }

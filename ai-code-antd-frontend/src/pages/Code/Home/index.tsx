@@ -9,12 +9,19 @@ import {
   DownOutlined,
   LogoutOutlined,
   ProductOutlined,
-  DownOutlined as ChevronDownOutlined,
   UpOutlined
 } from "@ant-design/icons";
 import { CODE_GEN_TYPE_CONFIG, CodeGenTypeEnum } from "@/constants/codeGenTypeEnum";
 
 const { Title } = Typography, { TextArea } = Input;
+
+const PAGE_WIDTH = 1600;
+const CARD_MAX_WIDTH = 700;
+const CARD_BORDER_RADIUS = 30;
+const CARD_PADDING_BOTTOM = 60;
+const DEFAULT_MY_APPS_PAGE_SIZE = 8;
+const DEFAULT_FEATURED_APPS_PAGE_SIZE = 10;
+const MAX_VISIBLE_APP_TYPES = 6;
 
 const HomePage: React.FC = () => {
   const [prompt, setPrompt] = useState('');
@@ -23,7 +30,7 @@ const HomePage: React.FC = () => {
   const [featuredApps, setFeaturedApps] = useState<any[]>([]);
   const [myAppsTotal, setMyAppsTotal] = useState(0);
   const [myAppsPageNum, setMyAppsPageNum] = useState(1);
-  const [myAppsPageSize, setMyAppsPageSize] = useState(8);
+  const [myAppsPageSize, setMyAppsPageSize] = useState(DEFAULT_MY_APPS_PAGE_SIZE);
   const [myAppsLoading, setMyAppsLoading] = useState(false);
   const [appTypes, setAppTypes] = useState<API.AppTypeVO[]>([]);
   const [selectedAppType, setSelectedAppType] = useState<string>('all');
@@ -31,19 +38,19 @@ const HomePage: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [presetPrompts, setPresetPrompts] = useState<API.PresetPromptVO[]>([]);
 
-  // 下拉框选项值
   const menuItems: MenuProps['items'] = Object.values(CodeGenTypeEnum).map(type => ({
     label: CODE_GEN_TYPE_CONFIG[type].label,
     key: type,
     icon: <ProductOutlined />,
   }));
 
-  //下拉框改变事件
   const handleMenuClick: MenuProps['onClick'] = (e) => {
-    // e.key 即枚举值：'html' | 'multi_file' | 'vue_project' | 'react_project'
     setCodeType(e.key);
   };
 
+  /**
+   * 创建新应用
+   */
   const handleCreateApp = async () => {
     if (!prompt.trim()) return message.warning('请输入提示词');
     setLoading(true);
@@ -57,7 +64,10 @@ const HomePage: React.FC = () => {
     setLoading(false);
   };
 
-  const loadMyApps = async (pageNum: number = 1, pageSize: number = 8) => {
+  /**
+   * 加载我的应用列表
+   */
+  const loadMyApps = async (pageNum: number = 1, pageSize: number = DEFAULT_MY_APPS_PAGE_SIZE) => {
     setMyAppsLoading(true);
     try {
       const { data } = await listMyAppVoByPage({ pageNum, pageSize });
@@ -69,6 +79,9 @@ const HomePage: React.FC = () => {
     setMyAppsLoading(false);
   };
 
+  /**
+   * 处理分页变化
+   */
   const handlePageChange = (page: number, pageSize: number) => {
     setMyAppsPageNum(page);
     setMyAppsPageSize(pageSize);
@@ -76,25 +89,61 @@ const HomePage: React.FC = () => {
   };
 
   /**
-   * 复制提示词到输入框内
+   * 加载精选应用列表
    */
-  function inputCopy(text: string) {
+  const loadFeaturedApps = async (appType: string) => {
+    try {
+      const { data } = await listFeaturedAppVoByPage({
+        pageNum: 1,
+        pageSize: DEFAULT_FEATURED_APPS_PAGE_SIZE,
+        appType: appType === 'all' ? undefined : appType
+      });
+      setFeaturedApps(data?.records || []);
+    } catch (error: any) {
+      message.error('加载精选应用失败');
+    }
+  };
+
+  /**
+   * 加载应用类型列表
+   */
+  const loadAppTypes = async () => {
+    try {
+      const { data } = await listAllAppTypes();
+      setAppTypes(data || []);
+    } catch (error: any) {
+      message.error('加载应用类型失败');
+    }
+  };
+
+  /**
+   * 加载预设提示词列表
+   */
+  const loadPresetPrompts = async () => {
+    try {
+      const { data } = await listAllPresetPrompts();
+      setPresetPrompts(data || []);
+    } catch (error: any) {
+      message.error('加载预设提示词失败');
+    }
+  };
+
+  /**
+   * 复制文本到输入框
+   */
+  const inputCopy = (text: string) => {
     setPrompt(text);
-  }
+  };
 
   useEffect(() => {
-    loadMyApps(1, 8);
-    listFeaturedAppVoByPage({
-      pageNum: 1,
-      pageSize: 10,
-      appType: selectedAppType === 'all' ? undefined : selectedAppType
-    }).then(({ data }) => setFeaturedApps(data?.records || []));
-    listAllAppTypes().then(({ data }) => setAppTypes(data || []));
-    listAllPresetPrompts().then(({ data }) => setPresetPrompts(data || []));
+    loadMyApps(1, DEFAULT_MY_APPS_PAGE_SIZE);
+    loadFeaturedApps(selectedAppType);
+    loadAppTypes();
+    loadPresetPrompts();
   }, [selectedAppType]);
 
   return (
-    <div style={{ padding: 32, width: 1600, margin: '0 auto' }}>
+    <div style={{ padding: 32, width: PAGE_WIDTH, margin: '0 auto' }}>
       <Title level={2} style={{
         background: 'linear-gradient(135deg, #1890ff, #52c41a)',
         WebkitBackgroundClip: 'text',
@@ -105,10 +154,9 @@ const HomePage: React.FC = () => {
         fontSize: '42px',
         fontFamily: 'Arial, sans-serif'
       }}>AI 零代码应用生成器</Title>
-      <Card style={{ margin: '50px auto', position: "relative", maxWidth: 700, borderRadius: 30, paddingBottom: 60 }}>
+      <Card style={{ margin: '50px auto', position: "relative", maxWidth: CARD_MAX_WIDTH, borderRadius: CARD_BORDER_RADIUS, paddingBottom: CARD_PADDING_BOTTOM }}>
         <TextArea rows={4} value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="输入你的应用名称"
           style={{ resize: 'none', fontSize: '22px' }} />
-        {/* 预设提示词标签 */}
         {presetPrompts.length > 0 && (
           <div style={{ marginTop: 12, marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {presetPrompts.map((item) => (
@@ -140,7 +188,6 @@ const HomePage: React.FC = () => {
             </Button>
           </Dropdown>
           <div style={{ display: "flex", gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-            {/* 全部按钮 */}
             <Button
               shape="round"
               size="large"
@@ -149,9 +196,8 @@ const HomePage: React.FC = () => {
             >
               全部
             </Button>
-            {/* 动态渲染应用类别按钮 - 默认显示前6个，点击展开后显示全部 */}
             {appTypes
-              .slice(0, isExpanded ? appTypes.length : 6)
+              .slice(0, isExpanded ? appTypes.length : MAX_VISIBLE_APP_TYPES)
               .map((appType) => (
                 <Button
                   key={appType.code}
@@ -163,28 +209,27 @@ const HomePage: React.FC = () => {
                   {appType.text}
                 </Button>
               ))}
-            {/* 展开/收起按钮 - 当类别超过6个时显示 */}
-            {appTypes.length > 6 && (
+            {appTypes.length > MAX_VISIBLE_APP_TYPES && (
               <Button
                 type="text"
                 size="large"
                 onClick={() => setIsExpanded(!isExpanded)}
-                icon={isExpanded ? <UpOutlined /> : <ChevronDownOutlined />}
+                icon={isExpanded ? <UpOutlined /> : <DownOutlined />}
               >
                 {isExpanded ? '收起' : '展开'}
               </Button>
             )}
           </div>
-          {/*// @ts-ignore*/}
           <Button type={"primary"} shape="round" icon={<DoubleRightOutlined />} size={"large"}
             onClick={() => history.push("/cases")}>全部案例</Button>
         </div>
         <Row gutter={16}>
           {featuredApps.map(app => (
-            // eslint-disable-next-line react/jsx-key
-            <AppCard app={app} onCopy={inputCopy} children={<Tag icon={<CheckCircleOutlined />} color="success">
-              精选
-            </Tag>}></AppCard>
+            <AppCard key={app.id} app={app} onCopy={inputCopy}>
+              <Tag icon={<CheckCircleOutlined />} color="success">
+                精选
+              </Tag>
+            </AppCard>
           ))}
         </Row>
       </Card>

@@ -1,11 +1,15 @@
+import { addApp } from '@/api/app'
 import HomeBackground from '@/components/HomeBackground'
+import { useRouter } from 'expo-router'
 import React, { useState } from 'react'
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { Icon } from 'react-native-elements'
 
 export default function Home() {
+  const router = useRouter()
   const [inputText, setInputText] = useState('')
   const [selectedTag, setSelectedTag] = useState('')
+  const [loading, setLoading] = useState(false)
 
   const presetTags = [
     '待办事项应用',
@@ -16,17 +20,41 @@ export default function Home() {
     '日历应用',
   ]
 
+  /**
+   * 处理标签点击
+   * 将标签内容填充到输入框
+   */
   const handleTagPress = (tag: string) => {
     setSelectedTag(tag)
     setInputText(`请帮我生成一个${tag}`)
   }
 
+  /**
+   * 处理创建应用
+   * 调用API创建应用并跳转到对话页面
+   */
   const handleCreateApp = () => {
-    if (!inputText.trim()) {
+    const text = inputText.trim()
+    if (!text) {
       alert('请输入提示词')
       return
     }
-    console.log('创建应用，提示词:', inputText)
+
+    setLoading(true)
+
+    addApp({
+      appName: text,
+      initPrompt: text,
+    }).then(res => {
+      const appId = res.data
+      console.log('应用ID：', appId, '类型：', typeof appId)
+      router.push({ pathname: '/code/chat', params: { appId: appId } })
+    }).catch(err => {
+      console.error('创建应用失败：', err)
+      alert('创建应用失败')
+    }).finally(() => {
+      setLoading(false)
+    })
   }
 
   return (
@@ -35,13 +63,13 @@ export default function Home() {
         <View style={styles.header}>
           <Text style={styles.title}>AI 应用生成平台</Text>
         </View>
-        
+
         <View style={styles.inputContainer}>
           <View style={styles.inputWrapper}>
             <View style={styles.iconContainer}>
               <Icon
-                name="pencil"
-                type="font-awesome"
+                name="edit"
+                type="material"
                 size={24}
                 color="#666"
               />
@@ -97,9 +125,19 @@ export default function Home() {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.createButton} onPress={handleCreateApp}>
-          <Icon name="rocket" type="font-awesome" size={24} color="#fff" />
-          <Text style={styles.createButtonText}>创建应用</Text>
+        <TouchableOpacity
+          style={[styles.createButton, loading && styles.createButtonDisabled]}
+          onPress={handleCreateApp}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#667eea" size="small" />
+          ) : (
+            <Icon name="rocket-launch" type="material" size={24} color="#fff" />
+          )}
+          <Text style={styles.createButtonText}>
+            {loading ? '创建中...' : '创建应用'}
+          </Text>
         </TouchableOpacity>
       </View>
     </HomeBackground>
@@ -210,6 +248,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+  },
+  createButtonDisabled: {
+    opacity: 0.6,
   },
   createButtonText: {
     color: '#667eea',
