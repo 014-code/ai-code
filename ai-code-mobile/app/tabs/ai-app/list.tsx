@@ -7,11 +7,13 @@ import { getStaticPreviewUrl } from '@/utils/deployUrl'
 import React, { useEffect, useState } from 'react'
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { SearchBar } from 'react-native-elements'
+import { useRouter } from 'expo-router'
 
 /**
  * 全部应用页
  */
 export default function List() {
+    const router = useRouter()
     // 精选应用数据
     const [appData, setAppData] = useState<AppVO[]>([])
     // 加载状态
@@ -121,7 +123,7 @@ export default function List() {
         console.log("app.deployKey:", app.deployKey);
 
         if (app.id && app.codeGenType && app.deployKey) {
-            const url = getStaticPreviewUrl(app.codeGenType, app.id.toString(), app.deployKey)
+            const url = getStaticPreviewUrl(app.codeGenType, app.id, app.deployKey)
             console.log("生成的URL:", url);
             console.log("设置showWebView为true");
             setWebViewUrl(url)
@@ -129,6 +131,17 @@ export default function List() {
             console.log("showWebView状态:", showWebView);
         } else {
             alert('应用信息不完整，无法预览')
+        }
+    }
+
+    /**
+     * 查看对话
+     */
+    const handleViewConversation = (app: AppVO) => {
+        if (app.id) {
+            router.push({ pathname: '/code/chat', params: { appId: app.id.toString() } })
+        } else {
+            alert('应用ID不存在，无法查看对话')
         }
     }
 
@@ -141,6 +154,7 @@ export default function List() {
                 app={item}
                 key={index}
                 onViewApp={() => handleViewApp(item)}
+                onViewConversation={() => handleViewConversation(item)}
             />
         )
     }

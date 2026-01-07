@@ -26,7 +26,7 @@ export default function AppWebView({ uri, onClose }: AppWebViewProps) {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-          <Icon name="arrow-left" type="font-awesome" size={20} color="#333" />
+          <Icon name="arrow-back" type="material" size={20} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>应用预览</Text>
       </View>

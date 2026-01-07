@@ -4,7 +4,6 @@ import { Link } from 'expo-router';
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button, Icon, Input } from 'react-native-elements';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { register } from '../../api/user';
 
 type RegisterParam = {
@@ -65,7 +64,7 @@ export default function Register() {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             <StarryBackground>
                 <View style={styles.imageContainer}>
                     <View style={styles.titleOverlay}>
@@ -81,7 +80,7 @@ export default function Register() {
                                 label="账号"
                                 placeholder='请输入你的账号'
                                 value={loginForm.userAccount}
-                                leftIcon={<Icon name="person" size={24} />}
+                                leftIcon={<Icon name="person" type="material" size={24} />}
                                 onChangeText={(text) => setLoginForm({ ...loginForm, userAccount: text })}
                                 containerStyle={styles.inputContainer}
                             />
@@ -91,7 +90,7 @@ export default function Register() {
                                 placeholder='请输入你的密码'
                                 secureTextEntry
                                 onChangeText={(text) => setLoginForm({ ...loginForm, userPassword: text })}
-                                rightIcon={<Icon name="eye" size={24} />}
+                                rightIcon={<Icon name="visibility" type="material" size={24} />}
                                 containerStyle={styles.inputContainer}
                             />
                             <Input
@@ -100,7 +99,7 @@ export default function Register() {
                                 placeholder='请再次输入你的密码'
                                 secureTextEntry
                                 onChangeText={(text) => setLoginForm({ ...loginForm, checkPassword: text })}
-                                rightIcon={<Icon name="eye" size={24} />}
+                                rightIcon={<Icon name="visibility" type="material" size={24} />}
                                 containerStyle={styles.inputContainer}
                             />
                             <Button title="注册" onPress={handleSubmit} />

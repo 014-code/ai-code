@@ -23,18 +23,18 @@ const AppEditPage: React.FC = () => {
   const canEdit = () =>
     currentUser?.userRole === 'admin' || appInfo?.userId === currentUser?.id;
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = (values: any) => {
     if (!canEdit()) return message.error('无权限');
     setLoading(true);
-    try {
-      if (currentUser?.userRole === 'admin') await updateAppByAdmin({...values, id: appId});
-      else await updateApp({...values, id: appId});
+    const updateFn = currentUser?.userRole === 'admin' ? updateAppByAdmin : updateApp;
+    updateFn({...values, id: appId}).then(() => {
       message.success('已保存');
       history.push('/home');
-    } catch (e: any) {
+    }).catch((e: any) => {
       message.error('保存失败：' + e.message);
-    }
-    setLoading(false);
+    }).finally(() => {
+      setLoading(false);
+    });
   };
 
   if (!canEdit()) return (

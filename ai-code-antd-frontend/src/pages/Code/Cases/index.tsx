@@ -8,6 +8,11 @@ const { Title, Paragraph } = Typography;
 const { Search } = Input;
 const { Option } = Select;
 
+const PAGE_MAX_WIDTH = 1900;
+const PAGE_SIZE = 24;
+const INTERSECTION_THRESHOLD = 0.1;
+const SEARCH_DELAY = 100;
+
 const CasesPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -32,7 +37,7 @@ const CasesPage: React.FC = () => {
     try {
       const params: any = {
         pageNum: isLoadMore ? pageNum : 1,
-        pageSize: 24,
+        pageSize: PAGE_SIZE,
         appType: selectedAppType === 'all' ? undefined : selectedAppType,
         searchKey: searchKey || undefined,
         sortField: sortField || undefined,
@@ -63,41 +68,20 @@ const CasesPage: React.FC = () => {
     setLoadingMore(false);
   }, [selectedAppType, searchKey, sortField, sortOrder, pageNum, apps.length]);
 
-  useEffect(() => {
-    listAllAppTypes().then(({ data }) => setAppTypes(data || []));
-  }, []);
-
-  useEffect(() => {
-    fetchApps(false);
-  }, [selectedAppType, sortField, sortOrder]);
+  const loadAppTypes = async () => {
+    try {
+      const { data } = await listAllAppTypes();
+      setAppTypes(data || []);
+    } catch (error: any) {
+      message.error('加载应用类型失败');
+    }
+  };
 
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore) {
       fetchApps(true);
     }
   }, [loadingMore, hasMore, fetchApps]);
-
-  useEffect(() => {
-    const element = loadMoreRef.current;
-    if (!element) return;
-
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          loadMore();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    observerRef.current.observe(element);
-
-    return () => {
-      if (observerRef.current) {
-        observerRef.current.disconnect();
-      }
-    };
-  }, [loadMore]);
 
   const handleSearch = (value: string) => {
     setSearchKey(value);
@@ -108,7 +92,7 @@ const CasesPage: React.FC = () => {
       try {
         const params: any = {
           pageNum: 1,
-          pageSize: 24,
+          pageSize: PAGE_SIZE,
           appType: selectedAppType === 'all' ? undefined : selectedAppType,
           searchKey: value || undefined,
           sortField: sortField || undefined,
@@ -129,22 +113,50 @@ const CasesPage: React.FC = () => {
         message.error(error?.message ?? '加载失败');
       }
       setLoading(false);
-    }, 100);
+    }, SEARCH_DELAY);
   };
 
   const handleCopy = (_text: string) => undefined;
 
+  useEffect(() => {
+    loadAppTypes();
+  }, []);
+
+  useEffect(() => {
+    fetchApps(false);
+  }, [selectedAppType, sortField, sortOrder]);
+
+  useEffect(() => {
+    const element = loadMoreRef.current;
+    if (!element) return;
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMore();
+        }
+      },
+      { threshold: INTERSECTION_THRESHOLD }
+    );
+
+    observerRef.current.observe(element);
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [loadMore]);
+
   return (
-    <div style={{ padding: 32, maxWidth: 1900, margin: '0 auto' }}>
+    <div style={{ padding: 32, maxWidth: PAGE_MAX_WIDTH, margin: '0 auto' }}>
       <Title level={2}>全部案例</Title>
       <Paragraph type="secondary">
         浏览精选案例，直接体验部署效果或复制提示词继续创作。
       </Paragraph>
 
-      {/* 搜索和筛选栏 */}
       <Card style={{ marginBottom: 24 }}>
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
-          {/* 搜索框 */}
           <Search
             placeholder="搜索应用名称或描述"
             allowClear
@@ -154,14 +166,12 @@ const CasesPage: React.FC = () => {
             onChange={(e) => {
               const value = e.target.value;
               setSearchKey(value);
-              // 清空时立即搜索
               if (!value) {
                 handleSearch('');
               }
             }}
           />
 
-          {/* 类型选择和排序 */}
           <Space wrap>
             <span>应用类型：</span>
             <Select

@@ -31,29 +31,23 @@ const UserRegisterPage: React.FC = () => {
    * 提交注册
    * @param values
    */
-  const handleSubmit = async (values: API.UserRegisterRequest) => {
-    // 前端校验
-    // 1. 判断密码是否一致
+  const handleSubmit = (values: API.UserRegisterRequest) => {
     const { userPassword, checkPassword } = values;
     if (userPassword !== checkPassword) {
       message.error('二次输入的密码不一致');
       return;
     }
 
-    try {
-      // 注册
-      await userRegister({
-        ...values,
-      });
-
+    userRegister({
+      ...values,
+    }).then(() => {
       const defaultLoginSuccessMessage = '注册成功！';
       message.success(defaultLoginSuccessMessage);
       history.push('/user/login');
-      return;
-    } catch (error: any) {
+    }).catch((error: any) => {
       const defaultLoginFailureMessage = `注册失败，${error.message}`;
       message.error(defaultLoginFailureMessage);
-    }
+    });
   };
 
   return (

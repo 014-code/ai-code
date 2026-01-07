@@ -160,23 +160,23 @@ const ChatHistoryAdminPage: React.FC = () => {
             <PlusOutlined/> 新建对话历史
           </Button>,
         ]}
-        request={async (params, sort, filter) => {
+        request={(params, sort, filter) => {
           const sortField = Object.keys(sort)?.[0];
           const sortOrder = sort?.[sortField] ?? undefined;
 
-          const {data, code} = await listAllChatHistoryByPage({
+          return listAllChatHistoryByPage({
             ...params,
             sortField,
             sortOrder,
             ...filter,
-          } as API.ChatHistoryQueryRequest);
-
-          return {
-            success: code === 0,
-            data: data?.records || [],
-            // @ts-ignore
-            total: data?.total || 0,
-          };
+          } as API.ChatHistoryQueryRequest).then(({data, code}) => {
+            return {
+              success: code === 0,
+              data: data?.records || [],
+              // @ts-ignore
+              total: data?.total || 0,
+            };
+          });
         }}
         columns={columns}
       />

@@ -27,22 +27,21 @@ const UserAdminPage: React.FC = () => {
    *
    * @param row
    */
-  const handleDelete = async (row: API.User) => {
+  const handleDelete = (row: API.User) => {
     const hide = message.loading('正在删除');
     if (!row) return true;
-    try {
-      await deleteUser({
-        id: row.id as any,
-      });
+    deleteUser({
+      id: row.id as any,
+    }).then(() => {
       hide();
       message.success('删除成功');
       actionRef?.current?.reload();
       return true;
-    } catch (error: any) {
+    }).catch((error: any) => {
       hide();
       message.error('删除失败，' + error.message);
       return false;
-    }
+    });
   };
 
   /**

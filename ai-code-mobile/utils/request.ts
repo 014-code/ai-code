@@ -12,7 +12,7 @@ const BASE_URL = Platform.OS === 'android'
 
 export default async function (options: any = {}) {
 	let {
-		url = "", method = "GET", data = {}, header = {}, isToken = true
+		url = "", method = "GET", data = {}, params = {}, header = {}, isToken = true
 	} = options
 
 	// 请求拦截
@@ -36,22 +36,23 @@ export default async function (options: any = {}) {
 		headers: defaultHeaders,
 	}
 
-	// 移除这里的调用，应该在响应拦截中处理
-
 	// 处理 GET 请求的查询参数
-	if (method.toUpperCase() === 'GET' && data) {
-		const params = new URLSearchParams();
-		Object.keys(data).forEach(key => {
-			if (data[key] !== null && data[key] !== undefined) {
-				params.append(key, data[key]);
+	if (method.toUpperCase() === 'GET') {
+		const queryData = params || data
+		if (queryData) {
+			const queryParams = new URLSearchParams();
+			Object.keys(queryData).forEach(key => {
+				if (queryData[key] !== null && queryData[key] !== undefined) {
+					queryParams.append(key, String(queryData[key]));
+				}
+			});
+			const queryString = queryParams.toString();
+			if (queryString) {
+				url += (url.includes('?') ? '&' : '?') + queryString;
 			}
-		});
-		const queryString = params.toString();
-		if (queryString) {
-			url += (url.includes('?') ? '&' : '?') + queryString;
+			console.log('GET 请求 URL:', BASE_URL + url);
+			console.log('GET 请求参数:', queryData);
 		}
-		console.log('GET 请求 URL:', BASE_URL + url);
-		console.log('GET 请求参数:', data);
 	}
 
 	// 如果是 POST、PUT、PATCH 请求且有数据，添加到 body
