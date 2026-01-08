@@ -1,5 +1,6 @@
 import { addApp } from '@/api/app'
 import HomeBackground from '@/components/HomeBackground'
+import HomeSkeleton from '@/components/HomeSkeleton'
 import { useRouter } from 'expo-router'
 import React, { useState } from 'react'
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
@@ -48,7 +49,13 @@ export default function Home() {
     }).then(res => {
       const appId = res.data
       console.log('应用ID：', appId, '类型：', typeof appId)
-      router.push({ pathname: '/code/chat', params: { appId: appId } })
+      router.push({ 
+        pathname: '/code/chat', 
+        params: { 
+          appId: appId,
+          prompt: text
+        } 
+      })
     }).catch(err => {
       console.error('创建应用失败：', err)
       alert('创建应用失败')

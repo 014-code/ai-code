@@ -56,6 +56,8 @@ const ChatPage: React.FC = () => {
   const [downloading, setDownloading] = useState<boolean>(false);          // 下载代码状态
   const [isEditMode, setIsEditMode] = useState<boolean>(false);            // 是否处于编辑模式
   const [selectedElements, setSelectedElements] = useState<ElementInfo[]>([]); // 选中的元素列表
+  const [previewLoading, setPreviewLoading] = useState<boolean>(false);    // 预览加载状态
+  const [showPreview, setShowPreview] = useState<boolean>(false);          // 是否显示预览
 
   // ==================== Ref引用 ====================
   const messagesEndRef = useRef<HTMLDivElement>(null);                      // 消息列表底部引用，用于自动滚动
@@ -124,12 +126,31 @@ const ChatPage: React.FC = () => {
     getAppVoById({ id: appId }).then(appRes => {
       if (appRes.code === 0) {
         setAppInfo(appRes.data);
+        // 如果应用已经有部署地址，直接显示预览
+        if (appRes.data?.deployKey) {
+          checkAndShowWebsite(appRes.data);
+        }
       }
     }).catch(error => {
       message.error('获取应用信息失败：' + error.message);
     });
 
     loadLatestChatHistory();
+
+    // 检查URL参数中是否有提示词，如果有则自动发送
+    const urlParams = new URLSearchParams(window.location.search);
+    const promptFromUrl = urlParams.get('prompt');
+    if (promptFromUrl) {
+      // 延迟一下，确保页面数据已加载
+      setTimeout(() => {
+        handleSendMessage(promptFromUrl, true).catch(error => {
+          console.error('自动发送提示词失败：', error);
+        });
+        // 清除URL中的prompt参数
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+      }, 500);
+    }
   };
 
   /**
@@ -148,14 +169,15 @@ const ChatPage: React.FC = () => {
         );
         setMessages(sortedMessages);
 
-        // 如果有至少2条消息，检查是否需要显示网站预览
+        // 如果有消息，检查是否需要显示网站预览
         if (sortedMessages.length >= 2) {
           checkAndShowWebsite();
         }
 
         // 如果没有消息且当前用户是应用创建者，自动发送初始消息
+        // 只有当应用是新创建的（没有部署地址）时才自动发送
         if (sortedMessages.length === 0 && appInfo && loginUser &&
-          appInfo.userId === loginUser.id) {
+          appInfo.userId === loginUser.id && !appInfo.deployKey) {
           autoSendInitMessage();
         }
       }
@@ -216,10 +238,22 @@ const ChatPage: React.FC = () => {
    * 检查并显示网站
    * 检查是否需要显示部署后的网站预览
    */
-  const checkAndShowWebsite = () => {
-    // 检查是否需要显示网站预览
-    if (!deployUrl && appId) {
-      // TODO: 实现显示网站预览的逻辑
+  const checkAndShowWebsite = (appData?: any) => {
+    // 使用传入的应用数据，如果没有传入则使用 state 中的 appInfo
+    const currentAppInfo = appData || appInfo;
+    
+    // 如果应用已经有部署地址，直接显示预览
+    if (currentAppInfo?.deployKey && currentAppInfo?.codeGenType && currentAppInfo?.id) {
+      const previewUrl = getStaticPreviewUrl(
+        currentAppInfo.codeGenType,
+        String(currentAppInfo.id),
+        currentAppInfo.deployKey
+      );
+      if (previewUrl) {
+        setDeployUrl(previewUrl);
+        setShowPreview(true);
+        setPreviewLoading(false);
+      }
     }
   };
 
@@ -293,135 +327,152 @@ const ChatPage: React.FC = () => {
    * 发送用户消息到AI，并通过SSE流式接收AI的回复
    * @param customMessage 自定义消息内容（可选）
    * @param isAutoSend 是否为自动发送（用于初始消息）
+   * @returns Promise<void>
    */
-  const handleSendMessage = (customMessage?: string, isAutoSend = false) => {
-    if (!appId) {
-      message.error('应用不存在');
-      return;
-    }
-
-    const normalized = typeof customMessage === 'string' ? customMessage : undefined;
-    const messageContent = (normalized ?? inputValue).trim();
-    if (!messageContent) {
-      message.warning('请输入消息内容');
-      return;
-    }
-
-    if (!isAutoSend) {
-      setInputValue('');
-    }
-
-    // 创建用户消息对象
-    const userMessage: API.ChatHistoryVO = {
-      id: Date.now(),
-      appId: appId,
-      messageType: 'user',
-      messageContent: messageContent,
-      createTime: new Date().toISOString(),
-      user: loginUser as any
-    };
-
-    console.log("应用id！！！", userMessage.appId);
-
-    // 将用户消息添加到消息列表
-    setMessages(prev => [...prev, userMessage]);
-    setLoading(true);
-
-    // 创建AI消息占位符
-    const aiMessageId = Date.now() + 1;
-    const aiMessage: API.ChatHistoryVO = {
-      id: aiMessageId,
-      appId: appId,
-      messageType: 'ai',
-      messageContent: '',
-      createTime: new Date().toISOString(),
-    };
-
-    // 将AI消息占位符添加到消息列表
-    setMessages(prev => [...prev, aiMessage]);
-
-    // 构建SSE连接URL
-    const url = `/api/workflow/execute-flux?prompt=${messageContent}&appId=${appId}`;
-
-    // 初始化SSE连接相关变量
-    let eventSource: EventSource | null = null;
-    let closed = false;
-    let aiResponse = '';
-
-    // 关闭SSE连接的辅助函数
-    const closeES = () => {
-      if (!closed && eventSource) {
-        eventSource.close();
-        closed = true;
+  const handleSendMessage = (customMessage?: string, isAutoSend = false): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      if (!appId) {
+        message.error('应用不存在');
+        reject(new Error('应用不存在'));
+        return;
       }
-    };
 
-    // 创建SSE连接
-    eventSource = new EventSource(url);
-    // SSE连接建立时的回调
-    eventSource.onopen = () => console.log('SSE 连接已建立');
-    // 接收SSE消息的回调
-    eventSource.onmessage = (event: MessageEvent) => {
-      let chunk = '';
-      try {
-        // 尝试解析JSON格式的消息
-        const parsed = typeof event.data === 'string' ? JSON.parse(event.data) : null;
-        if (parsed && typeof parsed.d === 'string') {
-          chunk = parsed.d;
+      const normalized = typeof customMessage === 'string' ? customMessage : undefined;
+      const messageContent = (normalized ?? inputValue).trim();
+      if (!messageContent) {
+        message.warning('请输入消息内容');
+        reject(new Error('请输入消息内容'));
+        return;
+      }
+
+      if (!isAutoSend) {
+        setInputValue('');
+      }
+
+      // 创建用户消息对象
+      const userMessage: API.ChatHistoryVO = {
+        id: Date.now(),
+        appId: appId,
+        messageType: 'user',
+        messageContent: messageContent,
+        createTime: new Date().toISOString(),
+        user: loginUser as any
+      };
+
+      console.log("应用id！！！", userMessage.appId);
+
+      // 将用户消息添加到消息列表
+      setMessages(prev => [...prev, userMessage]);
+      setLoading(true);
+
+      // 创建AI消息占位符
+      const aiMessageId = Date.now() + 1;
+      const aiMessage: API.ChatHistoryVO = {
+        id: aiMessageId,
+        appId: appId,
+        messageType: 'ai',
+        messageContent: '',
+        createTime: new Date().toISOString(),
+      };
+
+      // 将AI消息占位符添加到消息列表
+      setMessages(prev => [...prev, aiMessage]);
+
+      // 构建SSE连接URL
+      const url = `/api/workflow/execute-flux?prompt=${messageContent}&appId=${appId}`;
+
+      // 初始化SSE连接相关变量
+      let eventSource: EventSource | null = null;
+      let closed = false;
+      let aiResponse = '';
+
+      // 关闭SSE连接的辅助函数
+      const closeES = () => {
+        if (!closed && eventSource) {
+          eventSource.close();
+          closed = true;
         }
-      } catch (_) {
-        // 如果解析失败，直接使用原始数据
-        if (typeof event.data === 'string') {
-          chunk = event.data;
+      };
+
+      // 创建SSE连接
+      eventSource = new EventSource(url);
+      // SSE连接建立时的回调
+      eventSource.onopen = () => console.log('SSE 连接已建立');
+      // 接收SSE消息的回调
+      eventSource.onmessage = (event: MessageEvent) => {
+        let chunk = '';
+          // 尝试解析JSON格式的消息
+          const parsed = typeof event.data === 'string' ? JSON.parse(event.data) : null;
+          if (parsed && typeof parsed.d === 'string') {
+            chunk = parsed.d;
+          }
+        // 累积AI回复内容并更新消息列表
+        if (chunk) {
+          aiResponse += chunk;
+          setMessages(prev => prev.map(msg =>
+            msg.id === aiMessageId ? { ...msg, messageContent: aiResponse } : msg
+          ));
         }
-      }
-      // 累积AI回复内容并更新消息列表
-      if (chunk) {
-        aiResponse += chunk;
-        setMessages(prev => prev.map(msg =>
-          msg.id === aiMessageId ? { ...msg, messageContent: aiResponse } : msg
-        ));
-      }
-    };
+      };
 
-    // 监听SSE完成事件
-    eventSource.addEventListener('done', () => {
-      closeES();
-      setLoading(false);
+      // 监听SSE完成事件
+      eventSource.addEventListener('done', () => {
+        closeES();
+        setLoading(false);
 
-      if (messages.length + 2 >= 2) {
-        checkAndShowWebsite();
-      }
+        if (messages.length + 2 >= 2) {
+          checkAndShowWebsite();
+        }
+
+        // 自动部署项目
+        handleDeploy().then(() => {
+          resolve();
+        }).catch((error) => {
+          console.error('自动部署失败：', error);
+          message.error('自动部署失败：' + (error.message || '未知错误'));
+          resolve();
+        });
+      });
+
+      // 监听SSE错误事件
+      eventSource.onerror = (event) => {
+        closeES();
+        setLoading(false);
+        message.error('AI 生成中断或网络错误');
+        console.error('SSE 连接出错', event);
+        reject(new Error('AI 生成中断或网络错误'));
+      };
     });
-
-    // 监听SSE错误事件
-    eventSource.onerror = (event) => {
-      closeES();
-      setLoading(false);
-      message.error('AI 生成中断或网络错误');
-      console.error('SSE 连接出错', event);
-    };
   };
 
   /**
    * 处理部署应用
    * 调用后端API部署当前应用，获取部署后的访问URL
+   * @returns Promise<void>
    */
-  const handleDeploy = () => {
-    if (!appId) return;
-    setDeploying(true);
-
-    deployApp({ appId }).then(res => {
-      if (res?.data) {
-        setDeployUrl(res.data);
-        message.success('部署成功');
-      } else {
-        throw new Error('无部署地址');
+  const handleDeploy = (): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      if (!appId) {
+        message.error('应用不存在');
+        reject(new Error('应用不存在'));
+        return;
       }
-    }).catch(e => {
-      message.error('部署失败：' + (e.message || e));
-    }).finally(() => {
-      setDeploying(false);
+      setDeploying(true);
+      setPreviewLoading(true);
+      setShowPreview(false);
+
+      deployApp({ appId }).then(res => {
+        if (res?.data) {
+          setDeployUrl(res.data);
+          message.success('部署成功');
+          setShowPreview(true);
+          resolve();
+        }
+      }).catch(err => {
+        message.error(err.data?.message || '部署失败');
+      }).finally(() => {
+        setDeploying(false);
+      });
     });
   };
 
@@ -610,9 +661,28 @@ const ChatPage: React.FC = () => {
           background: '#fafafa',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center'
+          justifyContent: 'center',
+          position: 'relative'
         }}>
-          {appInfo?.codeGenType && appInfo?.id ? (
+          {previewLoading && (
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: '#fafafa',
+              zIndex: 1
+            }}>
+              <Spin size="large" />
+              <Text style={{ marginTop: 16, color: '#666' }}>预览加载中...</Text>
+            </div>
+          )}
+          {showPreview && appInfo?.codeGenType && appInfo?.id ? (
             <iframe
               ref={iframeRef}
               title="已部署应用预览"
@@ -620,6 +690,7 @@ const ChatPage: React.FC = () => {
               sandbox="allow-scripts allow-same-origin"
               src={getPreviewUrlWithVisualEdit()}
               onLoad={() => {
+                setPreviewLoading(false);
                 if (visualEditorRef.current) {
                   visualEditorRef.current.onIframeLoad();
                 }
@@ -628,7 +699,9 @@ const ChatPage: React.FC = () => {
           ) : (
             <Card
               style={{ height: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Text type="secondary">请先点击上方"部署应用"按钮，完成部署后右侧将显示应用页面</Text>
+              <Text type="secondary">
+                {previewLoading ? '预览加载中...' : '请先发送消息，AI将自动生成并部署应用'}
+              </Text>
             </Card>
           )}
         </div>

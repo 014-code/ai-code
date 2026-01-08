@@ -1,5 +1,5 @@
 import { Icon } from 'react-native-elements';
-import { Tabs } from "expo-router";
+import { Tabs, Stack } from "expo-router";
 
 /**
  * 底部栏布局组件
@@ -30,11 +30,11 @@ export default function TabLayout() {
                 options={{
                     title: "对话",
                     tabBarIcon: ({ color, focused }) => (
-                        <Icon 
-                            name="chat" 
-                            type="material" 
-                            size={24} 
-                            color={color} 
+                        <Icon
+                            name="chat"
+                            type="material"
+                            size={24}
+                            color={color}
                         />
                     ),
                     headerShown: false,
@@ -45,11 +45,11 @@ export default function TabLayout() {
                 options={{
                     title: "应用市场",
                     tabBarIcon: ({ color, focused }) => (
-                        <Icon 
-                            name="apps" 
-                            type="material" 
-                            size={24} 
-                            color={color} 
+                        <Icon
+                            name="apps"
+                            type="material"
+                            size={24}
+                            color={color}
                         />
                     ),
                     headerShown: false,
@@ -60,16 +60,30 @@ export default function TabLayout() {
                 options={{
                     title: "我的",
                     tabBarIcon: ({ color, focused }) => (
-                        <Icon 
-                            name="person" 
-                            type="material" 
-                            size={24} 
-                            color={color} 
+                        <Icon
+                            name="person"
+                            type="material"
+                            size={24}
+                            color={color}
                         />
                     ),
                     headerShown: false,
                 }}
             />
+            <Stack>
+                <Stack.Screen
+                    name="chat"
+                    options={{
+                        headerShown: false,
+                    }}
+                />
+                <Stack.Screen
+                    name="webview"
+                    options={{
+                        headerShown: false,
+                    }}
+                />
+            </Stack>
         </Tabs>
     );
 }

@@ -1,23 +1,30 @@
 import { getAppVOById, listLatestChatHistory } from '@/api/chat'
+import { deployApp } from '@/api/app'
 import { AppVO } from '@/api/vo/app'
 import { ChatHistoryVO } from '@/api/vo/chat'
 import { getStaticPreviewUrl } from '@/utils/deployUrl'
+import { getToken } from '@/utils/cookies'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useEffect, useRef, useState } from 'react'
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native'
-import { Avatar, Button, Icon, Overlay } from 'react-native-elements'
+import { Avatar, Button, Icon } from 'react-native-elements'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+
+const BASE_URL = Platform.OS === 'android' 
+  ? "http://10.0.2.2:8123" 
+  : "http://localhost:8123"
 
 export default function ChatPage() {
   const router = useRouter()
-  const { appId } = useLocalSearchParams<{ appId: string }>()
+  const { appId, prompt } = useLocalSearchParams<{ appId: string; prompt?: string }>()
   const insets = useSafeAreaInsets()
   
   const [messages, setMessages] = useState<ChatHistoryVO[]>([])
   const [inputText, setInputText] = useState('')
   const [loading, setLoading] = useState(false)
   const [appInfo, setAppInfo] = useState<AppVO>()
-  const [showDeploy, setShowDeploy] = useState(false)
+  const [deploying, setDeploying] = useState(false)
+  const [isAutoSend, setIsAutoSend] = useState(false)
   const scrollViewRef = useRef<ScrollView>(null)
 
   useEffect(() => {
@@ -71,6 +78,15 @@ export default function ChatPage() {
           new Date(a.createTime!).getTime() - new Date(b.createTime!).getTime()
         )
         setMessages(sortedMessages)
+
+        // 如果有prompt参数且应用是新创建的（没有部署地址），自动发送消息
+        if (prompt && sortedMessages.length === 0) {
+          setIsAutoSend(true)
+          setTimeout(() => {
+            setInputText(prompt)
+            handleSendMessage()
+          }, 500)
+        }
       }
     }).catch(err => {
       console.error('加载对话历史失败：', err)
@@ -81,7 +97,7 @@ export default function ChatPage() {
    * 处理发送消息
    * 创建用户消息，通过SSE获取AI响应
    */
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     const text = inputText.trim()
     if (!text) return
 
@@ -109,16 +125,20 @@ export default function ChatPage() {
 
     setMessages(prev => [...prev, aiMessage])
 
-    const url = `http://localhost:8101/api/workflow/execute-flux?prompt=${encodeURIComponent(text)}&appId=${appId}`
+    const url = `${BASE_URL}/api/workflow/execute-flux?prompt=${encodeURIComponent(text)}&appId=${appId}`
 
     let aiResponse = ''
 
-    fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'text/event-stream',
-      },
-    }).then(response => {
+    try {
+      const token = await getToken()
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'text/event-stream',
+          'Authorization': token || '',
+        },
+      })
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -173,23 +193,83 @@ export default function ChatPage() {
         }
       }
 
-      readStream()
-    }).catch(error => {
+      await readStream()
+
+      // 只有在自动发送时才自动部署
+      if (isAutoSend) {
+        await handleAutoDeploy()
+        setIsAutoSend(false)
+      }
+    } catch (error) {
       setLoading(false)
       console.error('创建 SSE 连接失败：', error)
-    })
+    }
+  }
+
+  /**
+   * 自动部署应用
+   * 在生成成功后自动调用部署接口，然后跳转到webview
+   */
+  const handleAutoDeploy = async () => {
+    if (!appId) {
+      console.error('应用ID不存在')
+      return
+    }
+
+    try {
+      setDeploying(true)
+      const res = await deployApp({ appId: Number(appId) })
+      
+      if (res.code === 0 && res.data) {
+        console.log('部署成功，地址：', res.data)
+        
+        // 更新应用信息
+        await loadAppInfo()
+        
+        // 跳转到webview页面
+        const previewUrl = getStaticPreviewUrl(
+          appInfo?.codeGenType || '',
+          String(appInfo?.id || ''),
+          res.data
+        )
+        
+        if (previewUrl) {
+          router.push({
+            pathname: '/code/webview',
+            params: { url: previewUrl }
+          })
+        }
+      }
+    } catch (error) {
+      console.error('自动部署失败：', error)
+      alert('自动部署失败：' + (error as Error).message)
+    } finally {
+      setDeploying(false)
+    }
   }
 
   /**
    * 处理部署应用
-   * 显示应用预览地址
+   * 直接跳转到webview页面
    */
   const handleDeploy = () => {
     if (!appInfo?.deployKey) {
       alert('应用未部署')
       return
     }
-    setShowDeploy(true)
+
+    const previewUrl = getStaticPreviewUrl(
+      appInfo.codeGenType || '',
+      String(appInfo.id || ''),
+      appInfo.deployKey
+    )
+
+    if (previewUrl) {
+      router.push({
+        pathname: '/code/webview',
+        params: { url: previewUrl }
+      })
+    }
   }
 
   /**
@@ -286,20 +366,6 @@ export default function ChatPage() {
           <Icon name="paper-plane" type="font-awesome" size={20} color="#fff" />
         </TouchableOpacity>
       </View>
-
-      <Overlay
-        isVisible={showDeploy}
-        onBackdropPress={() => setShowDeploy(false)}
-        overlayStyle={styles.overlay}
-      >
-        <Text style={styles.overlayTitle}>应用已部署</Text>
-        <Text style={styles.overlayText}>预览地址：{getStaticPreviewUrl(appInfo?.codeGenType || '', String(appInfo?.id || ''), appInfo?.deployKey || '')}</Text>
-        <Button
-          title="关闭"
-          onPress={() => setShowDeploy(false)}
-          buttonStyle={styles.closeButton}
-        />
-      </Overlay>
     </KeyboardAvoidingView>
   )
 }
@@ -401,26 +467,5 @@ const styles = {
   },
   sendButtonDisabled: {
     backgroundColor: '#ccc',
-  },
-  overlay: {
-    width: '80%',
-    padding: 24,
-    borderRadius: 12,
-  },
-  overlayTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  overlayText: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  closeButton: {
-    backgroundColor: '#667eea',
-    borderRadius: 8,
   },
 }

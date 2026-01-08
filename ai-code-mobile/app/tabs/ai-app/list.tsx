@@ -2,6 +2,7 @@ import { featuredList } from '@/api/app'
 import { AppQueryParams } from '@/api/params/appParams'
 import { AppVO } from '@/api/vo/app'
 import AppCard from '@/components/AppCard'
+import AppCardSkeleton from '@/components/AppCardSkeleton'
 import AppWebView from '@/components/AppWebView'
 import { getStaticPreviewUrl } from '@/utils/deployUrl'
 import React, { useEffect, useState } from 'react'
@@ -146,6 +147,16 @@ export default function List() {
     }
 
     /**
+     * 渲染骨架屏列表
+     */
+    const renderSkeletonList = () => {
+        const skeletons = Array.from({ length: 3 }, (_, index) => (
+            <AppCardSkeleton key={index} />
+        ))
+        return <View style={styles.listContent}>{skeletons}</View>
+    }
+
+    /**
      * 渲染应用卡片
      */
     const renderAppCard = ({ item, index }: { item: AppVO, index: number }) => {
@@ -208,9 +219,7 @@ export default function List() {
 
             {/* 应用列表 */}
             {loading && appData.length === 0 ? (
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#009dffff" />
-                </View>
+                renderSkeletonList()
             ) : (
                 <FlatList
                     data={appData}

@@ -4,7 +4,9 @@ import { getUserInfo, userLogout } from '@/api/user'
 import { AppVO } from '@/api/vo/app'
 import { LoginUserVO } from '@/api/vo/user'
 import AppCard from '@/components/AppCard'
+import AppCardSkeleton from '@/components/AppCardSkeleton'
 import AppWebView from '@/components/AppWebView'
+import MineSkeleton from '@/components/MineSkeleton'
 import { getStaticPreviewUrl } from '@/utils/deployUrl'
 import React, { useEffect, useState } from 'react'
 import { ActivityIndicator, Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native'
@@ -156,6 +158,13 @@ export default function Mine() {
         )
     }
 
+    const renderSkeletonList = () => {
+        const skeletons = Array.from({ length: 3 }, (_, index) => (
+            <AppCardSkeleton key={index} />
+        ))
+        return <View style={styles.listContent}>{skeletons}</View>
+    }
+
     const renderEmpty = () => {
         if (appLoading) return null
         return (
@@ -180,9 +189,7 @@ export default function Mine() {
     return (
         <View style={styles.container}>
             {loading ? (
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#009dffff" />
-                </View>
+                <MineSkeleton />
             ) : userInfo ? (
                 <View style={styles.contentContainer}>
                     <View style={styles.profileSection}>
@@ -229,9 +236,7 @@ export default function Mine() {
                         />
 
                         {appLoading && appData.length === 0 ? (
-                            <View style={styles.loadingContainer}>
-                                <ActivityIndicator size="large" color="#009dffff" />
-                            </View>
+                            renderSkeletonList()
                         ) : (
                             <FlatList
                                 data={appData}

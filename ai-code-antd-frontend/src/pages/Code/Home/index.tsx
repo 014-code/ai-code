@@ -32,6 +32,7 @@ const HomePage: React.FC = () => {
   const [myAppsPageNum, setMyAppsPageNum] = useState(1);
   const [myAppsPageSize, setMyAppsPageSize] = useState(DEFAULT_MY_APPS_PAGE_SIZE);
   const [myAppsLoading, setMyAppsLoading] = useState(false);
+  const [featuredAppsLoading, setFeaturedAppsLoading] = useState(false);
   const [appTypes, setAppTypes] = useState<API.AppTypeVO[]>([]);
   const [selectedAppType, setSelectedAppType] = useState<string>('all');
   const [codeType, setCodeType] = useState<string>(CodeGenTypeEnum.HTML);
@@ -57,7 +58,8 @@ const HomePage: React.FC = () => {
     try {
       const { data: appId } = await addApp({ appName: prompt, appDesc: prompt, initPrompt: prompt, codeGenType: codeType });
       message.success('创建成功');
-      history.push(`/chat/${appId}`);
+      // 跳转到对话页，并传递提示词参数
+      history.push(`/chat/${appId}?prompt=${encodeURIComponent(prompt)}`);
     } catch (e: any) {
       message.error('创建失败:' + e.message);
     }
@@ -92,6 +94,7 @@ const HomePage: React.FC = () => {
    * 加载精选应用列表
    */
   const loadFeaturedApps = async (appType: string) => {
+    setFeaturedAppsLoading(true);
     try {
       const { data } = await listFeaturedAppVoByPage({
         pageNum: 1,
@@ -102,6 +105,7 @@ const HomePage: React.FC = () => {
     } catch (error: any) {
       message.error('加载精选应用失败');
     }
+    setFeaturedAppsLoading(false);
   };
 
   /**
@@ -225,7 +229,7 @@ const HomePage: React.FC = () => {
         </div>
         <Row gutter={16}>
           {featuredApps.map(app => (
-            <AppCard key={app.id} app={app} onCopy={inputCopy}>
+            <AppCard key={app.id} app={app} onCopy={inputCopy} loading={featuredAppsLoading}>
               <Tag icon={<CheckCircleOutlined />} color="success">
                 精选
               </Tag>
