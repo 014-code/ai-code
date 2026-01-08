@@ -1,5 +1,6 @@
 ﻿import type { RequestOptions } from '@@/plugin-request/request';
 import type { RequestConfig } from '@umijs/max';
+import { message } from 'antd';
 
 // 与后端约定的响应数据格式
 interface ResponseStructure {
@@ -38,7 +39,7 @@ export const requestConfig: RequestConfig = {
       // 响应
       const { data } = response as unknown as ResponseStructure;
       if (!data) {
-        throw new Error('服务异常');
+        message.error('服务异常');
       }
 
       // 错误码处理
@@ -52,11 +53,11 @@ export const requestConfig: RequestConfig = {
       ) {
         // 跳转至登录页
         window.location.href = `/user/login?redirect=${window.location.href}`;
-        throw new Error('请先登录');
+        message.error('请先登录');
       }
 
       if (code !== 0) {
-        throw new Error(data.message ?? '服务器错误');
+        message.error(data.message ?? '服务器错误');
       }
       return response;
     },

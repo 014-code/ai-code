@@ -110,7 +110,7 @@ export default function Register() {
                     </ScrollView>
                 </View>
             </StarryBackground>
-        </SafeAreaView>
+        </View>
     )
 }
 

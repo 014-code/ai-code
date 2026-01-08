@@ -101,7 +101,7 @@ public class AiCodeGeneratorServiceFactory {
                         .chatMemoryProvider(memoryId -> chatMemory)
                         .tools(getLangchainTools())
                         .inputGuardrails(new PromptSafetyInputGuardrail())
-                        .maxSequentialToolsInvocations(20)
+                        .maxSequentialToolsInvocations(10)
                         //出路工具调用幻觉问题
                         .hallucinatedToolNameStrategy(toolExecutionRequest ->
                                 ToolExecutionResultMessage.from(

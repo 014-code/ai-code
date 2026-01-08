@@ -30,8 +30,8 @@ export default function Login() {
                 //这边将整个用户信息对象存储进token
                 await setToken(res.data);
             }
-            //执行跳转
-            router.push('/tabs/ai-app/home');
+            //执行跳转，使用replace防止左划返回登录页
+            router.replace('/tabs/ai-app/home');
         } catch (err: any) {
             //提示出错
             alert(err.message || '登录失败');

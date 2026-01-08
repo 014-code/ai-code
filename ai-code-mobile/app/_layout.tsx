@@ -23,6 +23,8 @@ export default function RootLayout() {
             animation: 'fade',
           }} />
           <Stack.Screen name='tabs' options={{ headerShown: false }} />
+          <Stack.Screen name='code/chat' options={{ headerShown: false }} />
+          <Stack.Screen name='code/webview' options={{ headerShown: false }} />
         </Stack>
       </SafeAreaView>
     </SafeAreaProvider>
