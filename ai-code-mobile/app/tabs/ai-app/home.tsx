@@ -6,6 +6,10 @@ import React, { useState } from 'react'
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { Icon } from 'react-native-elements'
 
+/**
+ * 首页组件
+ * 提供AI应用生成平台的入口界面，用户可以输入提示词或选择预设标签来创建应用
+ */
 export default function Home() {
   const router = useRouter()
   const [inputText, setInputText] = useState('')
@@ -23,7 +27,8 @@ export default function Home() {
 
   /**
    * 处理标签点击
-   * 将标签内容填充到输入框
+   * 将标签内容填充到输入框，方便用户快速输入提示词
+   * @param tag - 选中的标签文本
    */
   const handleTagPress = (tag: string) => {
     setSelectedTag(tag)
@@ -33,6 +38,7 @@ export default function Home() {
   /**
    * 处理创建应用
    * 调用API创建应用并跳转到对话页面
+   * 包含输入验证、API调用、错误处理和页面跳转
    */
   const handleCreateApp = () => {
     const text = inputText.trim()
