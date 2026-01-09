@@ -19,11 +19,19 @@ export default {
       // 配置了这个可以从 http 代理到 https
       // 依赖 origin 的功能可能需要这个，比如 cookie
       changeOrigin: true,
-      // 关闭代理缓冲，确保 SSE 流式消息实时到达浏览器
-      onProxyRes(proxyRes, req, res) {
-        res.setHeader('Cache-Control', 'no-cache');
-        res.setHeader('X-Accel-Buffering', 'no');
+      // 禁用代理缓冲，确保 SSE 流式消息实时到达浏览器
+      onProxyRes: function (proxyRes, req, res) {
+        // 对所有响应都禁用缓冲，确保 SSE 流式消息实时到达浏览器
+        proxyRes.headers['Cache-Control'] = 'no-cache, no-transform';
+        proxyRes.headers['X-Accel-Buffering'] = 'no';
+        proxyRes.headers['Connection'] = 'keep-alive';
+        // 禁用压缩，避免压缩导致的缓冲
+        delete proxyRes.headers['Content-Encoding'];
       },
+      // 对于所有请求，不要缓冲响应
+      selfHandleResponse: false,
+      // 禁用响应缓冲
+      buffer: false,
     },
   },
 

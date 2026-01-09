@@ -13,6 +13,11 @@ import { ActivityIndicator, Alert, FlatList, RefreshControl, StyleSheet, Text, V
 import { Avatar, Button, Divider, Icon, SearchBar } from 'react-native-elements'
 import { useRouter } from 'expo-router'
 
+/**
+ * 我的页面组件
+ * 展示用户个人信息、用户创建的应用列表
+ * 支持应用搜索、下拉刷新、上拉加载更多、应用预览和对话查看
+ */
 export default function Mine() {
     const router = useRouter()
     const [userInfo, setUserInfo] = useState<LoginUserVO | null>(null)
@@ -55,6 +60,10 @@ export default function Mine() {
         }
     }, [listParams, userInfo]);
 
+    /**
+     * 加载用户信息
+     * 调用API获取当前登录用户的详细信息
+     */
     function loadUserInfo() {
         setLoading(true)
         getUserInfo().then((res: any) => {
@@ -66,6 +75,11 @@ export default function Mine() {
         })
     }
 
+    /**
+     * 获取应用列表
+     * 根据查询参数获取用户创建的应用列表
+     * 支持分页加载和搜索过滤
+     */
     function getAppList() {
         setAppLoading(true)
         myAppList(listParams).then((res: any) => {
@@ -87,10 +101,19 @@ export default function Mine() {
         })
     }
 
+    /**
+     * 处理搜索输入
+     * 更新搜索关键词，触发防抖搜索
+     * @param text - 搜索关键词
+     */
     const handleSearch = (text: string) => {
         setSearchKeyword(text);
     }
 
+    /**
+     * 下拉刷新
+     * 重置页码并重新加载应用列表
+     */
     const onRefresh = () => {
         setRefreshing(true)
         setListParams(prev => ({
@@ -99,6 +122,10 @@ export default function Mine() {
         }));
     }
 
+    /**
+     * 加载更多
+     * 当滚动到底部时加载下一页数据
+     */
     const loadMore = () => {
         if (!appLoading && hasMore && appData.length > 0) {
             setListParams(prev => ({
@@ -108,6 +135,11 @@ export default function Mine() {
         }
     }
 
+    /**
+     * 查看应用预览
+     * 在WebView中预览应用效果
+     * @param app - 应用信息对象
+     */
     const handleViewApp = (app: AppVO) => {
         if (app.id && app.codeGenType && app.deployKey) {
             const url = getStaticPreviewUrl(app.codeGenType, app.id.toString(), app.deployKey)
@@ -118,6 +150,11 @@ export default function Mine() {
         }
     }
 
+    /**
+     * 查看应用对话
+     * 跳转到应用对话页面
+     * @param app - 应用信息对象
+     */
     const handleViewConversation = (app: AppVO) => {
         if (app.id) {
             router.push({ pathname: '/code/chat', params: { appId: app.id.toString() } })
@@ -126,6 +163,10 @@ export default function Mine() {
         }
     }
 
+    /**
+     * 处理退出登录
+     * 显示确认对话框，确认后调用退出登录API
+     */
     const handleLogout = () => {
         Alert.alert(
             '退出登录',
@@ -147,6 +188,11 @@ export default function Mine() {
         )
     }
 
+    /**
+     * 渲染应用卡片
+     * @param item - 应用数据
+     * @param index - 索引
+     */
     const renderAppCard = ({ item, index }: { item: AppVO, index: number }) => {
         return (
             <AppCard 
@@ -158,6 +204,10 @@ export default function Mine() {
         )
     }
 
+    /**
+     * 渲染骨架屏列表
+     * 在加载时显示占位内容
+     */
     const renderSkeletonList = () => {
         const skeletons = Array.from({ length: 3 }, (_, index) => (
             <AppCardSkeleton key={index} />
@@ -165,6 +215,10 @@ export default function Mine() {
         return <View style={styles.listContent}>{skeletons}</View>
     }
 
+    /**
+     * 渲染空状态
+     * 当没有应用数据时显示提示信息
+     */
     const renderEmpty = () => {
         if (appLoading) return null
         return (
@@ -176,6 +230,10 @@ export default function Mine() {
         )
     }
 
+    /**
+     * 渲染列表底部加载状态
+     * 在加载更多时显示加载指示器
+     */
     const renderFooter = () => {
         if (!appLoading || appData.length === 0) return null
         return (

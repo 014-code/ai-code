@@ -5,6 +5,11 @@ import { WebView } from 'react-native-webview'
 import { Icon } from 'react-native-elements'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+/**
+ * WebView页面组件
+ * 用于在应用内预览生成的应用效果
+ * 支持加载状态显示、错误处理和返回导航
+ */
 export default function WebViewPage() {
   const router = useRouter()
   const { url } = useLocalSearchParams<{ url: string }>()

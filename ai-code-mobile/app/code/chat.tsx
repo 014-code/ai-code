@@ -6,9 +6,10 @@ import { getStaticPreviewUrl } from '@/utils/deployUrl'
 import { getToken } from '@/utils/cookies'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native'
-import { Avatar, Button, Icon } from 'react-native-elements'
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View, Alert } from 'react-native'
+import { Avatar, Icon } from 'react-native-elements'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import Markdown from 'react-native-markdown-display'
 
 const BASE_URL = Platform.OS === 'android' 
   ? "http://10.0.2.2:8123" 
@@ -25,6 +26,7 @@ export default function ChatPage() {
   const [appInfo, setAppInfo] = useState<AppVO>()
   const [deploying, setDeploying] = useState(false)
   const [isAutoSend, setIsAutoSend] = useState(false)
+  const [streamConnected, setStreamConnected] = useState(false)
   const scrollViewRef = useRef<ScrollView>(null)
 
   useEffect(() => {
@@ -33,19 +35,11 @@ export default function ChatPage() {
     }
   }, [appId])
 
-  /**
-   * 初始化页面数据
-   * 加载应用信息和对话历史
-   */
   const initPageData = () => {
     loadAppInfo()
     loadChatHistory()
   }
 
-  /**
-   * 加载应用信息
-   * 调用API获取应用详情数据
-   */
   const loadAppInfo = () => {
     if (!appId) {
       console.error('应用ID不存在')
@@ -61,10 +55,6 @@ export default function ChatPage() {
     })
   }
 
-  /**
-   * 加载对话历史
-   * 获取应用的最新对话记录并按时间排序
-   */
   const loadChatHistory = () => {
     if (!appId) {
       console.error('应用ID不存在')
@@ -79,7 +69,6 @@ export default function ChatPage() {
         )
         setMessages(sortedMessages)
 
-        // 如果有prompt参数且应用是新创建的（没有部署地址），自动发送消息
         if (prompt && sortedMessages.length === 0) {
           setIsAutoSend(true)
           setTimeout(() => {
@@ -93,16 +82,13 @@ export default function ChatPage() {
     })
   }
 
-  /**
-   * 处理发送消息
-   * 创建用户消息，通过SSE获取AI响应
-   */
   const handleSendMessage = async () => {
     const text = inputText.trim()
     if (!text) return
 
     setInputText('')
     setLoading(true)
+    setStreamConnected(false)
 
     const userMessage: ChatHistoryVO = {
       id: Date.now(),
@@ -125,12 +111,32 @@ export default function ChatPage() {
 
     setMessages(prev => [...prev, aiMessage])
 
-    const url = `${BASE_URL}/api/workflow/execute-flux?prompt=${encodeURIComponent(text)}&appId=${appId}`
+    const url = `${BASE_URL}/api/app/chat/gen/code?appId=${appId}&message=${encodeURIComponent(text)}`
 
     let aiResponse = ''
+    let closed = false
+    let streamCompleted = false
+
+    const closeConnection = () => {
+      if (!closed) {
+        closed = true
+        setLoading(false)
+        setStreamConnected(false)
+      }
+    }
+
+    const handleError = (error: unknown) => {
+      console.error('生成代码失败：', error)
+      setMessages(prev => prev.map(msg =>
+        msg.id === aiMessageId ? { ...msg, messageContent: '抱歉，生成过程中出现了错误，请重试。' } : msg
+      ))
+      closeConnection()
+      Alert.alert('生成失败', '请重试')
+    }
 
     try {
       const token = await getToken()
+      console.log('开始SSE请求，URL:', url)
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -143,6 +149,9 @@ export default function ChatPage() {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
+      console.log('SSE连接已建立')
+      setStreamConnected(true)
+
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
 
@@ -152,19 +161,25 @@ export default function ChatPage() {
         try {
           while (true) {
             const { done, value } = await reader.read()
-            if (done) {
-              setLoading(false)
+            if (done || streamCompleted) {
+              console.log('流式读取完成')
+              closeConnection()
               break
             }
 
             const chunk = decoder.decode(value, { stream: true })
+            console.log('接收到数据块:', chunk)
             const lines = chunk.split('\n')
 
             for (const line of lines) {
+              if (streamCompleted) break
+
               if (line.startsWith('data: ')) {
                 const data = line.slice(6)
+                console.log('解析data行:', data)
                 if (data === '[DONE]') {
-                  setLoading(false)
+                  streamCompleted = true
+                  closeConnection()
                   return
                 }
 
@@ -172,6 +187,7 @@ export default function ChatPage() {
                   const parsed = JSON.parse(data)
                   if (parsed.d && typeof parsed.d === 'string') {
                     aiResponse += parsed.d
+                    console.log('更新AI响应内容，长度:', aiResponse.length)
                     setMessages(prev => prev.map(msg =>
                       msg.id === aiMessageId ? { ...msg, messageContent: aiResponse } : msg
                     ))
@@ -184,32 +200,31 @@ export default function ChatPage() {
                     ))
                   }
                 }
+              } else if (line.startsWith('event: done')) {
+                console.log('收到done事件')
+                streamCompleted = true
+                closeConnection()
+                return
               }
             }
           }
         } catch (error) {
-          setLoading(false)
-          console.error('读取流数据失败：', error)
+          console.error('读取流时出错:', error)
+          handleError(error)
         }
       }
 
       await readStream()
 
-      // 只有在自动发送时才自动部署
       if (isAutoSend) {
         await handleAutoDeploy()
         setIsAutoSend(false)
       }
     } catch (error) {
-      setLoading(false)
-      console.error('创建 SSE 连接失败：', error)
+      handleError(error)
     }
   }
 
-  /**
-   * 自动部署应用
-   * 在生成成功后自动调用部署接口，然后跳转到webview
-   */
   const handleAutoDeploy = async () => {
     if (!appId) {
       console.error('应用ID不存在')
@@ -223,10 +238,8 @@ export default function ChatPage() {
       if (res.code === 0 && res.data) {
         console.log('部署成功，地址：', res.data)
         
-        // 更新应用信息
         await loadAppInfo()
         
-        // 跳转到webview页面
         const previewUrl = getStaticPreviewUrl(
           appInfo?.codeGenType || '',
           String(appInfo?.id || ''),
@@ -242,19 +255,15 @@ export default function ChatPage() {
       }
     } catch (error) {
       console.error('自动部署失败：', error)
-      alert('自动部署失败：' + (error as Error).message)
+      Alert.alert('自动部署失败', (error as Error).message)
     } finally {
       setDeploying(false)
     }
   }
 
-  /**
-   * 处理部署应用
-   * 直接跳转到webview页面
-   */
   const handleDeploy = () => {
     if (!appInfo?.deployKey) {
-      alert('应用未部署')
+      Alert.alert('提示', '应用未部署')
       return
     }
 
@@ -272,15 +281,12 @@ export default function ChatPage() {
     }
   }
 
-  /**
-   * 渲染单条消息
-   * 根据消息类型显示不同的样式
-   */
   const renderMessage = (message: ChatHistoryVO, index: number) => {
     if (!message) return null
     
     const isUser = message.messageType === 'user'
     const messageId = message.id || index
+    const isLastAIMessage = !isUser && index === messages.length - 1
     
     return (
       <View
@@ -304,7 +310,10 @@ export default function ChatPage() {
             isUser ? styles.userBubble : styles.aiBubble,
           ]}
         >
-          <Text style={styles.messageText}>{message.messageContent || ''}</Text>
+          <Markdown style={styles.markdown}>{message.messageContent || ''}</Markdown>
+          <Text style={styles.messageTime}>
+            {message.createTime ? new Date(message.createTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+          </Text>
         </View>
         {isUser && (
           <Avatar
@@ -342,10 +351,10 @@ export default function ChatPage() {
         onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
       >
         {messages.map(renderMessage)}
-        {loading && (
+        {loading && !streamConnected && (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="small" color="#667eea" />
-            <Text style={styles.loadingText}>AI 正在思考...</Text>
+            <Text style={styles.loadingText}>AI 正在连接...</Text>
           </View>
         )}
       </ScrollView>
@@ -354,16 +363,22 @@ export default function ChatPage() {
         <TextInput
           style={styles.input}
           placeholder="输入消息..."
+          placeholderTextColor="#999"
           value={inputText}
           onChangeText={setInputText}
           multiline
+          maxLength={1000}
         />
         <TouchableOpacity
           style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
           onPress={handleSendMessage}
           disabled={!inputText.trim() || loading}
         >
-          <Icon name="paper-plane" type="font-awesome" size={20} color="#fff" />
+          {loading ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Icon name="paper-plane" type="font-awesome" size={20} color="#fff" />
+          )}
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -395,6 +410,7 @@ const styles = {
   },
   messagesContent: {
     padding: 16,
+    paddingBottom: 20,
   },
   messageContainer: {
     flexDirection: 'row',
@@ -411,7 +427,7 @@ const styles = {
     marginHorizontal: 8,
   },
   messageBubble: {
-    maxWidth: '70%',
+    maxWidth: '75%',
     padding: 12,
     borderRadius: 12,
   },
@@ -427,6 +443,96 @@ const styles = {
     fontSize: 15,
     color: '#333',
     lineHeight: 22,
+  },
+  markdown: {
+    body: {
+      fontSize: 15,
+      color: '#333',
+      lineHeight: 22,
+    },
+    heading1: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      marginBottom: 10,
+      marginTop: 10,
+    },
+    heading2: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      marginBottom: 8,
+      marginTop: 8,
+    },
+    heading3: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      marginBottom: 6,
+      marginTop: 6,
+    },
+    code_inline: {
+      backgroundColor: '#f0f0f0',
+      color: '#e83e8c',
+      paddingHorizontal: 4,
+      paddingVertical: 2,
+      borderRadius: 3,
+      fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    },
+    code_block: {
+      backgroundColor: '#f6f8fa',
+      padding: 10,
+      borderRadius: 5,
+      marginVertical: 8,
+      fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    },
+    fence: {
+      backgroundColor: '#f6f8fa',
+      padding: 10,
+      borderRadius: 5,
+      marginVertical: 8,
+      fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    },
+    blockquote: {
+      backgroundColor: '#f0f0f0',
+      borderLeftWidth: 4,
+      borderLeftColor: '#ccc',
+      paddingLeft: 10,
+      marginVertical: 8,
+    },
+    list_item: {
+      flexDirection: 'row',
+      marginBottom: 4,
+    },
+    bullet_list: {
+      marginVertical: 8,
+    },
+    ordered_list: {
+      marginVertical: 8,
+    },
+    link: {
+      color: '#667eea',
+      textDecorationLine: 'underline',
+    },
+    table: {
+      borderWidth: 1,
+      borderColor: '#e0e0e0',
+      marginVertical: 8,
+    },
+    th: {
+      backgroundColor: '#f0f0f0',
+      padding: 8,
+      fontWeight: 'bold',
+      borderWidth: 1,
+      borderColor: '#e0e0e0',
+    },
+    td: {
+      padding: 8,
+      borderWidth: 1,
+      borderColor: '#e0e0e0',
+    },
+  },
+  messageTime: {
+    fontSize: 11,
+    color: '#999',
+    marginTop: 4,
   },
   loadingContainer: {
     flexDirection: 'row',
@@ -456,6 +562,7 @@ const styles = {
     maxHeight: 100,
     fontSize: 15,
     marginRight: 8,
+    color: '#333',
   },
   sendButton: {
     backgroundColor: '#667eea',

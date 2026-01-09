@@ -40,7 +40,7 @@ interface LoadMoreState {
 const ChatPage: React.FC = () => {
   // 从路由参数中获取应用ID
   const { appId } = useParams<{ appId: string }>();
-  
+
   // ==================== 状态管理 ====================
   const [messages, setMessages] = useState<API.ChatHistoryVO[]>([]);      // 聊天消息列表
   const [inputValue, setInputValue] = useState('');                        // 输入框内容
@@ -58,6 +58,7 @@ const ChatPage: React.FC = () => {
   const [selectedElements, setSelectedElements] = useState<ElementInfo[]>([]); // 选中的元素列表
   const [previewLoading, setPreviewLoading] = useState<boolean>(false);    // 预览加载状态
   const [showPreview, setShowPreview] = useState<boolean>(false);          // 是否显示预览
+  const [isStreaming, setIsStreaming] = useState<boolean>(false);            // 是否正在流式输出
 
   // ==================== Ref引用 ====================
   const messagesEndRef = useRef<HTMLDivElement>(null);                      // 消息列表底部引用，用于自动滚动
@@ -72,10 +73,12 @@ const ChatPage: React.FC = () => {
     }
   }, [appId]);
 
-  // 当消息列表更新时，自动滚动到底部
+  // 当消息列表更新时，只在非流式输出时自动滚动到底部
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (!isStreaming) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isStreaming]);
 
   // 初始化可视化编辑器并管理编辑模式
   useEffect(() => {
@@ -159,7 +162,7 @@ const ChatPage: React.FC = () => {
    */
   const loadLatestChatHistory = () => {
     if (!appId) return;
-    
+
     // 调用API获取最新对话历史
     listLatestChatHistoryVo({ appId: appId }).then(res => {
       if (res.code === 0 && res.data) {
@@ -192,7 +195,7 @@ const ChatPage: React.FC = () => {
    */
   const loadMoreHistory = () => {
     if (!appId) return;
-    
+
     // 如果没有更多数据或正在加载，直接返回
     if (!loadMore.hasMore || loadMore.loading) return;
 
@@ -241,7 +244,7 @@ const ChatPage: React.FC = () => {
   const checkAndShowWebsite = (appData?: any) => {
     // 使用传入的应用数据，如果没有传入则使用 state 中的 appInfo
     const currentAppInfo = appData || appInfo;
-    
+
     // 如果应用已经有部署地址，直接显示预览
     if (currentAppInfo?.deployKey && currentAppInfo?.codeGenType && currentAppInfo?.id) {
       const previewUrl = getStaticPreviewUrl(
@@ -378,12 +381,19 @@ const ChatPage: React.FC = () => {
       // 将AI消息占位符添加到消息列表
       setMessages(prev => [...prev, aiMessage]);
 
-      // 构建SSE连接URL
-      const url = `/api/workflow/execute-flux?prompt=${messageContent}&appId=${appId}`;
+      // 构建SSE连接URL，直接连接后端以绕过webpack-dev-server的代理缓冲问题
+      const isDev = process.env.NODE_ENV === 'development';
+      const baseURL = isDev ? 'http://localhost:8123/api' : '/api';
+      const params = new URLSearchParams({
+        appId: appId,
+        message: messageContent,
+      });
+      const url = `${baseURL}/app/chat/gen/code?${params}`;
 
       // 初始化SSE连接相关变量
       let eventSource: EventSource | null = null;
       let closed = false;
+      let streamCompleted = false;
       let aiResponse = '';
 
       // 关闭SSE连接的辅助函数
@@ -394,35 +404,71 @@ const ChatPage: React.FC = () => {
         }
       };
 
-      // 创建SSE连接
-      eventSource = new EventSource(url);
+      // 错误处理函数
+      const handleError = (error: unknown) => {
+        console.error('生成代码失败：', error);
+        setMessages(prev => prev.map(msg =>
+          msg.id === aiMessageId ? { ...msg, messageContent: '抱歉，生成过程中出现了错误，请重试。' } : msg
+        ));
+        setLoading(false);
+        setIsStreaming(false);
+        message.error('生成失败，请重试');
+      };
+
+      // 创建SSE连接，启用withCredentials以支持认证和cookie
+      eventSource = new EventSource(url, { withCredentials: true });
       // SSE连接建立时的回调
-      eventSource.onopen = () => console.log('SSE 连接已建立');
-      // 接收SSE消息的回调
-      eventSource.onmessage = (event: MessageEvent) => {
-        let chunk = '';
-          // 尝试解析JSON格式的消息
-          const parsed = typeof event.data === 'string' ? JSON.parse(event.data) : null;
-          if (parsed && typeof parsed.d === 'string') {
-            chunk = parsed.d;
+      eventSource.onopen = () => {
+        console.log('SSE 连接已建立');
+        setLoading(false);
+        setIsStreaming(true);
+      };
+
+      // 处理接收到的消息
+      eventSource.onmessage = function (event) {
+        if (streamCompleted) return;
+
+        try {
+          // 解析JSON包装的数据
+          const parsed = JSON.parse(event.data);
+          const content = parsed.d;
+
+          // 拼接内容
+          if (content !== undefined && content !== null) {
+            aiResponse += content;
+            setMessages(prev => prev.map(msg =>
+              msg.id === aiMessageId ? { ...msg, messageContent: aiResponse } : msg
+            ));
           }
-        // 累积AI回复内容并更新消息列表
-        if (chunk) {
-          aiResponse += chunk;
-          setMessages(prev => prev.map(msg =>
-            msg.id === aiMessageId ? { ...msg, messageContent: aiResponse } : msg
-          ));
+        } catch (error) {
+          console.error('解析消息失败:', error);
+          handleError(error);
         }
       };
 
-      // 监听SSE完成事件
-      eventSource.addEventListener('done', () => {
+      // 监听done事件
+      eventSource.addEventListener('done', function () {
+        if (streamCompleted) return;
+
+        streamCompleted = true;
         closeES();
         setLoading(false);
+        setIsStreaming(false);
 
-        if (messages.length + 2 >= 2) {
+        // 流式输出完成后，滚动到底部
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+
+        // 延迟更新预览，确保后端已完成处理
+        setTimeout(async () => {
+          await getAppVoById({ id: appId }).then(res => {
+            if (res.code === 0) {
+              setAppInfo(res.data);
+            }
+          });
           checkAndShowWebsite();
-        }
+        }, 1000);
 
         // 自动部署项目
         handleDeploy().then(() => {
@@ -434,13 +480,52 @@ const ChatPage: React.FC = () => {
         });
       });
 
-      // 监听SSE错误事件
-      eventSource.onerror = (event) => {
-        closeES();
-        setLoading(false);
-        message.error('AI 生成中断或网络错误');
-        console.error('SSE 连接出错', event);
-        reject(new Error('AI 生成中断或网络错误'));
+      // 处理business-error事件（后端限流等错误）
+      eventSource.addEventListener('business-error', function (event: MessageEvent) {
+        if (streamCompleted) return;
+
+        try {
+          const errorData = JSON.parse(event.data);
+          console.error('SSE业务错误事件:', errorData);
+
+          // 显示具体的错误信息
+          const errorMessage = errorData.message || '生成过程中出现错误';
+          setMessages(prev => prev.map(msg =>
+            msg.id === aiMessageId ? { ...msg, messageContent: `❌ ${errorMessage}` } : msg
+          ));
+          message.error(errorMessage);
+
+          streamCompleted = true;
+          closeES();
+          setLoading(false);
+          setIsStreaming(false);
+        } catch (parseError) {
+          console.error('解析错误事件失败:', parseError, '原始数据:', event.data);
+          handleError(new Error('服务器返回错误'));
+        }
+      });
+
+      // 处理错误
+      eventSource.onerror = function () {
+        if (streamCompleted || !loading) return;
+        // 检查是否是正常的连接关闭
+        if (eventSource?.readyState === EventSource.CONNECTING) {
+          streamCompleted = true;
+          closeES();
+          setLoading(false);
+          setIsStreaming(false);
+
+          setTimeout(async () => {
+            await getAppVoById({ id: appId }).then(res => {
+              if (res.code === 0) {
+                setAppInfo(res.data);
+              }
+            });
+            checkAndShowWebsite();
+          }, 1000);
+        } else {
+          handleError(new Error('SSE连接错误'));
+        }
       };
     });
   };

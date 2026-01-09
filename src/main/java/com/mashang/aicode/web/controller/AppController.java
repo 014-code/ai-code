@@ -118,7 +118,10 @@ public class AppController {
         // 校验参数
         String appName = appAddRequest.getAppName();
         String initPrompt = appAddRequest.getInitPrompt();
-        ThrowUtils.throwIf(StrUtil.isBlank(appName), ErrorCode.PARAMS_ERROR, "应用名称不能为空");
+//        ThrowUtils.throwIf(StrUtil.isBlank(appName), ErrorCode.PARAMS_ERROR, "应用名称不能为空");
+        if (appName == null || appName.equals("")) {
+            appName = initPrompt;
+        }
         ThrowUtils.throwIf(StrUtil.isBlank(initPrompt), ErrorCode.PARAMS_ERROR, "初始化提示词不能为空");
 
         // 创建应用
@@ -376,13 +379,19 @@ public class AppController {
         User loginUser = userService.getLoginUser(request);
         Flux<String> contentFlux = appService.chatToGenCode(appId, message, loginUser);
         return contentFlux
-                .doOnNext(chunk -> log.info("SSE 发送消息: {}", chunk))
                 .map(chunk -> {
                     Map<String, String> wrapper = Map.of("d", chunk);
                     String jsonData = JSONUtil.toJsonStr(wrapper);
-                    return ServerSentEvent.<String>builder().data(jsonData).build();
+                    return ServerSentEvent.<String>builder()
+                            .data(jsonData)
+                            .build();
                 })
-                .concatWith(Mono.just(ServerSentEvent.<String>builder().event("done").data("").build()));
+                .concatWith(Mono.just(
+                        // 发送结束事件
+                        ServerSentEvent.<String>builder()
+                                .data("[DONE]")
+                                .build()
+                ));
     }
 
     /**

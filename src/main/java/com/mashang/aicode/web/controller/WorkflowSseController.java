@@ -74,7 +74,7 @@ public class WorkflowSseController {
                     ));
         }
         
-        // 不是修改项目，走工作流
+        // 不是修改项目，走工作流，仿照/chat/gen/code最后的sse流式输出完成
         // 工作流返回的是字符串格式的 SSE（"event: xxx\ndata: xxx\n\n"），需要转换为 ServerSentEvent
         Flux<String> workflowFlux = new CodeGenWorkflow().executeWorkflowWithFlux(prompt, appId);
         return workflowFlux.flatMap(content -> {
@@ -115,7 +115,13 @@ public class WorkflowSseController {
                 // 如果不是标准 SSE 格式，直接作为数据返回
                 return Mono.just(ServerSentEvent.<String>builder().data(content).build());
             }
-        });
+        }).concatWith(Mono.just(
+                // 发送结束事件
+                ServerSentEvent.<String>builder()
+                        .data("done")
+                        .build()
+        ));
+
     }
 
     /**
