@@ -9,9 +9,10 @@ import AppWebView from '@/components/AppWebView'
 import MineSkeleton from '@/components/MineSkeleton'
 import { getStaticPreviewUrl } from '@/utils/deployUrl'
 import React, { useEffect, useState } from 'react'
-import { ActivityIndicator, Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Alert, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View, Animated, Dimensions, Easing } from 'react-native'
 import { Avatar, Button, Divider, Icon, SearchBar } from 'react-native-elements'
 import { useRouter } from 'expo-router'
+import { useTheme } from '@/hooks/useTheme'
 
 /**
  * 我的页面组件
@@ -20,8 +21,11 @@ import { useRouter } from 'expo-router'
  */
 export default function Mine() {
     const router = useRouter()
+    const { themeColor } = useTheme()
     const [userInfo, setUserInfo] = useState<LoginUserVO | null>(null)
     const [loading, setLoading] = useState<boolean>(false)
+    const [showSettingsDrawer, setShowSettingsDrawer] = useState<boolean>(false)
+    const drawerTranslateX = useState(new Animated.Value(Dimensions.get('window').width))[0]
     
     const [appData, setAppData] = useState<AppVO[]>([])
     const [appLoading, setAppLoading] = useState<boolean>(false)
@@ -188,6 +192,30 @@ export default function Mine() {
         )
     }
 
+    const openDrawer = () => {
+        setShowSettingsDrawer(true)
+        Animated.timing(drawerTranslateX, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+        }).start()
+    }
+
+    const closeDrawer = () => {
+        Animated.timing(drawerTranslateX, {
+            toValue: Dimensions.get('window').width,
+            duration: 300,
+            useNativeDriver: true,
+        }).start(() => {
+            setShowSettingsDrawer(false)
+        })
+    }
+
+    const handleSettingsClick = () => {
+        closeDrawer()
+        router.push('/settings')
+    }
+
     /**
      * 渲染应用卡片
      * @param item - 应用数据
@@ -238,7 +266,7 @@ export default function Mine() {
         if (!appLoading || appData.length === 0) return null
         return (
             <View style={styles.footer}>
-                <ActivityIndicator size="small" color="#009dffff" />
+                <ActivityIndicator size="small" color={themeColor} />
                 <Text style={styles.footerText}>加载中...</Text>
             </View>
         )
@@ -251,13 +279,19 @@ export default function Mine() {
             ) : userInfo ? (
                 <View style={styles.contentContainer}>
                     <View style={styles.profileSection}>
+                        <TouchableOpacity 
+                            style={styles.settingsIcon}
+                            onPress={openDrawer}
+                        >
+                            <Icon name="settings" type="material" size={28} color="#333" />
+                        </TouchableOpacity>
                         <View style={styles.avatarContainer}>
                             <Avatar
                                 rounded
                                 size="large"
                                 source={userInfo.userAvatar ? { uri: userInfo.userAvatar } : undefined}
                                 icon={{ name: 'user', type: 'font-awesome' }}
-                                containerStyle={styles.avatar}
+                                containerStyle={[styles.avatar, { backgroundColor: themeColor }]}
                             />
                         </View>
                         <Text style={styles.userName}>{userInfo.userName || '用户'}</Text>
@@ -265,13 +299,6 @@ export default function Mine() {
                         {userInfo.userProfile && (
                             <Text style={styles.userProfile}>{userInfo.userProfile}</Text>
                         )}
-                        <View style={styles.actionButtons}>
-                            <Button
-                                title="退出登录"
-                                buttonStyle={styles.logoutButton}
-                                onPress={handleLogout}
-                            />
-                        </View>
                     </View>
 
                     <Divider style={styles.divider} />
@@ -306,7 +333,7 @@ export default function Mine() {
                                     <RefreshControl
                                         refreshing={refreshing}
                                         onRefresh={onRefresh}
-                                        colors={['#009dffff']}
+                                        colors={[themeColor]}
                                     />
                                 }
                                 onEndReached={loadMore}
@@ -336,6 +363,39 @@ export default function Mine() {
                     onClose={() => setShowWebView(false)} 
                 />
             )}
+
+            {showSettingsDrawer && (
+                <>
+                    <TouchableOpacity 
+                        style={styles.drawerOverlay}
+                        activeOpacity={1}
+                        onPress={closeDrawer}
+                    />
+                    <Animated.View 
+                        style={[
+                            styles.drawerContainer,
+                            {
+                                transform: [{ translateX: drawerTranslateX }]
+                            }
+                        ]}
+                    >
+                        <View style={styles.drawerHeader}>
+                            <Text style={styles.drawerTitle}>设置</Text>
+                            <TouchableOpacity onPress={closeDrawer}>
+                                <Icon name="close" type="material" size={28} color="#333" />
+                            </TouchableOpacity>
+                        </View>
+                        <TouchableOpacity 
+                            style={styles.drawerItem}
+                            onPress={handleSettingsClick}
+                        >
+                            <Icon name="tune" type="material" size={24} color="#666" />
+                            <Text style={styles.drawerItemText}>通用设置</Text>
+                            <Icon name="chevron-right" type="material" size={24} color="#ccc" />
+                        </TouchableOpacity>
+                    </Animated.View>
+                </>
+            )}
         </View>
     )
 }
@@ -357,12 +417,18 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         padding: 24,
         alignItems: 'center',
+        position: 'relative',
+    },
+    settingsIcon: {
+        position: 'absolute',
+        top: 24,
+        right: 24,
+        padding: 8,
     },
     avatarContainer: {
         marginBottom: 16,
     },
     avatar: {
-        backgroundColor: '#009dffff',
     },
     userName: {
         fontSize: 24,
@@ -380,15 +446,6 @@ const styles = StyleSheet.create({
         color: '#999',
         textAlign: 'center',
         marginBottom: 16,
-    },
-    actionButtons: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    logoutButton: {
-        backgroundColor: '#ff4d4f',
-        paddingHorizontal: 32,
-        borderRadius: 20,
     },
     divider: {
         height: 1,
@@ -455,5 +512,59 @@ const styles = StyleSheet.create({
     notLoggedInHint: {
         fontSize: 14,
         color: '#999',
+    },
+    drawerOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        zIndex: 1,
+    },
+    drawerContainer: {
+        position: 'absolute',
+        top: 0,
+        right: 0,
+        bottom: 0,
+        width: 300,
+        backgroundColor: '#fff',
+        zIndex: 2,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: -2,
+            height: 0,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    drawerHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e0e0e0',
+    },
+    drawerTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    drawerItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f5f5f5',
+    },
+    drawerItemText: {
+        flex: 1,
+        fontSize: 16,
+        color: '#333',
+        marginLeft: 12,
     },
 })

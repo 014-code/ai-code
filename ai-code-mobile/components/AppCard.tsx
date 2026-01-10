@@ -2,6 +2,7 @@ import { AppVO } from '@/api/vo/app'
 import React, { useState } from 'react'
 import { Image, Text, TouchableOpacity, View, StyleSheet } from 'react-native'
 import { Avatar, Button, Icon } from 'react-native-elements'
+import { useTheme } from '@/hooks/useTheme'
 
 // 应用卡片属性接口
 interface AppCardProps {
@@ -29,6 +30,7 @@ export default function AppCard({
     onViewApp = () => { },
     onPressCover = () => { },
 }: AppCardProps) {
+    const { themeColor } = useTheme()
     const appName = app?.appName || '测试应用1'
     const userName = app?.user?.userName || '未知作者'
     const coverImage = app?.cover || app?.appCover || 'https://picsum.photos/700'
@@ -73,16 +75,26 @@ export default function AppCard({
                         name={isExpand ? 'expand-less' : 'expand-more'}
                         type="material"
                         size={28}
-                        color="#667eea"
+                        color={themeColor}
                     />
                 </TouchableOpacity>
             </View>
             
             <TouchableOpacity onPress={onPressCover} activeOpacity={0.8}>
-                <Image source={{ uri: coverImage }} style={styles.coverImage} />
-                <View style={styles.imageOverlay}>
-                    <Icon name="visibility" type="material" size={24} color="#00e5f1ff" />
-                </View>
+                {coverImage && coverImage !== 'https://picsum.photos/700' ? (
+                    <>
+                        <Image source={{ uri: coverImage }} style={styles.coverImage} />
+                        <View style={styles.imageOverlay}>
+                            <Icon name="visibility" type="material" size={24} color="#00e5f1ff" />
+                        </View>
+                    </>
+                ) : (
+                    <View style={styles.skeletonCover}>
+                        <View style={styles.skeletonIcon} />
+                        <View style={styles.skeletonTitle} />
+                        <View style={styles.skeletonSubtitle} />
+                    </View>
+                )}
             </TouchableOpacity>
             
             {isExpand && (
@@ -92,7 +104,7 @@ export default function AppCard({
                             title="查看对话"
                             icon={<Icon name="chat" type="material" size={20} color="#ffffffff" />}
                             iconContainerStyle={{ marginRight: 8 }}
-                            buttonStyle={styles.chatButton}
+                            buttonStyle={[styles.chatButton, { backgroundColor: themeColor }]}
                             containerStyle={styles.buttonContainer}
                             onPress={() => {
                                 console.log("点击查看对话");
@@ -139,8 +151,6 @@ const styles = StyleSheet.create({
         position: 'relative',
     },
     avatar: {
-        borderWidth: 2,
-        borderColor: '#667eea',
     },
     avatarBadge: {
         position: 'absolute',
@@ -190,6 +200,32 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         opacity: 0,
     },
+    skeletonCover: {
+        width: '100%',
+        height: 220,
+        backgroundColor: '#f0f0f0',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 12,
+    },
+    skeletonIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+        backgroundColor: '#e0e0e0',
+    },
+    skeletonTitle: {
+        width: 120,
+        height: 16,
+        borderRadius: 4,
+        backgroundColor: '#e0e0e0',
+    },
+    skeletonSubtitle: {
+        width: 80,
+        height: 12,
+        borderRadius: 4,
+        backgroundColor: '#d0d0d0',
+    },
     actionContainer: {
         padding: 16,
         backgroundColor: '#f8f9fa',
@@ -203,7 +239,6 @@ const styles = StyleSheet.create({
         backgroundColor: '#009ff4ff',
     },
     chatButton: {
-        backgroundColor: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
         borderRadius: 25,
         paddingVertical: 12,
     },

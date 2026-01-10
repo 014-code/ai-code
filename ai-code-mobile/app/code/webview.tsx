@@ -4,6 +4,7 @@ import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import { WebView } from 'react-native-webview'
 import { Icon } from 'react-native-elements'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useTheme } from '@/hooks/useTheme'
 
 /**
  * WebView页面组件
@@ -14,6 +15,7 @@ export default function WebViewPage() {
   const router = useRouter()
   const { url } = useLocalSearchParams<{ url: string }>()
   const insets = useSafeAreaInsets()
+  const { themeColor } = useTheme()
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState(false)
 
@@ -21,7 +23,7 @@ export default function WebViewPage() {
     return (
       <View style={styles.container}>
         <Text style={styles.errorText}>预览地址不存在</Text>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={[styles.backButton, { backgroundColor: themeColor }]} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>返回</Text>
         </TouchableOpacity>
       </View>
@@ -50,7 +52,7 @@ export default function WebViewPage() {
         startInLoadingState
         renderLoading={() => (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#667eea" />
+            <ActivityIndicator size="large" color={themeColor} />
             <Text style={styles.loadingText}>加载中...</Text>
           </View>
         )}
@@ -59,7 +61,7 @@ export default function WebViewPage() {
       {error && (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>加载失败，请稍后重试</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => setError(false)}>
+          <TouchableOpacity style={[styles.retryButton, { backgroundColor: themeColor }]} onPress={() => setError(false)}>
             <Text style={styles.retryButtonText}>重试</Text>
           </TouchableOpacity>
         </View>
@@ -122,7 +124,6 @@ const styles = {
     marginBottom: 20,
   },
   retryButton: {
-    backgroundColor: '#667eea',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -133,7 +134,6 @@ const styles = {
     fontWeight: 'bold',
   },
   backButton: {
-    backgroundColor: '#667eea',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,

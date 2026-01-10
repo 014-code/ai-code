@@ -7,9 +7,12 @@ import { getToken } from '@/utils/cookies'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useEffect, useRef, useState } from 'react'
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View, Alert } from 'react-native'
-import { Avatar, Icon } from 'react-native-elements'
+import { Avatar, Icon, TabView } from 'react-native-elements'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Markdown from 'react-native-markdown-display'
+import { WebView } from 'react-native-webview'
+import { useTheme } from '@/hooks/useTheme'
+import Logo from '@/components/Logo'
 
 const BASE_URL = Platform.OS === 'android' 
   ? "http://10.0.2.2:8123" 
@@ -19,6 +22,7 @@ export default function ChatPage() {
   const router = useRouter()
   const { appId, prompt } = useLocalSearchParams<{ appId: string; prompt?: string }>()
   const insets = useSafeAreaInsets()
+  const { themeColor } = useTheme()
   
   const [messages, setMessages] = useState<ChatHistoryVO[]>([])
   const [inputText, setInputText] = useState('')
@@ -27,6 +31,7 @@ export default function ChatPage() {
   const [deploying, setDeploying] = useState(false)
   const [isAutoSend, setIsAutoSend] = useState(false)
   const [streamConnected, setStreamConnected] = useState(false)
+  const [activeTab, setActiveTab] = useState(0)
   const scrollViewRef = useRef<ScrollView>(null)
 
   useEffect(() => {
@@ -262,23 +267,18 @@ export default function ChatPage() {
   }
 
   const handleDeploy = () => {
-    if (!appInfo?.deployKey) {
-      Alert.alert('提示', '应用未部署')
-      return
-    }
+    setActiveTab(1)
+  }
 
-    const previewUrl = getStaticPreviewUrl(
+  const getPreviewUrl = () => {
+    if (!appInfo?.codeGenType || !appInfo?.id) {
+      return ''
+    }
+    return getStaticPreviewUrl(
       appInfo.codeGenType || '',
       String(appInfo.id || ''),
       appInfo.deployKey
     )
-
-    if (previewUrl) {
-      router.push({
-        pathname: '/code/webview',
-        params: { url: previewUrl }
-      })
-    }
   }
 
   const renderMessage = (message: ChatHistoryVO, index: number) => {
@@ -297,20 +297,24 @@ export default function ChatPage() {
         ]}
       >
         {!isUser && (
-          <Avatar
-            rounded
-            icon={{ name: 'robot', type: 'font-awesome' }}
-            size="medium"
-            containerStyle={styles.avatar}
-          />
+          <View style={styles.avatar}>
+            <Logo size={32} />
+          </View>
         )}
         <View
           style={[
             styles.messageBubble,
             isUser ? styles.userBubble : styles.aiBubble,
+            isUser && { backgroundColor: themeColor },
           ]}
         >
-          <Markdown style={styles.markdown}>{message.messageContent || ''}</Markdown>
+          <Markdown style={{
+            ...styles.markdown,
+            link: {
+              color: themeColor,
+              textDecorationLine: 'underline',
+            }
+          }}>{message.messageContent || ''}</Markdown>
           <Text style={styles.messageTime}>
             {message.createTime ? new Date(message.createTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
           </Text>
@@ -339,48 +343,95 @@ export default function ChatPage() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{appInfo?.appName || '对话'}</Text>
         <TouchableOpacity onPress={handleDeploy}>
-          <Icon name="rocket-launch" type="material" size={24} color="#667eea" />
+          <Icon name="rocket-launch" type="material" size={24} color={themeColor} />
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.messagesContainer}
-        contentContainerStyle={styles.messagesContent}
-        keyboardShouldPersistTaps="handled"
-        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
-      >
-        {messages.map(renderMessage)}
-        {loading && !streamConnected && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color="#667eea" />
-            <Text style={styles.loadingText}>AI 正在连接...</Text>
-          </View>
-        )}
-      </ScrollView>
-
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="输入消息..."
-          placeholderTextColor="#999"
-          value={inputText}
-          onChangeText={setInputText}
-          multiline
-          maxLength={1000}
-        />
+      <View style={styles.tabHeader}>
         <TouchableOpacity
-          style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
-          onPress={handleSendMessage}
-          disabled={!inputText.trim() || loading}
+          style={[styles.tabHeaderItem, activeTab === 0 && styles.activeTabHeaderItem, activeTab === 0 && { borderBottomColor: themeColor }]}
+          onPress={() => setActiveTab(0)}
         >
-          {loading ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Icon name="paper-plane" type="font-awesome" size={20} color="#fff" />
-          )}
+          <Text style={[styles.tabHeaderText, activeTab === 0 && styles.activeTabHeaderText, activeTab === 0 && { color: themeColor }]}>对话</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabHeaderItem, activeTab === 1 && styles.activeTabHeaderItem, activeTab === 1 && { borderBottomColor: themeColor }]}
+          onPress={() => setActiveTab(1)}
+        >
+          <Text style={[styles.tabHeaderText, activeTab === 1 && styles.activeTabHeaderText, activeTab === 1 && { color: themeColor }]}>预览</Text>
         </TouchableOpacity>
       </View>
+
+      <TabView
+        value={activeTab}
+        onChange={setActiveTab}
+        animationType="spring"
+      >
+        <TabView.Item style={{ width: '100%', flex: 1 }}>
+          <View style={{ flex: 1 }}>
+            <ScrollView
+              ref={scrollViewRef}
+              style={styles.messagesContainer}
+              contentContainerStyle={styles.messagesContent}
+              keyboardShouldPersistTaps="handled"
+              onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+            >
+              {messages.map(renderMessage)}
+              {loading && !streamConnected && (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="small" color={themeColor} />
+                  <Text style={styles.loadingText}>AI 正在连接...</Text>
+                </View>
+              )}
+            </ScrollView>
+
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="输入消息..."
+                placeholderTextColor="#999"
+                value={inputText}
+                onChangeText={setInputText}
+                multiline
+                maxLength={1000}
+              />
+              <TouchableOpacity
+                style={[styles.sendButton, { backgroundColor: themeColor }, !inputText.trim() && styles.sendButtonDisabled]}
+                onPress={handleSendMessage}
+                disabled={!inputText.trim() || loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Icon name="paper-plane" type="font-awesome" size={20} color="#fff" />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TabView.Item>
+
+        <TabView.Item style={{ width: '100%' }}>
+          <View style={styles.previewContainer}>
+            {getPreviewUrl() ? (
+              <WebView
+                source={{ uri: getPreviewUrl() }}
+                style={styles.webview}
+                startInLoadingState
+                renderLoading={() => (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={themeColor} />
+                    <Text style={styles.loadingText}>加载中...</Text>
+                  </View>
+                )}
+              />
+            ) : (
+              <View style={styles.noPreviewContainer}>
+                <Text style={styles.noPreviewText}>暂无预览，请先发送消息并部署应用</Text>
+              </View>
+            )}
+          </View>
+        </TabView.Item>
+      </TabView>
     </KeyboardAvoidingView>
   )
 }
@@ -425,6 +476,10 @@ const styles = {
   },
   avatar: {
     marginHorizontal: 8,
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   messageBubble: {
     maxWidth: '75%',
@@ -432,7 +487,6 @@ const styles = {
     borderRadius: 12,
   },
   userBubble: {
-    backgroundColor: '#667eea',
   },
   aiBubble: {
     backgroundColor: '#fff',
@@ -507,10 +561,6 @@ const styles = {
     ordered_list: {
       marginVertical: 8,
     },
-    link: {
-      color: '#667eea',
-      textDecorationLine: 'underline',
-    },
     table: {
       borderWidth: 1,
       borderColor: '#e0e0e0',
@@ -565,7 +615,6 @@ const styles = {
     color: '#333',
   },
   sendButton: {
-    backgroundColor: '#667eea',
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -574,5 +623,45 @@ const styles = {
   },
   sendButtonDisabled: {
     backgroundColor: '#ccc',
+  },
+  tabHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  tabHeaderItem: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  activeTabHeaderItem: {
+  },
+  tabHeaderText: {
+    fontSize: 16,
+    color: '#999',
+    fontWeight: '500',
+  },
+  activeTabHeaderText: {
+  },
+  previewContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  webview: {
+    flex: 1,
+  },
+  noPreviewContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  noPreviewText: {
+    fontSize: 16,
+    color: '#999',
+    textAlign: 'center',
   },
 }

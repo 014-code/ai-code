@@ -1,6 +1,3 @@
-// VisualEditor.ts
-import {message} from "antd";
-
 export interface ElementInfo {
   tagName: string;
   id: string;
@@ -14,88 +11,48 @@ export interface ElementInfo {
     width: number;
     height: number;
   };
-  styles?: {
-    display: string;
-    position: string;
-  };
 }
 
 export interface VisualEditorOptions {
   onElementSelected?: (elementInfo: ElementInfo) => void;
   onElementHover?: (elementInfo: ElementInfo) => void;
-  onEditorReady?: () => void;
 }
 
 export class VisualEditor {
   private iframe: HTMLIFrameElement | null = null;
   private isEditMode = false;
   private options: VisualEditorOptions;
-  private messageListener: ((event: MessageEvent) => void) | null = null;
-  private isInitialized = false;
 
   constructor(options: VisualEditorOptions = {}) {
     this.options = options;
   }
 
-  /**
-   * 初始化编辑器
-   */
   init(iframe: HTMLIFrameElement) {
-    if (this.isInitialized) {
-      console.warn('VisualEditor: Already initialized');
-      return;
-    }
-
     this.iframe = iframe;
-    this.isInitialized = true;
-    this.setupMessageListener();
-
-    console.log('VisualEditor: Initialized with iframe');
   }
 
-  /**
-   * 启用编辑模式
-   */
   enableEditMode() {
     if (!this.iframe) {
-      console.error('VisualEditor: Iframe not initialized');
       return;
     }
-
     this.isEditMode = true;
-    console.log('VisualEditor: Enabling edit mode');
-
-    //父页面发送消息给iframe方法
-    this.sendMessageToIframe({
-      type: 'TOGGLE_EDIT_MODE',
-      editMode: true
-    });
-
-    // 如果iframe已经加载，确保脚本已注入
-    if (this.iframe.contentDocument && this.iframe.contentWindow) {
-      setTimeout(() => {
-        this.injectEditScript();
-      }, 100);
-    }
+    setTimeout(() => {
+      this.injectEditScript();
+    }, 300);
   }
 
-  /**
-   * 禁用编辑模式
-   */
   disableEditMode() {
     this.isEditMode = false;
-    console.log('VisualEditor: Disabling edit mode');
-
     this.sendMessageToIframe({
       type: 'TOGGLE_EDIT_MODE',
-      editMode: false
+      editMode: false,
+    });
+    this.sendMessageToIframe({
+      type: 'CLEAR_ALL_EFFECTS',
     });
   }
 
-  /**
-   * 切换编辑模式
-   */
-  toggleEditMode(): boolean {
+  toggleEditMode() {
     if (this.isEditMode) {
       this.disableEditMode();
     } else {
@@ -104,355 +61,180 @@ export class VisualEditor {
     return this.isEditMode;
   }
 
-  /**
-   * 清除选中状态
-   */
+  syncState() {
+    if (!this.isEditMode) {
+      this.sendMessageToIframe({
+        type: 'CLEAR_ALL_EFFECTS',
+      });
+    }
+  }
+
   clearSelection() {
-    console.log('VisualEditor: Clearing selection');
     this.sendMessageToIframe({
-      type: 'CLEAR_SELECTION'
+      type: 'CLEAR_SELECTION',
     });
   }
 
-  /**
-   * 处理iframe加载完成
-   */
   onIframeLoad() {
-    console.log('VisualEditor: Iframe loaded');
-
-    if (!this.iframe) {
-      console.warn('VisualEditor: Iframe reference is null during onIframeLoad');
-      return;
-    }
-
-    // 由于跨域限制，只能通过postMessage方式通信
-    console.log('VisualEditor: Cross-origin iframe detected, using postMessage only');
-
-    // 如果当前处于编辑模式，发送消息通知iframe
     if (this.isEditMode) {
       setTimeout(() => {
-        this.enableEditMode();
+        this.injectEditScript();
+      }, 500);
+    } else {
+      setTimeout(() => {
+        this.syncState();
       }, 500);
     }
   }
 
-  /**
-   * 处理来自iframe的消息
-   */
   handleIframeMessage(event: MessageEvent) {
-    // 安全检查：确保消息来自iframe
-    if (event.source !== this.iframe?.contentWindow) {
-      return;
-    }
-
-    const {type, data} = event.data || {};
-    if (!type) return;
-
-    console.log('VisualEditor: 收到消息:', type, data);
-
+    const { type, data } = event.data;
     switch (type) {
-      case 'element-selected':
-        if (this.options.onElementSelected && data?.element) {
-          console.log('VisualEditor: 元素被选中', data.element);
-          this.options.onElementSelected(data.element);
+      case 'ELEMENT_SELECTED':
+        if (this.options.onElementSelected && data.elementInfo) {
+          this.options.onElementSelected(data.elementInfo);
         }
         break;
       case 'ELEMENT_HOVER':
-        if (this.options.onElementHover && data?.element) {
-          console.log('VisualEditor: 元素悬停', data.element)
-          this.options.onElementHover(data.element);
+        if (this.options.onElementHover && data.elementInfo) {
+          this.options.onElementHover(data.elementInfo);
         }
         break;
-      default:
-        // 忽略其他消息类型
-        break;
     }
   }
 
-
-  /**
-   * 销毁编辑器，清理资源
-   */
-  destroy() {
-    this.disableEditMode();
-
-    if (this.messageListener) {
-      window.removeEventListener('message', this.messageListener);
-      this.messageListener = null;
-    }
-
-    this.iframe = null;
-    this.isInitialized = false;
-    console.log('VisualEditor: Destroyed');
-  }
-
-  /**
-   * 向iframe发送消息
-   */
   private sendMessageToIframe(message: Record<string, any>) {
-    if (!this.iframe?.contentWindow) {
-      console.warn('VisualEditor: 父页面没法发送消息给iframe');
-      return;
-    }
-
-    try {
+    if (this.iframe?.contentWindow) {
       this.iframe.contentWindow.postMessage(message, '*');
-      console.log('VisualEditor: 发送给iframe的内容:', message.type);
-    } catch (error) {
-      console.error('VisualEditor: Failed to send message to iframe:', error);
     }
   }
 
-  /**
-   * 设置消息监听器
-   */
-  private setupMessageListener() {
-    if (this.messageListener) {
-      return;
-    }
-
-    this.messageListener = (event: MessageEvent) => {
-      this.handleIframeMessage(event);
-    };
-
-    window.addEventListener('message', this.messageListener);
-    console.log('VisualEditor: Message listener setup');
-  }
-
-  /**
-   * 注入编辑器脚本到iframe
-   */
   private injectEditScript() {
-    console.log('VisualEditor: Attempting to inject edit script');
+    if (!this.iframe) return;
 
-    if (!this.iframe) {
-      console.warn('VisualEditor: Iframe reference is null');
-      return;
-    }
-
-    // 直接使用postMessage方式，不再尝试直接DOM访问
-    this.injectViaPostMessage();
-  }
-
-  /**
-   * 通过postMessage注入脚本
-   */
-  private injectViaPostMessage() {
-    console.log('VisualEditor: Injecting script via postMessage');
-    this.sendMessageToIframe({
-      type: 'INJECT_SCRIPT',
-      script: this.generateEditScript()
-    });
-  }
-
-  /**
-   * 注入CSS样式到iframe
-   */
-  private injectStyles() {
-    if (!this.iframe?.contentDocument) {
-      return;
-    }
-
-    try {
-      if (this.iframe.contentDocument.getElementById('visual-editor-styles')) {
-        return;
-      }
-
-      const style = this.iframe.contentDocument.createElement('style');
-      style.id = 'visual-editor-styles';
-      style.textContent = `
-        .edit-hover {
-          outline: 2px dashed #1890ff !important;
-          outline-offset: 2px !important;
-          cursor: crosshair !important;
-          background-color: rgba(24, 144, 255, 0.1) !important;
-          transition: all 0.2s ease !important;
-        }
-        .edit-selected {
-          outline: 3px solid #52c41a !important;
-          outline-offset: 2px !important;
-          cursor: default !important;
-          background-color: rgba(82, 196, 26, 0.1) !important;
-          transition: all 0.2s ease !important;
-        }
-        .visual-edit-mode body {
-          cursor: crosshair !important;
-        }
-        .visual-edit-mode * {
-          pointer-events: auto !important;
-        }
-      `;
-      this.iframe.contentDocument.head.appendChild(style);
-      console.log('VisualEditor: Styles injected successfully');
-    } catch (error) {
-      console.error('VisualEditor: Failed to inject styles', error);
-    }
-  }
-
-  /**
-   * 生成编辑器脚本
-   */
-  generateEditScript(): string {
-    return `
-      (function() {
-        'use strict';
-
-        console.log('VisualEditor: Starting script execution in iframe...');
-
-        // 防止重复初始化
-        if (window.__visualEditorInitialized) {
-          console.log('VisualEditor: Already initialized in this iframe');
-          return;
-        }
-        window.__visualEditorInitialized = true;
-
-        let isEditMode = false;
-        let currentHoverElement = null;
-        let currentSelectedElement = null;
-        let eventListenersAdded = false;
-
-        // 主初始化函数
-        function initializeVisualEditor() {
-          console.log('VisualEditor: Initializing in iframe...');
-
-          try {
-            // 注入样式
-            injectStyles();
-
-            // 设置消息监听
-            setupMessageListener();
-
-            // 等待DOM完全加载
-            if (document.readyState === 'loading') {
-              document.addEventListener('DOMContentLoaded', onDomReady);
-            } else {
-              setTimeout(onDomReady, 100);
-            }
-
-          } catch (error) {
-            console.error('VisualEditor: Initialization error:', error);
-            notifyParent('EDITOR_ERROR', { error: error.message });
-          }
-        }
-
-        function onDomReady() {
-          console.log('VisualEditor: DOM is ready');
-          notifyParent('VISUAL_EDITOR_READY', { ready: true, timestamp: Date.now() });
-        }
-
-        function injectStyles() {
-          if (document.getElementById('visual-editor-dynamic-styles')) {
+    const waitForIframeLoad = () => {
+      try {
+        if (this.iframe!.contentWindow && this.iframe!.contentDocument) {
+          if (this.iframe!.contentDocument.getElementById('visual-edit-script')) {
+            this.sendMessageToIframe({
+              type: 'TOGGLE_EDIT_MODE',
+              editMode: true,
+            });
             return;
           }
 
+          const script = this.generateEditScript();
+          const scriptElement = this.iframe!.contentDocument.createElement('script');
+          scriptElement.id = 'visual-edit-script';
+          scriptElement.textContent = script;
+          this.iframe!.contentDocument.head.appendChild(scriptElement);
+        } else {
+          setTimeout(waitForIframeLoad, 100);
+        }
+      } catch {
+      }
+    };
+
+    waitForIframeLoad();
+  }
+
+  private generateEditScript() {
+    return `
+      (function() {
+        let isEditMode = true;
+        let currentHoverElement = null;
+        let currentSelectedElement = null;
+
+        function injectStyles() {
+          if (document.getElementById('edit-mode-styles')) return;
           const style = document.createElement('style');
-          style.id = 'visual-editor-dynamic-styles';
+          style.id = 'edit-mode-styles';
           style.textContent = \`
             .edit-hover {
               outline: 2px dashed #1890ff !important;
               outline-offset: 2px !important;
               cursor: crosshair !important;
-              background-color: rgba(24, 144, 255, 0.1) !important;
-              transition: all 0.2s ease !important;
-              z-index: 10000 !important;
+              transition: outline 0.2s ease !important;
               position: relative !important;
+            }
+            .edit-hover::before {
+              content: '' !important;
+              position: absolute !important;
+              top: -4px !important;
+              left: -4px !important;
+              right: -4px !important;
+              bottom: -4px !important;
+              background: rgba(24, 144, 255, 0.02) !important;
+              pointer-events: none !important;
+              z-index: -1 !important;
             }
             .edit-selected {
               outline: 3px solid #52c41a !important;
               outline-offset: 2px !important;
               cursor: default !important;
-              background-color: rgba(82, 196, 26, 0.1) !important;
-              transition: all 0.2s ease !important;
-              z-index: 10000 !important;
               position: relative !important;
             }
-            .visual-edit-mode {
-              cursor: crosshair !important;
-            }
-            .visual-edit-mode * {
-              pointer-events: auto !important;
+            .edit-selected::before {
+              content: '' !important;
+              position: absolute !important;
+              top: -4px !important;
+              left: -4px !important;
+              right: -4px !important;
+              bottom: -4px !important;
+              background: rgba(82, 196, 26, 0.03) !important;
+              pointer-events: none !important;
+              z-index: -1 !important;
             }
           \`;
           document.head.appendChild(style);
-          console.log('VisualEditor: Dynamic styles injected');
         }
 
         function generateSelector(element) {
-          if (!element || element.nodeType !== 1) return '';
-
           const path = [];
           let current = element;
-          let depth = 0;
-          const maxDepth = 10;
-
-          while (current && current !== document.body && depth < maxDepth) {
+          while (current && current !== document.body) {
             let selector = current.tagName.toLowerCase();
-
-            // 优先使用ID
             if (current.id) {
               selector += '#' + current.id;
               path.unshift(selector);
               break;
             }
-
-            // 使用类名
-            if (current.className && typeof current.className === 'string') {
-              const classes = current.className.split(' ')
-                .filter(c => c && c.trim() && !c.includes('edit-'))
-                .slice(0, 2);
+            if (current.className) {
+              const classes = current.className.split(' ').filter(c => c && !c.startsWith('edit-'));
               if (classes.length > 0) {
                 selector += '.' + classes.join('.');
               }
             }
-
-            // 添加子元素索引
-            if (current.parentElement) {
-              const siblings = Array.from(current.parentElement.children)
-                .filter(child => child.tagName === current.tagName);
-              const index = siblings.indexOf(current) + 1;
-              if (index > 0 && siblings.length > 1) {
-                selector += ':nth-of-type(' + index + ')';
-              }
-            }
-
+            const siblings = Array.from(current.parentElement?.children || []);
+            const index = siblings.indexOf(current) + 1;
+            selector += ':nth-child(' + index + ')';
             path.unshift(selector);
             current = current.parentElement;
-            depth++;
           }
-
           return path.join(' > ');
         }
 
         function getElementInfo(element) {
-          if (!element) return null;
-
-          try {
-            const rect = element.getBoundingClientRect();
-            const computedStyle = window.getComputedStyle(element);
-
-            return {
-              tagName: element.tagName,
-              id: element.id || '',
-              className: element.className || '',
-              textContent: (element.textContent || '').trim().substring(0, 200),
-              selector: generateSelector(element),
-              pagePath: window.location.pathname + window.location.search + window.location.hash,
-              rect: {
-                top: Math.round(rect.top + window.scrollY),
-                left: Math.round(rect.left + window.scrollX),
-                width: Math.round(rect.width),
-                height: Math.round(rect.height)
-              },
-              styles: {
-                display: computedStyle.display,
-                position: computedStyle.position,
-                visibility: computedStyle.visibility
-              }
-            };
-          } catch (error) {
-            console.error('VisualEditor: Error getting element info:', error);
-            return null;
+          const rect = element.getBoundingClientRect();
+          let pagePath = window.location.search + window.location.hash;
+          if (!pagePath) {
+            pagePath = '';
           }
+
+          return {
+            tagName: element.tagName,
+            id: element.id,
+            className: element.className,
+            textContent: element.textContent?.trim().substring(0, 100) || '',
+            selector: generateSelector(element),
+            pagePath: pagePath,
+            rect: {
+              top: rect.top,
+              left: rect.left,
+              width: rect.width,
+              height: rect.height
+            }
+          };
         }
 
         function clearHoverEffect() {
@@ -462,157 +244,134 @@ export class VisualEditor {
           }
         }
 
-        function clearSelection() {
+        function clearSelectedEffect() {
           const selected = document.querySelectorAll('.edit-selected');
-          selected.forEach(el => {
-            el.classList.remove('edit-selected');
-          });
+          selected.forEach(el => el.classList.remove('edit-selected'));
           currentSelectedElement = null;
         }
 
+        let eventListenersAdded = false;
+
         function addEventListeners() {
-          if (eventListenersAdded) return;
+           if (eventListenersAdded) return;
 
-          console.log('VisualEditor: Adding event listeners');
+           const mouseoverHandler = (event) => {
+             if (!isEditMode) return;
 
-          document.addEventListener('mouseover', handleMouseOver, true);
-          document.addEventListener('mouseout', handleMouseOut, true);
-          document.addEventListener('click', handleClick, true);
-          document.addEventListener('scroll', handleScroll, true);
+             const target = event.target;
+             if (target === currentHoverElement || target === currentSelectedElement) return;
+             if (target === document.body || target === document.documentElement) return;
+             if (target.tagName === 'SCRIPT' || target.tagName === 'STYLE') return;
 
-          eventListenersAdded = true;
-        }
+             clearHoverEffect();
+             target.classList.add('edit-hover');
+             currentHoverElement = target;
+           };
 
-        function removeEventListeners() {
-          if (!eventListenersAdded) return;
+           const mouseoutHandler = (event) => {
+             if (!isEditMode) return;
 
-          console.log('VisualEditor: Removing event listeners');
+             const target = event.target;
+             if (!event.relatedTarget || !target.contains(event.relatedTarget)) {
+               clearHoverEffect();
+             }
+           };
 
-          document.removeEventListener('mouseover', handleMouseOver, true);
-          document.removeEventListener('mouseout', handleMouseOut, true);
-          document.removeEventListener('click', handleClick, true);
-          document.removeEventListener('scroll', handleScroll, true);
+           const clickHandler = (event) => {
+             if (!isEditMode) return;
 
-          eventListenersAdded = false;
-        }
+             event.preventDefault();
+             event.stopPropagation();
 
-        function handleMouseOver(event) {
-          if (!isEditMode) return;
+             const target = event.target;
+             if (target === document.body || target === document.documentElement) return;
+             if (target.tagName === 'SCRIPT' || target.tagName === 'STYLE') return;
 
-          const target = event.target;
-          if (!target || target === currentHoverElement) return;
-          if (target === document.documentElement || target === document.body) return;
-          if (target.tagName === 'SCRIPT' || target.tagName === 'STYLE' || target.tagName === 'LINK') return;
-          if (target.classList.contains('edit-hover') || target.classList.contains('edit-selected')) return;
+             clearSelectedEffect();
+             clearHoverEffect();
 
-          clearHoverEffect();
+             target.classList.add('edit-selected');
+             currentSelectedElement = target;
 
-          try {
-            target.classList.add('edit-hover');
-            currentHoverElement = target;
+             const elementInfo = getElementInfo(target);
+             try {
+               window.parent.postMessage({
+                 type: 'ELEMENT_SELECTED',
+                 data: { elementInfo }
+               }, '*');
+             } catch {
+             }
+           };
 
-            const elementInfo = getElementInfo(target);
-            if (elementInfo) {
-              notifyParent('ELEMENT_HOVER', { elementInfo });
-            }
-          } catch (error) {
-            console.error('VisualEditor: Mouseover error:', error);
-          }
-        }
+           document.body.addEventListener('mouseover', mouseoverHandler, true);
+           document.body.addEventListener('mouseout', mouseoutHandler, true);
+           document.body.addEventListener('click', clickHandler, true);
+           eventListenersAdded = true;
+         }
 
-        function handleMouseOut(event) {
-          if (!isEditMode) return;
-          clearHoverEffect();
-        }
+         function setupEventListeners() {
+           addEventListeners();
+         }
 
-        function handleClick(event) {
-          if (!isEditMode) return;
+        window.addEventListener('message', (event) => {
+           const { type, editMode } = event.data;
+           switch (type) {
+             case 'TOGGLE_EDIT_MODE':
+               isEditMode = editMode;
+               if (isEditMode) {
+                 injectStyles();
+                 setupEventListeners();
+                 showEditTip();
+               } else {
+                 clearHoverEffect();
+                 clearSelectedEffect();
+               }
+               break;
+             case 'CLEAR_SELECTION':
+               clearSelectedEffect();
+               break;
+             case 'CLEAR_ALL_EFFECTS':
+               isEditMode = false;
+               clearHoverEffect();
+               clearSelectedEffect();
+               const tip = document.getElementById('edit-tip');
+               if (tip) tip.remove();
+               break;
+           }
+         });
 
-          event.preventDefault();
-          event.stopPropagation();
-          event.stopImmediatePropagation();
-
-          const target = event.target;
-          if (!target || target === document.documentElement || target === document.body) return;
-          if (target.tagName === 'SCRIPT' || target.tagName === 'STYLE') return;
-
-          clearSelection();
-          clearHoverEffect();
-
-          try {
-            target.classList.add('edit-selected');
-            currentSelectedElement = target;
-
-            const elementInfo = getElementInfo(target);
-            if (elementInfo) {
-              console.log('VisualEditor: Element selected in iframe', elementInfo);
-              notifyParent('ELEMENT_SELECTED', { elementInfo });
-            }
-          } catch (error) {
-            console.error('VisualEditor: Click error:', error);
-          }
-
-          return false;
-        }
-
-        function handleScroll() {
-          clearHoverEffect();
-        }
-
-        function setupMessageListener() {
-          window.addEventListener('message', function(event) {
-            const { type, editMode, script } = event.data || {};
-
-            console.log('VisualEditor: Received message in iframe:', type);
-
-            switch (type) {
-              case 'TOGGLE_EDIT_MODE':
-                console.log('VisualEditor: Toggle edit mode to', editMode);
-                isEditMode = editMode;
-
-                if (isEditMode) {
-                  document.documentElement.classList.add('visual-edit-mode');
-                  addEventListeners();
-                } else {
-                  document.documentElement.classList.remove('visual-edit-mode');
-                  removeEventListeners();
-                  clearHoverEffect();
-                  clearSelection();
-                }
-                break;
-
-              case 'CLEAR_SELECTION':
-                clearSelection();
-                break;
-
-              case 'INJECT_SCRIPT':
-                if (script) {
-                  try {
-                    // 动态执行脚本
-                    eval(script);
-                  } catch (error) {
-                    console.error('VisualEditor: Script evaluation error:', error);
-                  }
-                }
-                break;
-            }
-          });
-        }
-
-        function notifyParent(type, data) {
-          try {
-            window.parent.postMessage({
-              type: type,
-              data: data
-            }, '*');
-          } catch (error) {
-            console.error('VisualEditor: Failed to notify parent:', error);
-          }
-        }
-
-        // 开始初始化
-        initializeVisualEditor();
-
+         function showEditTip() {
+           if (document.getElementById('edit-tip')) return;
+           const tip = document.createElement('div');
+           tip.id = 'edit-tip';
+           tip.innerHTML = '🎯 编辑模式已开启<br/>悬浮查看元素，点击选中元素';
+           tip.style.cssText = \`
+             position: fixed;
+             top: 20px;
+             right: 20px;
+             background: #1890ff;
+             color: white;
+             padding: 12px 16px;
+             border-radius: 6px;
+             font-size: 14px;
+             z-index: 9999;
+             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+             animation: fadeIn 0.3s ease;
+           \`;
+           const style = document.createElement('style');
+           style.textContent = '@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }';
+           document.head.appendChild(style);
+           document.body.appendChild(tip);
+           setTimeout(() => {
+             if (tip.parentNode) {
+               tip.style.animation = 'fadeIn 0.3s ease reverse';
+               setTimeout(() => tip.remove(), 300);
+             }
+           }, 3000);
+         }
+         injectStyles();
+         setupEventListeners();
+         showEditTip();
       })();
     `;
   }

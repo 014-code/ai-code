@@ -3,6 +3,7 @@ import { Card, message, Row, Typography, Input, Select, Space } from 'antd';
 import { listFeaturedAppVoByPage, listAllAppTypes } from '@/services/backend/appController';
 import AppCard from '@/pages/Code/Home/components/AppCard';
 import { SearchOutlined } from '@ant-design/icons';
+import styles from './index.less';
 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
@@ -28,7 +29,7 @@ const CasesPage: React.FC = () => {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  const fetchApps = React.useCallback(async (isLoadMore: boolean = false) => {
+  const fetchApps = React.useCallback(async (isLoadMore: boolean = false, currentPageNum: number = 1) => {
     if (isLoadMore) {
       setLoadingMore(true);
     } else {
@@ -36,7 +37,7 @@ const CasesPage: React.FC = () => {
     }
     try {
       const params: any = {
-        pageNum: isLoadMore ? pageNum : 1,
+        pageNum: currentPageNum,
         pageSize: PAGE_SIZE,
         appType: selectedAppType === 'all' ? undefined : selectedAppType,
         searchKey: searchKey || undefined,
@@ -48,16 +49,18 @@ const CasesPage: React.FC = () => {
         const newApps = res.data?.records ?? [];
         const totalCount = res.data?.totalRow ?? 0;
         
-        if (isLoadMore) {
-          setApps(prev => [...prev, ...newApps]);
-          setPageNum(prev => prev + 1);
-        } else {
-          setApps(newApps);
-          setPageNum(2);
-        }
+        setApps(prev => {
+          const updatedApps = isLoadMore ? [...prev, ...newApps] : newApps;
+          setHasMore(updatedApps.length < totalCount);
+          return updatedApps;
+        });
         
         setTotal(totalCount);
-        setHasMore(apps.length + newApps.length < totalCount);
+        if (isLoadMore) {
+          setPageNum(prev => prev + 1);
+        } else {
+          setPageNum(2);
+        }
       } else {
         message.error(res.message ?? '加载失败');
       }
@@ -66,7 +69,7 @@ const CasesPage: React.FC = () => {
     }
     setLoading(false);
     setLoadingMore(false);
-  }, [selectedAppType, searchKey, sortField, sortOrder, pageNum, apps.length]);
+  }, [selectedAppType, searchKey, sortField, sortOrder]);
 
   const loadAppTypes = async () => {
     try {
@@ -79,41 +82,15 @@ const CasesPage: React.FC = () => {
 
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore) {
-      fetchApps(true);
+      fetchApps(true, pageNum);
     }
-  }, [loadingMore, hasMore, fetchApps]);
+  }, [loadingMore, hasMore, fetchApps, pageNum]);
 
   const handleSearch = (value: string) => {
     setSearchKey(value);
     setPageNum(1);
     setHasMore(true);
-    setTimeout(async () => {
-      setLoading(true);
-      try {
-        const params: any = {
-          pageNum: 1,
-          pageSize: PAGE_SIZE,
-          appType: selectedAppType === 'all' ? undefined : selectedAppType,
-          searchKey: value || undefined,
-          sortField: sortField || undefined,
-          sortOrder: sortOrder || undefined,
-        };
-        const res = await listFeaturedAppVoByPage(params);
-        if (res.code === 0) {
-          const newApps = res.data?.records ?? [];
-          const totalCount = res.data?.totalRow ?? 0;
-          setApps(newApps);
-          setTotal(totalCount);
-          setPageNum(2);
-          setHasMore(newApps.length < totalCount);
-        } else {
-          message.error(res.message ?? '加载失败');
-        }
-      } catch (error: any) {
-        message.error(error?.message ?? '加载失败');
-      }
-      setLoading(false);
-    }, SEARCH_DELAY);
+    fetchApps(false, 1);
   };
 
   const handleCopy = (_text: string) => undefined;
@@ -123,7 +100,9 @@ const CasesPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    fetchApps(false);
+    setPageNum(1);
+    setHasMore(true);
+    fetchApps(false, 1);
   }, [selectedAppType, sortField, sortOrder]);
 
   useEffect(() => {
@@ -149,19 +128,15 @@ const CasesPage: React.FC = () => {
   }, [loadMore]);
 
   return (
-    <div style={{ padding: 32, maxWidth: PAGE_MAX_WIDTH, margin: '0 auto' }}>
-      <Title level={2}>全部案例</Title>
-      <Paragraph type="secondary">
-        浏览精选案例，直接体验部署效果或复制提示词继续创作。
-      </Paragraph>
-
-      <Card style={{ marginBottom: 24 }}>
+    <div className={styles.casesPageContainer}>
+      <Card className={styles.filterCard}>
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
           <Search
             placeholder="搜索应用名称或描述"
             allowClear
             enterButton={<SearchOutlined />}
             size="large"
+            style={{ width: '100%' }}
             onSearch={handleSearch}
             onChange={(e) => {
               const value = e.target.value;
@@ -209,29 +184,29 @@ const CasesPage: React.FC = () => {
         </Space>
       </Card>
 
-      <Card loading={loading} style={{ padding: 24 }}>
-        <Row gutter={[16, 16]}>
+      <Card loading={loading} className={styles.appsCard}>
+        <Row>
           {apps.map(app => (
             <AppCard key={app.id} app={app as any} onCopy={handleCopy} />
           ))}
         </Row>
         {!apps.length && !loading && (
-          <div style={{ textAlign: 'center', padding: '48px 0', color: '#999' }}>
+          <div className={styles.emptyState}>
             暂无案例，稍后再来看看吧～
           </div>
         )}
         {hasMore && apps.length > 0 && (
-          <div ref={loadMoreRef} style={{ textAlign: 'center', padding: '20px 0' }}>
+          <div ref={loadMoreRef} className={styles.loadMoreContainer}>
             {loadingMore ? (
-              <span style={{ color: '#999' }}>加载中...</span>
+              <span className={styles.loadingText}>加载中...</span>
             ) : (
-              <span style={{ color: '#ccc' }}>下拉加载更多</span>
+              <span className={styles.hintText}>下拉加载更多</span>
             )}
           </div>
         )}
         {!hasMore && apps.length > 0 && (
-          <div style={{ textAlign: 'center', padding: '20px 0', color: '#999' }}>
-            已加载全部 {total} 条数据
+          <div className={styles.loadMoreContainer}>
+            <span className={styles.allLoadedText}>已加载全部 {total} 条数据</span>
           </div>
         )}
       </Card>

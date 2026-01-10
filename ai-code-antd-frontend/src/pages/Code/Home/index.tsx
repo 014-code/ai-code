@@ -12,6 +12,9 @@ import {
   UpOutlined
 } from "@ant-design/icons";
 import { CODE_GEN_TYPE_CONFIG, CodeGenTypeEnum } from "@/constants/codeGenTypeEnum";
+import Logo from "@/components/Logo";
+import { createParticleBurst } from "@/utils/animation";
+import styles from './index.less';
 
 const { Title } = Typography, { TextArea } = Input;
 
@@ -38,6 +41,9 @@ const HomePage: React.FC = () => {
   const [codeType, setCodeType] = useState<string>(CodeGenTypeEnum.HTML);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [presetPrompts, setPresetPrompts] = useState<API.PresetPromptVO[]>([]);
+  const [typingPlaceholder, setTypingPlaceholder] = useState('');
+  const [currentPromptIndex, setCurrentPromptIndex] = useState(0);
+  const [isTyping, setIsTyping] = useState(true);
 
   const menuItems: MenuProps['items'] = Object.values(CodeGenTypeEnum).map(type => ({
     label: CODE_GEN_TYPE_CONFIG[type].label,
@@ -139,6 +145,14 @@ const HomePage: React.FC = () => {
     setPrompt(text);
   };
 
+  /**
+   * 处理预设标签点击
+   */
+  const handlePresetTagClick = (text: string, event: React.MouseEvent) => {
+    createParticleBurst(event);
+    setPrompt(text);
+  };
+
   useEffect(() => {
     loadMyApps(1, DEFAULT_MY_APPS_PAGE_SIZE);
     loadFeaturedApps(selectedAppType);
@@ -146,45 +160,74 @@ const HomePage: React.FC = () => {
     loadPresetPrompts();
   }, [selectedAppType]);
 
+  useEffect(() => {
+    if (presetPrompts.length === 0) return;
+
+    let charIndex = 0;
+    let isDeleting = false;
+    let currentIndex = 0;
+
+    const typeEffect = () => {
+      const currentPrompt = presetPrompts[currentIndex].prompt || '';
+
+      if (!isDeleting && charIndex < currentPrompt.length) {
+        setTypingPlaceholder(currentPrompt.substring(0, charIndex + 1));
+        charIndex++;
+        setTimeout(typeEffect, 150);
+      } else if (!isDeleting && charIndex >= currentPrompt.length) {
+        setTimeout(() => {
+          isDeleting = true;
+          typeEffect();
+        }, 3000);
+      } else if (isDeleting && charIndex > 0) {
+        setTypingPlaceholder(currentPrompt.substring(0, charIndex - 1));
+        charIndex--;
+        setTimeout(typeEffect, 80);
+      } else {
+        isDeleting = false;
+        charIndex = 0;
+        currentIndex = (currentIndex + 1) % presetPrompts.length;
+        setTimeout(typeEffect, 500);
+      }
+    };
+
+    typeEffect();
+  }, [presetPrompts]);
+
   return (
-    <div style={{ padding: 32, width: PAGE_WIDTH, margin: '0 auto' }}>
-      <Title level={2} style={{
-        background: 'linear-gradient(135deg, #1890ff, #52c41a)',
-        WebkitBackgroundClip: 'text',
-        WebkitTextFillColor: 'transparent',
-        fontWeight: 'bold',
-        marginBottom: 0,
-        textAlign: 'center',
-        fontSize: '42px',
-        fontFamily: 'Arial, sans-serif'
-      }}>AI 零代码应用生成器</Title>
-      <Card style={{ margin: '50px auto', position: "relative", maxWidth: CARD_MAX_WIDTH, borderRadius: CARD_BORDER_RADIUS, paddingBottom: CARD_PADDING_BOTTOM }}>
-        <TextArea rows={4} value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="输入你的应用名称"
-          style={{ resize: 'none', fontSize: '22px' }} />
-        {presetPrompts.length > 0 && (
-          <div style={{ marginTop: 12, marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+    <div className={styles.homePageContainer}>
+      <div className={styles.headerSection}>
+        <Logo size={120} />
+        <Title level={2} className={styles.title}>AI 零代码应用生成器</Title>
+      </div>
+      <Card className={styles.createCard}>
+        <TextArea rows={4} value={prompt} onChange={e => setPrompt(e.target.value)} placeholder={typingPlaceholder} className={styles.textArea} />
+        <Button type="primary" loading={loading} className={styles.createButton} onClick={handleCreateApp} size={"large"}>创建应用</Button>
+      </Card>
+      {presetPrompts.length > 0 && (
+        <div className={styles.presetPromptsContainer}>
+          <div className={styles.presetPromptsTitle}>
+          </div>
+          <div className={styles.presetTagsWrapper}>
             {presetPrompts.map((item) => (
               <Tag
                 key={item.label}
-                style={{ cursor: 'pointer', fontSize: '13px', padding: '4px 12px' }}
-                onClick={() => setPrompt(item.prompt || '')}
+                className={styles.presetTag}
+                onClick={(e) => handlePresetTagClick(item.prompt || '', e)}
               >
                 {item.label}
               </Tag>
             ))}
           </div>
-        )}
-        <Button type="primary" loading={loading}
-          style={{ position: "absolute", bottom: "20px", right: "20px" }} onClick={handleCreateApp}
-          size={"large"}>创建应用</Button>
-      </Card>
+        </div>
+      )}
       <Card title="应用商城">
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: '20px' }}>
           <Dropdown menu={{
             items: menuItems,
             onClick: handleMenuClick
           }}>
-            <Button shape="round" icon={<LogoutOutlined />} size={"large"}>
+            <Button shape="round" icon={<LogoutOutlined />} size={"large"} className={styles.outlineGradientButton}>
               <Space>
                 {CODE_GEN_TYPE_CONFIG[codeType as CodeGenTypeEnum]?.label || '选择类型'}
                 <DownOutlined />
@@ -195,7 +238,7 @@ const HomePage: React.FC = () => {
             <Button
               shape="round"
               size="large"
-              type={selectedAppType === 'all' ? 'primary' : 'default'}
+              className={selectedAppType === 'all' ? styles.gradientButton : styles.outlineGradientButton}
               onClick={() => setSelectedAppType('all')}
             >
               全部
@@ -207,7 +250,7 @@ const HomePage: React.FC = () => {
                   key={appType.code}
                   shape="round"
                   size="large"
-                  type={selectedAppType === appType.text ? 'primary' : 'default'}
+                  className={selectedAppType === appType.text ? styles.gradientButton : styles.outlineGradientButton}
                   onClick={() => setSelectedAppType(appType.text || '')}
                 >
                   {appType.text}
@@ -225,9 +268,9 @@ const HomePage: React.FC = () => {
             )}
           </div>
           <Button type={"primary"} shape="round" icon={<DoubleRightOutlined />} size={"large"}
-            onClick={() => history.push("/cases")}>全部案例</Button>
+            onClick={() => history.push("/cases")} className={styles.gradientButton}>全部案例</Button>
         </div>
-        <Row gutter={16}>
+        <Row>
           {featuredApps.map(app => (
             <AppCard key={app.id} app={app} onCopy={inputCopy} loading={featuredAppsLoading}>
               <Tag icon={<CheckCircleOutlined />} color="success">
@@ -238,7 +281,7 @@ const HomePage: React.FC = () => {
         </Row>
       </Card>
       <Card title="我的应用" style={{ marginBottom: 24, marginTop: 24 }} loading={myAppsLoading}>
-        <Row gutter={16}>
+        <Row>
           {myApps.map(app => (
             <AppCard key={app.id} app={app} onCopy={inputCopy}></AppCard>
           ))}

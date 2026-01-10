@@ -6,7 +6,8 @@ const TOKEN_KEY = 'ms-token';
 
 export async function setToken(value: any) {
     try {
-        await AsyncStorage.setItem(TOKEN_KEY, value);
+        const tokenValue = typeof value === 'string' ? value : JSON.stringify(value);
+        await AsyncStorage.setItem(TOKEN_KEY, tokenValue);
     } catch (error) {
         console.error('保存 token 失败:', error);
     }
@@ -14,7 +15,13 @@ export async function setToken(value: any) {
 
 export async function getToken() {
     try {
-        return await AsyncStorage.getItem(TOKEN_KEY);
+        const token = await AsyncStorage.getItem(TOKEN_KEY);
+        if (!token) return null;
+        try {
+            return JSON.parse(token);
+        } catch {
+            return token;
+        }
     } catch (error) {
         console.error('获取 token 失败:', error);
         return null;

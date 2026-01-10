@@ -1,8 +1,9 @@
 import React from 'react';
-import {Avatar, Button, Card, Col, Empty, message, Space, Skeleton} from "antd";
+import {Avatar, Button, Card, Col, Empty, message, Space, Skeleton, Tag} from "antd";
 import {history} from "@@/core/history";
 import {getStaticPreviewUrl} from "@/constants/proUrlOperation";
 import {EyeOutlined} from "@ant-design/icons";
+import styles from './AppCard.less';
 
 interface AppData {
   id: number,
@@ -12,6 +13,7 @@ interface AppData {
   initPrompt: string,
   cover: string,
   pageViews?: number,
+  appType?: string,
   user?: { userAvatar: string, userName: string },
 }
 
@@ -61,11 +63,11 @@ const AppCard: React.FC<Props> = (props) => {
 
 
   return (
-    <div style={{position: 'relative'}}>
+    <div className={styles.appCardWrapper}>
       <Col key={app.id}>
         {loading ? (
-          <Card style={{minWidth: 200, textAlign: "center", maxWidth: 282}}>
-            <Skeleton.Image active style={{width: '100%', height: 200}} />
+          <Card className={styles.skeletonCard}>
+            <Skeleton.Image active className={styles.skeletonImage} />
             <Skeleton active paragraph={{ rows: 2 }} />
           </Card>
         ) : (
@@ -73,23 +75,32 @@ const AppCard: React.FC<Props> = (props) => {
             hoverable
             //@ts-ignore
             onClick={() => history.push(getStaticPreviewUrl(app.codeGenType, app.id, app.deployKey))}
-            style={{minWidth: 200, textAlign: "center", maxWidth: 282}}
+            className={styles.appCard}
             cover={
               app.cover ? (
-                <img
-                  draggable={false}
-                  alt="example"
-                  src={app.cover}
-                />
+                <div className={styles.cardCover}>
+                  <img
+                    draggable={false}
+                    alt="example"
+                    src={app.cover}
+                  />
+                </div>
               ) : (
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description="暂无封面"
-                />
+                <div className={styles.cardEmpty}>
+                  <div className={styles.skeletonCover}>
+                    <div className={styles.skeletonShimmer}></div>
+                    <div className={styles.skeletonIcon}></div>
+                    <div className={styles.skeletonTitle}></div>
+                    <div className={styles.skeletonSubtitle}></div>
+                  </div>
+                </div>
               )
             }
           >
-            <div style={{marginBottom: '10px', marginLeft: '50px'}}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+              {app.appType && (
+                <Tag color="blue">{app.appType}</Tag>
+              )}
               {children}
             </div>
             <Card.Meta
@@ -99,7 +110,7 @@ const AppCard: React.FC<Props> = (props) => {
                 <div>
                   <div>{"创建者：" + (app.user?.userName || '')}</div>
                   {app.pageViews !== undefined && (
-                    <Space size={4} style={{marginTop: '4px', color: '#666', fontSize: '12px',}}>
+                    <Space size={4} className={styles.pageViews}>
                       <EyeOutlined/>
                       <span>{app.pageViews || 0}</span>
                     </Space>
@@ -112,29 +123,11 @@ const AppCard: React.FC<Props> = (props) => {
         )}
 
         {!loading && (
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.7)',
-            display: 'flex',
-            flexDirection: "column",
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: '10px',
-            opacity: 0,
-            transition: 'opacity 0.3s',
-            borderRadius: '8px',
-          }}
-               onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-               onMouseLeave={(e) => e.currentTarget.style.opacity = '0'}
-          >
+          <div className={styles.cardOverlay}>
             {/* 查看应用按钮 */}
             <Button
               size={"large"}
-              style={{padding: '5px 10px', cursor: 'pointer'}}
+              className={styles.overlayButton}
               //@ts-ignore
               onClick={() => history.push(getStaticPreviewUrl(app.codeGenType, app.id, app.deployKey))}
             >
@@ -143,7 +136,7 @@ const AppCard: React.FC<Props> = (props) => {
             {/* 复制提示词按钮 */}
             <Button
               size={"large"}
-              style={{padding: '5px 10px', cursor: 'pointer'}}
+              className={styles.overlayButton}
               onClick={() => copyToClipboard(app.initPrompt || '')}
             >
               复制提示词
@@ -151,7 +144,7 @@ const AppCard: React.FC<Props> = (props) => {
             {/* 查看对话按钮 */}
             <Button
               size={"large"}
-              style={{padding: '5px 10px', cursor: 'pointer'}}
+              className={styles.overlayButton}
               onClick={() => {
                 history.push(`/chat/${app.id}`)
               }}

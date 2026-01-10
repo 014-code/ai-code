@@ -5,6 +5,8 @@ import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button, Icon, Input } from 'react-native-elements';
 import { register } from '../../api/user';
+import { useTheme } from '@/hooks/useTheme';
+import Logo from '@/components/Logo';
 
 type RegisterParam = {
     userAccount: '',
@@ -16,6 +18,7 @@ type RegisterParam = {
  * 注册页面
  */
 export default function Register() {
+    const { themeColor } = useTheme()
     const [loginForm, setLoginForm] = useState({
         userAccount: '',
         userPassword: '',
@@ -71,6 +74,9 @@ export default function Register() {
                         <AnimatedBounceView containerStyle={styles.titleContainer}>
                             <Text style={styles.title}>注册新账号</Text>
                         </AnimatedBounceView>
+                        <View style={styles.logoContainer}>
+                            <Logo size={80} />
+                        </View>
                     </View>
                 </View>
                 <View style={styles.formContainer}>
@@ -104,7 +110,7 @@ export default function Register() {
                             />
                             <Button title="注册" onPress={handleSubmit} />
                             <View style={{ margin: 'auto' }}>
-                                <Link href={'/user/login'} style={{ color: '#87CEEB' }}>已有账号，去登录</Link>
+                                <Link href={'/user/login'} style={{ color: themeColor }}>已有账号，去登录</Link>
                             </View>
                         </AnimatedBounceView>
                     </ScrollView>
@@ -151,6 +157,10 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         color: 'white',
         marginTop: 50
+    },
+    logoContainer: {
+        alignItems: 'center',
+        marginTop: 20,
     },
     formContent: {
         gap: 20,

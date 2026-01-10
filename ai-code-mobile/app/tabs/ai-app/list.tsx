@@ -9,12 +9,14 @@ import React, { useEffect, useState } from 'react'
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { SearchBar } from 'react-native-elements'
 import { useRouter } from 'expo-router'
+import { useTheme } from '@/hooks/useTheme'
 
 /**
  * 全部应用页
  */
 export default function List() {
     const router = useRouter()
+    const { themeColor } = useTheme()
     // 精选应用数据
     const [appData, setAppData] = useState<AppVO[]>([])
     // 加载状态
@@ -191,7 +193,7 @@ export default function List() {
         if (!loading || appData.length === 0) return null
         return (
             <View style={styles.footer}>
-                <ActivityIndicator size="small" color="#009dffff" />
+                <ActivityIndicator size="small" color={themeColor} />
                 <Text style={styles.footerText}>加载中...</Text>
             </View>
         )
@@ -231,7 +233,7 @@ export default function List() {
                         <RefreshControl
                             refreshing={refreshing}
                             onRefresh={onRefresh}
-                            colors={['#009dffff']}
+                            colors={[themeColor]}
                         />
                     }
                     onEndReached={loadMore}

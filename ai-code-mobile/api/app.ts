@@ -86,3 +86,13 @@ export function deleteApp(data: DeleteParams) {
 		method: "POST",
 	})
 }
+
+/**
+ * 查询所有预设提示词
+ */
+export function listAllPresetPrompts() {
+	return request({
+		url: '/api/prompt/preset/list/all/vo',
+		method: 'GET',
+	})
+}

@@ -23,5 +23,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
         String outputDirPath = System.getProperty("user.dir") + File.separator + "tmp" + File.separator + "code_output";
         registry.addResourceHandler("/output/**")
                 .addResourceLocations("file:" + outputDirPath + File.separator);
+
+        // 映射静态资源路径（兼容前端 /static/** 访问）
+        registry.addResourceHandler("/static/**")
+                .addResourceLocations("file:" + outputDirPath + File.separator);
     }
 }
