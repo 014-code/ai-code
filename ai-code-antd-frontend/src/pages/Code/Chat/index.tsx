@@ -14,6 +14,8 @@ import { getStaticPreviewUrl } from "@/constants/proUrlOperation";
 import { CODE_GEN_TYPE_CONFIG } from "@/constants/codeGenTypeEnum";
 import { VisualEditor, ElementInfo } from '@/utils/VisualEditor';
 import VisualEditorPanel from "@/components/VisualEditor";
+import Logo from "@/components/Logo";
+import styles from './index.less';
 
 // 从antd组件库中解构出需要的组件
 const { TextArea } = Input, { Title, Text } = Typography;
@@ -93,24 +95,23 @@ const ChatPage: React.FC = () => {
         }
       });
     }
-    // 初始化iframe
-    if (iframeRef.current && visualEditorRef.current) {
-      visualEditorRef.current.init(iframeRef.current);
-    }
-    // 根据编辑模式状态启用或禁用编辑功能
-    if (visualEditorRef.current) {
+    // 监听来自iframe的消息
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, []);
+
+  // 当编辑模式或iframe加载完成时，启用或禁用编辑功能
+  useEffect(() => {
+    if (visualEditorRef.current && iframeRef.current) {
       if (isEditMode) {
         visualEditorRef.current.enableEditMode();
       } else {
         visualEditorRef.current.disableEditMode();
       }
     }
-    // 监听来自iframe的消息
-    window.addEventListener('message', handleMessage);
-    return () => {
-      window.removeEventListener('message', handleMessage);
-    };
-  }, [iframeRef.current, isEditMode]);
+  }, [isEditMode, iframeRef.current]);
 
   // ==================== 数据初始化 ====================
   /**
@@ -606,23 +607,21 @@ const ChatPage: React.FC = () => {
   };
 
   /**
-   * 获取带可视化编辑参数的预览URL
-   * 在预览URL中添加visualEdit=true参数，用于启用可视化编辑功能
+   * 获取预览URL
    * @returns 完整的预览URL字符串
    */
-  const getPreviewUrlWithVisualEdit = () => {
+  const getPreviewUrl = () => {
     if (!appInfo?.codeGenType || !appInfo?.id) {
+      console.log('getPreviewUrl: 缺少必要参数', { codeGenType: appInfo?.codeGenType, id: appInfo?.id });
       return '';
     }
-    const baseUrl = getStaticPreviewUrl(
+    const url = getStaticPreviewUrl(
       appInfo.codeGenType,
       String(appInfo.id),
       appInfo.deployKey || undefined
     );
-    if (!baseUrl) {
-      return '';
-    }
-    return baseUrl.includes('?') ? `${baseUrl}&visualEdit=true` : `${baseUrl}?visualEdit=true`;
+    console.log('getPreviewUrl 生成的URL:', url, { codeGenType: appInfo.codeGenType, id: appInfo.id, deployKey: appInfo.deployKey });
+    return url;
   };
 
   const codeGenTypeLabel = appInfo?.codeGenType
@@ -630,15 +629,8 @@ const ChatPage: React.FC = () => {
     : undefined;
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
-      <div style={{
-        padding: HEADER_PADDING,
-        borderBottom: '1px solid #f0f0f0',
-        background: '#fff',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}>
+    <div className={styles.chatPageContainer}>
+      <div className={styles.chatHeader}>
         <Space>
           <Title level={4} style={{ margin: 0 }}>应用对话</Title>
           <Tag color={"blue"}>{codeGenTypeLabel || '未知类型'}</Tag>
@@ -663,8 +655,8 @@ const ChatPage: React.FC = () => {
         </Space>
       </div>
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-        <div style={{ width: CHAT_WIDTH, borderRight: '1px solid #eee', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ flex: 1, overflow: 'auto', padding: CHAT_PADDING }}>
+        <div className={styles.chatSection}>
+          <div className={styles.chatContent}>
             {loadMore.hasMore && (
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
                 <Button
@@ -692,9 +684,13 @@ const ChatPage: React.FC = () => {
                   gap: 8,
                   flexDirection: msg.messageType === 'user' ? 'row-reverse' : 'row'
                 }}>
-                  <Avatar style={{ background: msg.messageType === 'user' ? '#1890ff' : '#52c41a' }}>
-                    {msg.messageType === 'user' ? 'U' : 'AI'}
-                  </Avatar>
+                  {msg.messageType === 'user' ? (
+                    <Avatar style={{ background: '#1890ff' }}>U</Avatar>
+                  ) : (
+                    <div style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Logo size={32} />
+                    </div>
+                  )}
                   <Card size="small" style={{
                     background: msg.messageType === 'user' ? '#e6f7ff' : '#f6ffed',
                     border: msg.messageType === 'user' ? '1px solid #91d5ff' : '1px solid #b7eb8f'
@@ -714,7 +710,9 @@ const ChatPage: React.FC = () => {
 
             {loading && (
               <div style={{ display: 'flex', marginBottom: 16 }}>
-                <Avatar style={{ background: '#52c41a' }}>AI</Avatar>
+                <div style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Logo size={32} />
+                </div>
                 <Card size="small" style={{ background: '#f6ffed' }}>
                   <Spin size="small" />
                   <Text style={{ marginLeft: 8 }}>AI正在思考中...</Text>
@@ -723,7 +721,7 @@ const ChatPage: React.FC = () => {
             )}
             <div ref={messagesEndRef} />
           </div>
-          <div style={{ padding: 16, borderTop: '1px solid #f0f0f0', background: '#fff' }}>
+          <div className={styles.chatInput}>
             <VisualEditorPanel isEditMode={isEditMode}
               selectedElements={selectedElements}
               onToggleEditMode={toggleEditMode}
@@ -741,14 +739,7 @@ const ChatPage: React.FC = () => {
             <div style={{ fontSize: 12, color: '#999', marginTop: 8 }}>提示：Ctrl+Enter 发送</div>
           </div>
         </div>
-        <div style={{
-          width: PREVIEW_WIDTH,
-          background: '#fafafa',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          position: 'relative'
-        }}>
+        <div className={styles.previewSection}>
           {previewLoading && (
             <div style={{
               position: 'absolute',
@@ -772,11 +763,11 @@ const ChatPage: React.FC = () => {
               ref={iframeRef}
               title="已部署应用预览"
               style={{ border: '1px solid #eee', borderRadius: 8, width: '100%', height: '92vh', background: '#fff' }}
-              sandbox="allow-scripts allow-same-origin"
-              src={getPreviewUrlWithVisualEdit()}
+              src={getPreviewUrl()}
               onLoad={() => {
                 setPreviewLoading(false);
-                if (visualEditorRef.current) {
+                if (visualEditorRef.current && iframeRef.current) {
+                  visualEditorRef.current.init(iframeRef.current);
                   visualEditorRef.current.onIframeLoad();
                 }
               }}

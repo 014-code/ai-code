@@ -7,11 +7,14 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button, Icon, Input } from 'react-native-elements';
 import { login } from '../../api/user';
 import { setToken } from '../../utils/cookies';
+import { useTheme } from '@/hooks/useTheme';
+import Logo from '@/components/Logo';
 
 /**
  * 登录页面
  */
 export default function Login() {
+    const { themeColor } = useTheme()
     const [loginForm, setLoginForm] = useState({
         userAccount: '',
         userPassword: ''
@@ -46,6 +49,9 @@ export default function Login() {
                         <AnimatedBounceView containerStyle={styles.titleContainer}>
                             <Text style={styles.title}>欢迎来到ai零代码生成应用</Text>
                         </AnimatedBounceView>
+                        <View style={styles.logoContainer}>
+                            <Logo size={80} />
+                        </View>
                     </View>
                 </View>
                 <View style={styles.formContainer}>
@@ -70,7 +76,7 @@ export default function Login() {
                             />
                             <Button title="登录" onPress={handleSubmit} />
                             <View>
-                                <Link href={'/user/register'} style={{ margin: 'auto', color: '#87CEEB' }}>还没账号？去注册</Link>
+                                <Link href={'/user/register'} style={{ margin: 'auto', color: themeColor }}>还没账号？去注册</Link>
                             </View>
                         </AnimatedBounceView>
                     </ScrollView>
@@ -119,6 +125,10 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         color: 'white',
         marginTop: 50
+    },
+    logoContainer: {
+        alignItems: 'center',
+        marginTop: 20,
     },
     formContent: {
         gap: 20,

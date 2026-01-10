@@ -1,10 +1,12 @@
-import { addApp } from '@/api/app'
+import { addApp, listAllPresetPrompts } from '@/api/app'
 import HomeBackground from '@/components/HomeBackground'
 import HomeSkeleton from '@/components/HomeSkeleton'
 import { useRouter } from 'expo-router'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { Icon } from 'react-native-elements'
+import { useTheme } from '@/hooks/useTheme'
+import Logo from '@/components/Logo'
 
 /**
  * 首页组件
@@ -12,27 +14,69 @@ import { Icon } from 'react-native-elements'
  */
 export default function Home() {
   const router = useRouter()
+  const { themeColor } = useTheme()
   const [inputText, setInputText] = useState('')
   const [selectedTag, setSelectedTag] = useState('')
   const [loading, setLoading] = useState(false)
+  const [presetPrompts, setPresetPrompts] = useState<any[]>([])
+  const [typingPlaceholder, setTypingPlaceholder] = useState('')
 
-  const presetTags = [
-    '待办事项应用',
-    '天气查询应用',
-    '计算器应用',
-    '记事本应用',
-    '闹钟应用',
-    '日历应用',
-  ]
+  useEffect(() => {
+    loadPresetPrompts()
+  }, [])
+
+  useEffect(() => {
+    if (presetPrompts.length === 0) return;
+
+    let charIndex = 0;
+    let isDeleting = false;
+    let currentIndex = 0;
+
+    const typeEffect = () => {
+      const currentPrompt = presetPrompts[currentIndex].prompt || '';
+      
+      if (!isDeleting && charIndex < currentPrompt.length) {
+        setTypingPlaceholder(currentPrompt.substring(0, charIndex + 1));
+        charIndex++;
+        setTimeout(typeEffect, 150);
+      } else if (!isDeleting && charIndex >= currentPrompt.length) {
+        setTimeout(() => {
+          isDeleting = true;
+          typeEffect();
+        }, 3000);
+      } else if (isDeleting && charIndex > 0) {
+        setTypingPlaceholder(currentPrompt.substring(0, charIndex - 1));
+        charIndex--;
+        setTimeout(typeEffect, 80);
+      } else {
+        isDeleting = false;
+        charIndex = 0;
+        currentIndex = (currentIndex + 1) % presetPrompts.length;
+        setTimeout(typeEffect, 500);
+      }
+    };
+
+    typeEffect();
+  }, [presetPrompts]);
+
+  const loadPresetPrompts = async () => {
+    try {
+      const res = await listAllPresetPrompts()
+      setPresetPrompts(res.data || [])
+    } catch (error) {
+      console.error('加载预设提示词失败：', error)
+    }
+  }
 
   /**
    * 处理标签点击
    * 将标签内容填充到输入框，方便用户快速输入提示词
    * @param tag - 选中的标签文本
    */
-  const handleTagPress = (tag: string) => {
-    setSelectedTag(tag)
-    setInputText(`请帮我生成一个${tag}`)
+  const handleTagPress = (label: string) => {
+    setSelectedTag(label)
+    const prompt = presetPrompts.find(p => p.label === label)?.prompt || label
+    setInputText(prompt)
   }
 
   /**
@@ -75,6 +119,9 @@ export default function Home() {
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>AI 应用生成平台</Text>
+          <View style={styles.logoContainer}>
+            <Logo size={100} />
+          </View>
         </View>
 
         <View style={styles.inputContainer}>
@@ -90,7 +137,7 @@ export default function Home() {
             <ScrollView style={styles.scrollView}>
               <TextInput
                 style={styles.textInput}
-                placeholder="输入提示词生成应用..."
+                placeholder={typingPlaceholder || "输入提示词生成应用..."}
                 placeholderTextColor="#999"
                 value={inputText}
                 onChangeText={setInputText}
@@ -116,22 +163,22 @@ export default function Home() {
         <View style={styles.tagsContainer}>
           <Text style={styles.tagsTitle}>预设提示词</Text>
           <View style={styles.tagsWrapper}>
-            {presetTags.map((tag, index) => (
+            {presetPrompts.map((item, index) => (
               <TouchableOpacity
                 key={index}
                 style={[
                   styles.tag,
-                  selectedTag === tag && styles.tagSelected,
+                  selectedTag === item.label && styles.tagSelected,
                 ]}
-                onPress={() => handleTagPress(tag)}
+                onPress={() => handleTagPress(item.label)}
               >
                 <Text
                   style={[
                     styles.tagText,
-                    selectedTag === tag && styles.tagTextSelected,
+                    selectedTag === item.label && getDynamicStyles(themeColor).tagTextSelected,
                   ]}
                 >
-                  {tag}
+                  {item.label}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -144,11 +191,11 @@ export default function Home() {
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="#667eea" size="small" />
+            <ActivityIndicator color={themeColor} size="small" />
           ) : (
-            <Icon name="rocket-launch" type="material" size={24} color="#fff" />
+            <Icon name="rocket-launch" type="material" size={24} color={themeColor} />
           )}
-          <Text style={styles.createButtonText}>
+          <Text style={getDynamicStyles(themeColor).createButtonText}>
             {loading ? '创建中...' : '创建应用'}
           </Text>
         </TouchableOpacity>
@@ -174,6 +221,10 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginTop: 15,
   },
   inputContainer: {
     width: '100%',
@@ -244,7 +295,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   tagTextSelected: {
-    color: '#667eea',
     fontWeight: 'bold',
   },
   createButton: {
@@ -266,7 +316,18 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   createButtonText: {
-    color: '#667eea',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+})
+
+const getDynamicStyles = (themeColor: string) => ({
+  tagTextSelected: {
+    color: themeColor,
+    fontWeight: 'bold',
+  },
+  createButtonText: {
+    color: themeColor,
     fontSize: 18,
     fontWeight: 'bold',
   },

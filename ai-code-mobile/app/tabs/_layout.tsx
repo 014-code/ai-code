@@ -1,15 +1,18 @@
 import { Icon } from 'react-native-elements';
 import { Tabs, Stack } from "expo-router";
+import { useTheme } from '@/hooks/useTheme';
 
 /**
  * 底部栏布局组件
  * @returns 
  */
 export default function TabLayout() {
+    const { themeColor } = useTheme();
+
     return (
         <Tabs
             screenOptions={{
-                tabBarActiveTintColor: '#007AFF',
+                tabBarActiveTintColor: themeColor,
                 tabBarInactiveTintColor: '#8E8E93',
                 tabBarStyle: {
                     backgroundColor: '#FFFFFF',

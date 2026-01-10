@@ -22,6 +22,11 @@ export default function RootLayout() {
             headerShown: false,
             animation: 'fade',
           }} />
+          <Stack.Screen name='settings' options={{
+            title: "设置",
+            headerShown: false,
+            animation: 'fade',
+          }} />
           <Stack.Screen name='tabs' options={{ headerShown: false }} />
           <Stack.Screen name='code/chat' options={{ headerShown: false }} />
           <Stack.Screen name='code/webview' options={{ headerShown: false }} />

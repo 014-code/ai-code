@@ -5,6 +5,7 @@ import { history } from '@umijs/max';
 import defaultSettings from '../config/defaultSettings';
 import { AvatarDropdown } from './components/RightContent/AvatarDropdown';
 import { requestConfig } from './requestConfig';
+import Logo from './components/Logo';
 
 const loginPath = '/user/login';
 
@@ -53,7 +54,7 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
       content: initialState?.currentUser?.userName,
     },
     footerRender: () => <Footer />,
-    menuHeaderRender: undefined,
+    menuHeaderRender: () => <Logo size={32} />,
     // 自定义 403 页面
     // unAccessible: <div>unAccessible</div>,
     ...defaultSettings,
