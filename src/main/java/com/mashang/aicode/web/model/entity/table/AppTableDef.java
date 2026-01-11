@@ -49,6 +49,11 @@ public class AppTableDef extends TableDef {
     public final QueryColumn APP_COVER = new QueryColumn(this, "appCover");
 
     /**
+     * 应用封面（实体类字段名：cover）
+     */
+    public final QueryColumn COVER = new QueryColumn(this, "cover");
+
+    /**
      * 初始化提示词
      */
     public final QueryColumn INIT_PROMPT = new QueryColumn(this, "initPrompt");

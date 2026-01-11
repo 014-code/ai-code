@@ -1,11 +1,33 @@
 import { LinearGradient } from 'expo-linear-gradient'
 import React from 'react'
-import { StyleSheet, View } from 'react-native'
+import { View } from 'react-native'
+import styles from './HomeBackground.less'
 
+/**
+ * 首页背景组件属性
+ */
 interface HomeBackgroundProps {
+  /**
+   * 子组件内容
+   */
   children: React.ReactNode
 }
 
+/**
+ * 首页背景组件
+ * 提供渐变色背景，用于美化首页视觉效果
+ * 使用 LinearGradient 实现从左上到右下的渐变效果
+ *
+ * @param props - 组件属性
+ * @returns 背景组件
+ *
+ * @example
+ * ```tsx
+ * <HomeBackground>
+ *   <Text>首页内容</Text>
+ * </HomeBackground>
+ * ```
+ */
 export default function HomeBackground({ children }: HomeBackgroundProps) {
   return (
     <View style={styles.container}>
@@ -19,22 +41,3 @@ export default function HomeBackground({ children }: HomeBackgroundProps) {
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    position: 'relative',
-  },
-  background: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  content: {
-    flex: 1,
-    position: 'relative',
-    zIndex: 1,
-  },
-})

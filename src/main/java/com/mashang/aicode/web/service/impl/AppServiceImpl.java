@@ -155,14 +155,10 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         if (StrUtil.isNotBlank(appName)) {
             queryWrapper.and(APP.APP_NAME.like("%" + appName + "%"));
         }
-        if (StrUtil.isNotBlank(appDesc)) {
-            queryWrapper.and(APP.APP_DESC.like("%" + appDesc + "%"));
-        }
 
-        // 搜索关键词（名称和描述模糊搜索）
+        // 搜索关键词（应用名称模糊搜索）
         if (StrUtil.isNotBlank(searchKey)) {
-            QueryWrapper searchWrapper = QueryWrapper.create().or(APP.APP_NAME.like("%" + searchKey + "%")).or(APP.APP_DESC.like("%" + searchKey + "%"));
-            queryWrapper.and(String.valueOf(searchWrapper));
+            queryWrapper.and(APP.APP_NAME.like("%" + searchKey + "%"));
         }
 
         return queryWrapper;

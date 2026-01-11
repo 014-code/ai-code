@@ -34,7 +34,7 @@ import java.io.File;
         PutObjectResult result = putObject(key, file);
         if (result != null) {
 
-            String url = String.format("%s%s", cosClientConfig.getHost(), key);
+            String url = String.format("%s/%s", cosClientConfig.getHost(), key);
             log.info("文件上传COS成功: {} -> {}", file.getName(), url);
             return url;
         } else {

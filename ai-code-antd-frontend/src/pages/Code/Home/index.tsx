@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { addApp, listMyAppVoByPage, listFeaturedAppVoByPage, listAllAppTypes, listAllPresetPrompts } from '@/services/backend/appController';
-import { Button, Card, Input, message, Typography, Row, Tag, Dropdown, Space, MenuProps, Pagination } from 'antd';
+import { Button, Card, Input, message, Typography, Row, Col, Tag, Dropdown, Space, MenuProps, Pagination } from 'antd';
 import { history } from '@umijs/max';
 import AppCard from "@/pages/Code/Home/components/AppCard";
 import {
@@ -14,18 +14,21 @@ import {
 import { CODE_GEN_TYPE_CONFIG, CodeGenTypeEnum } from "@/constants/codeGenTypeEnum";
 import Logo from "@/components/Logo";
 import { createParticleBurst } from "@/utils/animation";
+import InteractiveBackground from "@/components/InteractiveBackground";
 import styles from './index.less';
 
 const { Title } = Typography, { TextArea } = Input;
 
-const PAGE_WIDTH = 1600;
-const CARD_MAX_WIDTH = 700;
-const CARD_BORDER_RADIUS = 30;
-const CARD_PADDING_BOTTOM = 60;
 const DEFAULT_MY_APPS_PAGE_SIZE = 8;
 const DEFAULT_FEATURED_APPS_PAGE_SIZE = 10;
 const MAX_VISIBLE_APP_TYPES = 6;
 
+/**
+ * 首页组件
+ * AI 零代码应用生成器的主页面
+ * 提供应用创建、应用商城、我的应用等功能
+ * @returns React 组件
+ */
 const HomePage: React.FC = () => {
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
@@ -42,8 +45,6 @@ const HomePage: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [presetPrompts, setPresetPrompts] = useState<API.PresetPromptVO[]>([]);
   const [typingPlaceholder, setTypingPlaceholder] = useState('');
-  const [currentPromptIndex, setCurrentPromptIndex] = useState(0);
-  const [isTyping, setIsTyping] = useState(true);
 
   const menuItems: MenuProps['items'] = Object.values(CodeGenTypeEnum).map(type => ({
     label: CODE_GEN_TYPE_CONFIG[type].label,
@@ -57,6 +58,7 @@ const HomePage: React.FC = () => {
 
   /**
    * 创建新应用
+   * 根据用户输入的提示词创建新应用，并跳转到对话页面
    */
   const handleCreateApp = async () => {
     if (!prompt.trim()) return message.warning('请输入提示词');
@@ -64,7 +66,6 @@ const HomePage: React.FC = () => {
     try {
       const { data: appId } = await addApp({ appName: prompt, appDesc: prompt, initPrompt: prompt, codeGenType: codeType });
       message.success('创建成功');
-      // 跳转到对话页，并传递提示词参数
       history.push(`/chat/${appId}?prompt=${encodeURIComponent(prompt)}`);
     } catch (e: any) {
       message.error('创建失败:' + e.message);
@@ -74,6 +75,8 @@ const HomePage: React.FC = () => {
 
   /**
    * 加载我的应用列表
+   * @param pageNum - 页码，默认为 1
+   * @param pageSize - 每页数量，默认为 DEFAULT_MY_APPS_PAGE_SIZE
    */
   const loadMyApps = async (pageNum: number = 1, pageSize: number = DEFAULT_MY_APPS_PAGE_SIZE) => {
     setMyAppsLoading(true);
@@ -89,6 +92,8 @@ const HomePage: React.FC = () => {
 
   /**
    * 处理分页变化
+   * @param page - 当前页码
+   * @param pageSize - 每页数量
    */
   const handlePageChange = (page: number, pageSize: number) => {
     setMyAppsPageNum(page);
@@ -98,6 +103,7 @@ const HomePage: React.FC = () => {
 
   /**
    * 加载精选应用列表
+   * @param appType - 应用类型，'all' 表示所有类型
    */
   const loadFeaturedApps = async (appType: string) => {
     setFeaturedAppsLoading(true);
@@ -140,6 +146,7 @@ const HomePage: React.FC = () => {
 
   /**
    * 复制文本到输入框
+   * @param text - 要复制的文本
    */
   const inputCopy = (text: string) => {
     setPrompt(text);
@@ -147,6 +154,8 @@ const HomePage: React.FC = () => {
 
   /**
    * 处理预设标签点击
+   * @param text - 提示词文本
+   * @param event - 鼠标事件
    */
   const handlePresetTagClick = (text: string, event: React.MouseEvent) => {
     createParticleBurst(event);
@@ -195,11 +204,15 @@ const HomePage: React.FC = () => {
   }, [presetPrompts]);
 
   return (
-    <div className={styles.homePageContainer}>
-      <div className={styles.headerSection}>
-        <Logo size={120} />
-        <Title level={2} className={styles.title}>AI 零代码应用生成器</Title>
-      </div>
+    <>
+      <InteractiveBackground />
+      <div className={styles.homePageContainer}>
+        <div className={styles.headerSection}>
+          <Logo size={120} />
+          <Title level={2} className={styles.title}>CodeFree Builder -Nexus Creator
+            <p>构建精美应用--只需靠 说</p>
+          </Title>
+        </div>
       <Card className={styles.createCard}>
         <TextArea rows={4} value={prompt} onChange={e => setPrompt(e.target.value)} placeholder={typingPlaceholder} className={styles.textArea} />
         <Button type="primary" loading={loading} className={styles.createButton} onClick={handleCreateApp} size={"large"}>创建应用</Button>
@@ -270,20 +283,24 @@ const HomePage: React.FC = () => {
           <Button type={"primary"} shape="round" icon={<DoubleRightOutlined />} size={"large"}
             onClick={() => history.push("/cases")} className={styles.gradientButton}>全部案例</Button>
         </div>
-        <Row>
+        <Row gutter={[16, 16]}>
           {featuredApps.map(app => (
-            <AppCard key={app.id} app={app} onCopy={inputCopy} loading={featuredAppsLoading}>
-              <Tag icon={<CheckCircleOutlined />} color="success">
-                精选
-              </Tag>
-            </AppCard>
+            <Col xs={24} sm={12} md={8} lg={6} xl={6} key={app.id}>
+              <AppCard app={app} onCopy={inputCopy} loading={featuredAppsLoading}>
+                <Tag icon={<CheckCircleOutlined />} color="success">
+                  精选
+                </Tag>
+              </AppCard>
+            </Col>
           ))}
         </Row>
       </Card>
       <Card title="我的应用" style={{ marginBottom: 24, marginTop: 24 }} loading={myAppsLoading}>
-        <Row>
+        <Row gutter={[16, 16]}>
           {myApps.map(app => (
-            <AppCard key={app.id} app={app} onCopy={inputCopy}></AppCard>
+            <Col xs={24} sm={12} md={8} lg={6} xl={6} key={app.id}>
+              <AppCard app={app} onCopy={inputCopy}></AppCard>
+            </Col>
           ))}
         </Row>
         {myAppsTotal > 0 && (
@@ -306,7 +323,8 @@ const HomePage: React.FC = () => {
           </div>
         )}
       </Card>
-    </div>
+      </div>
+    </>
   );
 };
 

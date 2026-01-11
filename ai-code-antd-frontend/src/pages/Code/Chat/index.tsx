@@ -1,34 +1,30 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from '@umijs/max';
-import { Button, Card, Input, message, Space, Typography, Avatar, Spin, Tag } from 'antd';
-import { LoginOutlined, SendOutlined, ReloadOutlined } from '@ant-design/icons';
-import { deployApp, getAppVoById } from "@/services/backend/appController";
-import { history } from "@@/core/history";
+import React, {useState, useEffect, useRef} from 'react';
+import {useParams} from '@umijs/max';
+import {Button, Card, Input, message, Space, Typography, Avatar, Spin, Tag} from 'antd';
+import {LoginOutlined, SendOutlined, ReloadOutlined} from '@ant-design/icons';
+import {deployApp, getAppVoById} from "@/services/backend/appController";
+import {history} from "@@/core/history";
 import {
   listAppChatHistory,
   listLatestChatHistoryVo,
 } from "@/services/backend/chatHistoryController";
-import { getLoginUser } from "@/services/backend/userController";
+import {getLoginUser} from "@/services/backend/userController";
 import ReactMarkdown from 'react-markdown';
-import { getStaticPreviewUrl } from "@/constants/proUrlOperation";
-import { CODE_GEN_TYPE_CONFIG } from "@/constants/codeGenTypeEnum";
-import { VisualEditor, ElementInfo } from '@/utils/VisualEditor';
+import {getStaticPreviewUrl} from "@/constants/proUrlOperation";
+import {CODE_GEN_TYPE_CONFIG} from "@/constants/codeGenTypeEnum";
+import {VisualEditor, ElementInfo} from '@/utils/VisualEditor';
 import VisualEditorPanel from "@/components/VisualEditor";
 import Logo from "@/components/Logo";
+import CommentSection from "@/components/CommentSection";
+import InteractiveBackground from "@/components/InteractiveBackground";
 import styles from './index.less';
 
 // 从antd组件库中解构出需要的组件
-const { TextArea } = Input, { Title, Text } = Typography;
+const {TextArea} = Input, {Title, Text} = Typography;
 
 // ==================== 布局常量定义 ====================
-const PAGE_WIDTH = '100%';           // 页面总宽度
-const CHAT_WIDTH = '50%';            // 聊天区域宽度
-const PREVIEW_WIDTH = '50%';         // 预览区域宽度
-const HEADER_PADDING = 16;          // 头部内边距
-const CHAT_PADDING = 24;            // 聊天区域内边距
 const MAX_MESSAGE_WIDTH = 500;       // 消息最大宽度
 const LOAD_MORE_PAGE_SIZE = 10;      // 加载更多消息的每页数量
-const AUTO_LOAD_HISTORY_COUNT = 10;  // 自动加载历史消息的数量
 
 // ==================== 类型定义 ====================
 /** 加载更多状态接口 */
@@ -41,7 +37,7 @@ interface LoadMoreState {
 // ==================== 聊天页面组件 ====================
 const ChatPage: React.FC = () => {
   // 从路由参数中获取应用ID
-  const { appId } = useParams<{ appId: string }>();
+  const {appId} = useParams<{ appId: string }>();
 
   // ==================== 状态管理 ====================
   const [messages, setMessages] = useState<API.ChatHistoryVO[]>([]);      // 聊天消息列表
@@ -61,6 +57,7 @@ const ChatPage: React.FC = () => {
   const [previewLoading, setPreviewLoading] = useState<boolean>(false);    // 预览加载状态
   const [showPreview, setShowPreview] = useState<boolean>(false);          // 是否显示预览
   const [isStreaming, setIsStreaming] = useState<boolean>(false);            // 是否正在流式输出
+  const [isInitialLoad, setIsInitialLoad] = useState<boolean>(true);        // 是否首次加载
 
   // ==================== Ref引用 ====================
   const messagesEndRef = useRef<HTMLDivElement>(null);                      // 消息列表底部引用，用于自动滚动
@@ -75,12 +72,12 @@ const ChatPage: React.FC = () => {
     }
   }, [appId]);
 
-  // 当消息列表更新时，只在非流式输出时自动滚动到底部
+  // 当消息列表更新时，只在非流式输出且非首次加载时自动滚动到底部
   useEffect(() => {
-    if (!isStreaming) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (!isStreaming && !isInitialLoad) {
+      messagesEndRef.current?.scrollIntoView({behavior: 'smooth'});
     }
-  }, [messages, isStreaming]);
+  }, [messages, isStreaming, isInitialLoad]);
 
   // 初始化可视化编辑器并管理编辑模式
   useEffect(() => {
@@ -102,16 +99,28 @@ const ChatPage: React.FC = () => {
     };
   }, []);
 
-  // 当编辑模式或iframe加载完成时，启用或禁用编辑功能
+  /**
+   * 当 iframe 加载完成后初始化可视化编辑器
+   */
+  const handleFrameLoad = () => {
+    if (iframeRef.current && visualEditorRef.current) {
+      visualEditorRef.current.init(iframeRef.current);
+      visualEditorRef.current.onIframeLoad();
+    }
+  };
+
+  /**
+   * 同步编辑模式状态
+   */
   useEffect(() => {
-    if (visualEditorRef.current && iframeRef.current) {
+    if (visualEditorRef.current) {
       if (isEditMode) {
         visualEditorRef.current.enableEditMode();
       } else {
         visualEditorRef.current.disableEditMode();
       }
     }
-  }, [isEditMode, iframeRef.current]);
+  }, [isEditMode]);
 
   // ==================== 数据初始化 ====================
   /**
@@ -127,7 +136,7 @@ const ChatPage: React.FC = () => {
       message.error('获取用户信息失败：' + error.message);
     });
 
-    getAppVoById({ id: appId }).then(appRes => {
+    getAppVoById({id: appId}).then(appRes => {
       if (appRes.code === 0) {
         setAppInfo(appRes.data);
         // 如果应用已经有部署地址，直接显示预览
@@ -165,13 +174,16 @@ const ChatPage: React.FC = () => {
     if (!appId) return;
 
     // 调用API获取最新对话历史
-    listLatestChatHistoryVo({ appId: appId }).then(res => {
+    listLatestChatHistoryVo({appId: appId}).then(res => {
       if (res.code === 0 && res.data) {
         // 按创建时间升序排序消息
         const sortedMessages = [...res.data].sort((a, b) =>
           new Date(a.createTime!).getTime() - new Date(b.createTime!).getTime()
         );
         setMessages(sortedMessages);
+
+        // 标记首次加载完成
+        setIsInitialLoad(false);
 
         // 如果有消息，检查是否需要显示网站预览
         if (sortedMessages.length >= 2) {
@@ -200,7 +212,7 @@ const ChatPage: React.FC = () => {
     // 如果没有更多数据或正在加载，直接返回
     if (!loadMore.hasMore || loadMore.loading) return;
 
-    setLoadMore(prev => ({ ...prev, loading: true }));
+    setLoadMore(prev => ({...prev, loading: true}));
 
     // 调用API获取更多历史消息
     listAppChatHistory({
@@ -229,12 +241,12 @@ const ChatPage: React.FC = () => {
           });
         } else {
           // 没有更多数据
-          setLoadMore({ hasMore: false, loading: false });
+          setLoadMore({hasMore: false, loading: false});
         }
       }
     }).catch(error => {
       message.error('加载更多消息失败：' + error.message);
-      setLoadMore(prev => ({ ...prev, loading: false }));
+      setLoadMore(prev => ({...prev, loading: false}));
     });
   };
 
@@ -305,8 +317,8 @@ const ChatPage: React.FC = () => {
       }
 
       // 将响应转换为Blob对象
-      return response.blob().then(blob => ({ blob, fileName }));
-    }).then(({ blob, fileName }) => {
+      return response.blob().then(blob => ({blob, fileName}));
+    }).then(({blob, fileName}) => {
       // 创建下载链接并触发下载
       const downloadUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -409,7 +421,7 @@ const ChatPage: React.FC = () => {
       const handleError = (error: unknown) => {
         console.error('生成代码失败：', error);
         setMessages(prev => prev.map(msg =>
-          msg.id === aiMessageId ? { ...msg, messageContent: '抱歉，生成过程中出现了错误，请重试。' } : msg
+          msg.id === aiMessageId ? {...msg, messageContent: '抱歉，生成过程中出现了错误，请重试。'} : msg
         ));
         setLoading(false);
         setIsStreaming(false);
@@ -417,7 +429,7 @@ const ChatPage: React.FC = () => {
       };
 
       // 创建SSE连接，启用withCredentials以支持认证和cookie
-      eventSource = new EventSource(url, { withCredentials: true });
+      eventSource = new EventSource(url, {withCredentials: true});
       // SSE连接建立时的回调
       eventSource.onopen = () => {
         console.log('SSE 连接已建立');
@@ -438,7 +450,7 @@ const ChatPage: React.FC = () => {
           if (content !== undefined && content !== null) {
             aiResponse += content;
             setMessages(prev => prev.map(msg =>
-              msg.id === aiMessageId ? { ...msg, messageContent: aiResponse } : msg
+              msg.id === aiMessageId ? {...msg, messageContent: aiResponse} : msg
             ));
           }
         } catch (error) {
@@ -458,12 +470,12 @@ const ChatPage: React.FC = () => {
 
         // 流式输出完成后，滚动到底部
         setTimeout(() => {
-          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+          messagesEndRef.current?.scrollIntoView({behavior: 'smooth'});
         }, 100);
 
         // 延迟更新预览，确保后端已完成处理
         setTimeout(async () => {
-          await getAppVoById({ id: appId }).then(res => {
+          await getAppVoById({id: appId}).then(res => {
             if (res.code === 0) {
               setAppInfo(res.data);
             }
@@ -492,7 +504,7 @@ const ChatPage: React.FC = () => {
           // 显示具体的错误信息
           const errorMessage = errorData.message || '生成过程中出现错误';
           setMessages(prev => prev.map(msg =>
-            msg.id === aiMessageId ? { ...msg, messageContent: `❌ ${errorMessage}` } : msg
+            msg.id === aiMessageId ? {...msg, messageContent: `❌ ${errorMessage}`} : msg
           ));
           message.error(errorMessage);
 
@@ -517,7 +529,7 @@ const ChatPage: React.FC = () => {
           setIsStreaming(false);
 
           setTimeout(async () => {
-            await getAppVoById({ id: appId }).then(res => {
+            await getAppVoById({id: appId}).then(res => {
               if (res.code === 0) {
                 setAppInfo(res.data);
               }
@@ -540,14 +552,12 @@ const ChatPage: React.FC = () => {
     return new Promise((resolve, reject) => {
       if (!appId) {
         message.error('应用不存在');
-        reject(new Error('应用不存在'));
         return;
       }
       setDeploying(true);
       setPreviewLoading(true);
-      setShowPreview(false);
 
-      deployApp({ appId }).then(res => {
+      deployApp({appId}).then(res => {
         if (res?.data) {
           setDeployUrl(res.data);
           message.success('部署成功');
@@ -558,6 +568,7 @@ const ChatPage: React.FC = () => {
         message.error(err.data?.message || '部署失败');
       }).finally(() => {
         setDeploying(false);
+        setPreviewLoading(false);
       });
     });
   };
@@ -612,7 +623,7 @@ const ChatPage: React.FC = () => {
    */
   const getPreviewUrl = () => {
     if (!appInfo?.codeGenType || !appInfo?.id) {
-      console.log('getPreviewUrl: 缺少必要参数', { codeGenType: appInfo?.codeGenType, id: appInfo?.id });
+      console.log('getPreviewUrl: 缺少必要参数', {codeGenType: appInfo?.codeGenType, id: appInfo?.id});
       return '';
     }
     const url = getStaticPreviewUrl(
@@ -620,7 +631,11 @@ const ChatPage: React.FC = () => {
       String(appInfo.id),
       appInfo.deployKey || undefined
     );
-    console.log('getPreviewUrl 生成的URL:', url, { codeGenType: appInfo.codeGenType, id: appInfo.id, deployKey: appInfo.deployKey });
+    console.log('getPreviewUrl 生成的URL:', url, {
+      codeGenType: appInfo.codeGenType,
+      id: appInfo.id,
+      deployKey: appInfo.deployKey
+    });
     return url;
   };
 
@@ -629,39 +644,47 @@ const ChatPage: React.FC = () => {
     : undefined;
 
   return (
-    <div className={styles.chatPageContainer}>
+    <>
+      <InteractiveBackground />
+      <div className={styles.chatPageContainer}>
       <div className={styles.chatHeader}>
         <Space>
-          <Title level={4} style={{ margin: 0 }}>应用对话</Title>
+          <Title level={4} style={{margin: 0}}>应用对话</Title>
           <Tag color={"blue"}>{codeGenTypeLabel || '未知类型'}</Tag>
+          {appInfo?.user && (
+            <Space>
+              <Avatar size="small" src={appInfo.user.userAvatar}>{appInfo.user.userName?.[0]}</Avatar>
+              <Text style={{fontSize: 14}}>{appInfo.user.userName}</Text>
+            </Space>
+          )}
         </Space>
         <Space>
           <Button type="primary" ghost loading={downloading} onClick={downloadCode}
-            style={{ minWidth: 100 }}>下载代码</Button>
-          <Button type="primary" loading={deploying} onClick={handleDeploy} style={{ minWidth: 100 }}>部署应用</Button>
+                  style={{minWidth: 100}}>下载代码</Button>
+          <Button type="primary" loading={deploying} onClick={handleDeploy} style={{minWidth: 100}}>部署应用</Button>
           <Button
             type="dashed"
-            icon={<LoginOutlined />}
+            icon={<LoginOutlined/>}
             onClick={() => {
               if (!appInfo?.codeGenType || !appInfo?.id) {
                 message.warning('暂无可用预览地址，请先部署应用');
                 return;
               }
-              history.push(getStaticPreviewUrl(appInfo.codeGenType, String(appInfo.id), appInfo.deployKey || ''));
+              window.open(getStaticPreviewUrl(appInfo.codeGenType, String(appInfo.id), appInfo.deployKey || ''), '_blank');
             }}
           >
             新窗口打开
           </Button>
         </Space>
       </div>
-      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+      <div style={{flex: 1, display: 'flex', minHeight: '800px'}}>
         <div className={styles.chatSection}>
           <div className={styles.chatContent}>
             {loadMore.hasMore && (
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+              <div style={{display: 'flex', justifyContent: 'center', marginBottom: 16}}>
                 <Button
                   type="dashed"
-                  icon={<ReloadOutlined />}
+                  icon={<ReloadOutlined/>}
                   loading={loadMore.loading}
                   onClick={loadMoreHistory}
                 >
@@ -672,11 +695,11 @@ const ChatPage: React.FC = () => {
 
             {messages.map(msg => (
               <div key={msg.id}
-                style={{
-                  display: 'flex',
-                  justifyContent: msg.messageType === 'user' ? 'flex-end' : 'flex-start',
-                  marginBottom: 16
-                }}>
+                   style={{
+                     display: 'flex',
+                     justifyContent: msg.messageType === 'user' ? 'flex-end' : 'flex-start',
+                     marginBottom: 16
+                   }}>
                 <div style={{
                   maxWidth: MAX_MESSAGE_WIDTH,
                   display: 'flex',
@@ -685,22 +708,20 @@ const ChatPage: React.FC = () => {
                   flexDirection: msg.messageType === 'user' ? 'row-reverse' : 'row'
                 }}>
                   {msg.messageType === 'user' ? (
-                    <Avatar style={{ background: '#1890ff' }}>U</Avatar>
+                    <Avatar src={loginUser?.userAvatar}>{loginUser?.userName?.[0] || 'U'}</Avatar>
                   ) : (
-                    <div style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Logo size={32} />
+                    <div
+                      style={{width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                      <Logo size={32}/>
                     </div>
                   )}
-                  <Card size="small" style={{
-                    background: msg.messageType === 'user' ? '#e6f7ff' : '#f6ffed',
-                    border: msg.messageType === 'user' ? '1px solid #91d5ff' : '1px solid #b7eb8f'
-                  }}>
-                    <Text style={{ whiteSpace: 'pre-wrap' }}>
+                  <Card size="small" className={msg.messageType === 'user' ? styles.userMessageCard : styles.aiMessageCard}>
+                    <Text className={styles.messageContent}>
                       <ReactMarkdown>
                         {msg.messageContent}
                       </ReactMarkdown>
                     </Text>
-                    <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
+                    <div className={styles.messageTime}>
                       {msg.createTime ? new Date(msg.createTime).toLocaleTimeString() : ''}
                     </div>
                   </Card>
@@ -709,80 +730,95 @@ const ChatPage: React.FC = () => {
             ))}
 
             {loading && (
-              <div style={{ display: 'flex', marginBottom: 16 }}>
-                <div style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Logo size={32} />
+              <div style={{display: 'flex', marginBottom: 16}}>
+                <div style={{width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                  <Logo size={32}/>
                 </div>
-                <Card size="small" style={{ background: '#f6ffed' }}>
-                  <Spin size="small" />
-                  <Text style={{ marginLeft: 8 }}>AI正在思考中...</Text>
+                <Card size="small" className={styles.loadingMessageCard}>
+                  <div className={styles.loadingMessageContent}>
+                    <Spin size="small"/>
+                    <Text style={{marginLeft: 8}}>AI正在思考中...</Text>
+                  </div>
                 </Card>
               </div>
             )}
-            <div ref={messagesEndRef} />
+            <div ref={messagesEndRef}/>
           </div>
           <div className={styles.chatInput}>
             <VisualEditorPanel isEditMode={isEditMode}
-              selectedElements={selectedElements}
-              onToggleEditMode={toggleEditMode}
-              onRemoveElement={removeSelectedElement}
-              onClearAllElements={clearAllSelectedElements}></VisualEditorPanel>
-            <Space.Compact style={{ width: '100%' }}>
+                               selectedElements={selectedElements}
+                               onToggleEditMode={toggleEditMode}
+                               onRemoveElement={removeSelectedElement}
+                               onClearAllElements={clearAllSelectedElements}></VisualEditorPanel>
+            <Space.Compact style={{width: '100%'}}>
               <TextArea rows={2} placeholder="请输入您的问题..." value={inputValue}
-                onChange={e => setInputValue(e.target.value)}
-                onPressEnter={e => {
-                  if (e.ctrlKey || e.metaKey) handleSendMessage();
-                }} />
-              <Button type="primary" icon={<SendOutlined />} loading={loading}
-                onClick={() => handleSendMessage()}>发送</Button>
+                        onChange={e => setInputValue(e.target.value)}
+                        onPressEnter={e => {
+                          if (e.ctrlKey || e.metaKey) handleSendMessage();
+                        }}/>
+              <Button type="primary" icon={<SendOutlined/>} loading={loading}
+                      onClick={() => handleSendMessage()}>发送</Button>
             </Space.Compact>
-            <div style={{ fontSize: 12, color: '#999', marginTop: 8 }}>提示：Ctrl+Enter 发送</div>
+            <div style={{fontSize: 12, color: '#999', marginTop: 8}}>提示：Ctrl+Enter 发送</div>
           </div>
         </div>
         <div className={styles.previewSection}>
-          {previewLoading && (
-            <div style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: '#fafafa',
-              zIndex: 1
-            }}>
-              <Spin size="large" />
-              <Text style={{ marginTop: 16, color: '#666' }}>预览加载中...</Text>
-            </div>
-          )}
-          {showPreview && appInfo?.codeGenType && appInfo?.id ? (
-            <iframe
-              ref={iframeRef}
-              title="已部署应用预览"
-              style={{ border: '1px solid #eee', borderRadius: 8, width: '100%', height: '92vh', background: '#fff' }}
-              src={getPreviewUrl()}
-              onLoad={() => {
-                setPreviewLoading(false);
-                if (visualEditorRef.current && iframeRef.current) {
-                  visualEditorRef.current.init(iframeRef.current);
-                  visualEditorRef.current.onIframeLoad();
-                }
-              }}
-            />
-          ) : (
-            <Card
-              style={{ height: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Text type="secondary">
-                {previewLoading ? '预览加载中...' : '请先发送消息，AI将自动生成并部署应用'}
-              </Text>
-            </Card>
-          )}
+          <div className={styles.previewHeader}>
+            <Space>
+              <Title level={5} style={{margin: 0}}>应用预览</Title>
+            </Space>
+          </div>
+          <div className={styles.previewContent}>
+            {showPreview && appInfo?.codeGenType && appInfo?.id ? (
+              <div style={{position: 'relative', width: '100%', height: '100%'}}>
+                {previewLoading && (
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: '#fafafa',
+                    zIndex: 1,
+                    borderRadius: 8
+                  }}>
+                    <Spin size="large"/>
+                    <Text style={{marginTop: 16, color: '#666'}}>预览加载中...</Text>
+                  </div>
+                )}
+                <iframe
+                  ref={iframeRef}
+                  title="已部署应用预览"
+                  src={getPreviewUrl()}
+                  className={styles.previewIframe}
+                  onLoad={() => {
+                    setPreviewLoading(false);
+                    handleFrameLoad();
+                  }}
+                />
+              </div>
+            ) : (
+              <Card
+                style={{height: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                <Text type="secondary">
+                  {previewLoading ? '预览加载中...' : '请先发送消息，AI将自动生成并部署应用'}
+                </Text>
+              </Card>
+            )}
+          </div>
         </div>
       </div>
+      {appInfo?.id && (
+        <div className={styles.commentArea}>
+          <CommentSection appId={appInfo.id}/>
+        </div>
+      )}
     </div>
+    </>
   );
 };
 

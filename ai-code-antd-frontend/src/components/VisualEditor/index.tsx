@@ -5,6 +5,9 @@ import { ElementInfo } from '@/utils/VisualEditor';
 
 const { Text } = Typography;
 
+/**
+ * 可视化编辑器面板组件属性接口
+ */
 interface VisualEditorPanelProps {
   isEditMode: boolean;
   selectedElements: ElementInfo[];
@@ -13,6 +16,12 @@ interface VisualEditorPanelProps {
   onClearAllElements: () => void;
 }
 
+/**
+ * 可视化编辑器面板组件
+ * 显示已选择的页面元素列表，并提供编辑模式切换功能
+ * @param props - 组件属性
+ * @returns React 组件
+ */
 const VisualEditorPanel: React.FC<VisualEditorPanelProps> = ({
   isEditMode,
   selectedElements,

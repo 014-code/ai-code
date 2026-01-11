@@ -18,6 +18,15 @@ langchain4j:
       max-tokens: 8192
       log-requests: true
       log-responses: true
+#      谷歌大模型-貌似开vpn也不行
+#      base-url: https://generativelanguage.googleapis.com/v1beta/openai/
+#      api-key: AIzaSyDhwleZ2hlCLL0dXSRccl9eGeVInMHJgbU
+#      model-name: gemini-3-pro-preview
+#      model-name: gemini-3-flash-preview
+#      temperature: 0.7
+#      log-requests: true
+#      log-responses: true
+#      max-retries: 3
     #   使用思考模型必须新增think好像是这样的字段接收ai返回结果才可以，不然直接报
     reasoning-streaming-chat-model:
       base-url: https://api.deepseek.com

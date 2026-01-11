@@ -1,3 +1,7 @@
+/**
+ * 元素信息接口
+ * 描述选中或悬浮的页面元素的详细信息
+ */
 export interface ElementInfo {
   tagName: string;
   id: string;
@@ -13,11 +17,18 @@ export interface ElementInfo {
   };
 }
 
+/**
+ * 可视化编辑器配置选项
+ */
 export interface VisualEditorOptions {
   onElementSelected?: (elementInfo: ElementInfo) => void;
   onElementHover?: (elementInfo: ElementInfo) => void;
 }
 
+/**
+ * 可视化编辑器类
+ * 用于在 iframe 中实现元素选择和编辑功能
+ */
 export class VisualEditor {
   private iframe: HTMLIFrameElement | null = null;
   private isEditMode = false;
@@ -27,10 +38,18 @@ export class VisualEditor {
     this.options = options;
   }
 
+  /**
+   * 初始化编辑器
+   * @param iframe 目标 iframe 元素
+   */
   init(iframe: HTMLIFrameElement) {
     this.iframe = iframe;
   }
 
+  /**
+   * 启用编辑模式
+   * 向 iframe 注入编辑脚本，开启元素选择功能
+   */
   enableEditMode() {
     if (!this.iframe) {
       return;
@@ -41,6 +60,10 @@ export class VisualEditor {
     }, 300);
   }
 
+  /**
+   * 禁用编辑模式
+   * 清除所有编辑效果，关闭元素选择功能
+   */
   disableEditMode() {
     this.isEditMode = false;
     this.sendMessageToIframe({
@@ -52,6 +75,10 @@ export class VisualEditor {
     });
   }
 
+  /**
+   * 切换编辑模式
+   * @returns 切换后的编辑模式状态
+   */
   toggleEditMode() {
     if (this.isEditMode) {
       this.disableEditMode();
@@ -61,6 +88,10 @@ export class VisualEditor {
     return this.isEditMode;
   }
 
+  /**
+   * 同步编辑状态
+   * 如果不在编辑模式，清除所有视觉效果
+   */
   syncState() {
     if (!this.isEditMode) {
       this.sendMessageToIframe({
@@ -69,12 +100,19 @@ export class VisualEditor {
     }
   }
 
+  /**
+   * 清除当前选中的元素
+   */
   clearSelection() {
     this.sendMessageToIframe({
       type: 'CLEAR_SELECTION',
     });
   }
 
+  /**
+   * 处理 iframe 加载完成事件
+   * 根据当前编辑模式状态重新注入脚本或同步状态
+   */
   onIframeLoad() {
     if (this.isEditMode) {
       setTimeout(() => {
@@ -87,6 +125,10 @@ export class VisualEditor {
     }
   }
 
+  /**
+   * 处理来自 iframe 的消息
+   * @param event 消息事件对象
+   */
   handleIframeMessage(event: MessageEvent) {
     const { type, data } = event.data;
     switch (type) {
@@ -103,12 +145,20 @@ export class VisualEditor {
     }
   }
 
+  /**
+   * 向 iframe 发送消息
+   * @param message 要发送的消息对象
+   */
   private sendMessageToIframe(message: Record<string, any>) {
     if (this.iframe?.contentWindow) {
       this.iframe.contentWindow.postMessage(message, '*');
     }
   }
 
+  /**
+   * 向 iframe 注入编辑脚本
+   * 脚本实现元素悬浮高亮和点击选择功能
+   */
   private injectEditScript() {
     if (!this.iframe) return;
 
@@ -138,6 +188,10 @@ export class VisualEditor {
     waitForIframeLoad();
   }
 
+  /**
+   * 生成编辑脚本
+   * @returns 编辑脚本字符串
+   */
   private generateEditScript() {
     return `
       (function() {

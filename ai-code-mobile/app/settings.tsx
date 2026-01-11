@@ -1,20 +1,44 @@
-import { useTheme } from '@/hooks/useTheme'
-import { userLogout } from '@/api/user'
-import { removeToken } from '@/utils/cookies'
-import { useRouter } from 'expo-router'
-import React from 'react'
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import { Icon } from 'react-native-elements'
-import { THEME_OPTIONS } from '@/constants/theme'
-
 /**
  * 设置页面
- * 提供主题色切换和退出登录功能
+ * 
+ * 提供应用设置功能，包括：
+ * - 主题色切换：用户可以选择不同的主题颜色
+ * - 退出登录：清除用户登录状态并返回登录页面
+ * 
+ * 使用主题管理钩子实现主题切换功能
  */
-export default function Settings() {
-    const router = useRouter()
-    const { themeColor, setTheme } = useTheme()
 
+import { useTheme } from '@/hooks/useTheme';
+import { userLogout } from '@/api/user';
+import { removeToken } from '@/utils/cookies';
+import { useRouter } from 'expo-router';
+import React from 'react';
+import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Icon } from 'react-native-elements';
+import { THEME_OPTIONS } from '@/constants/theme';
+import styles from './settings.less';
+
+export default function Settings() {
+    /**
+     * 路由导航钩子
+     * 用于在应用中进行页面跳转
+     */
+    const router = useRouter();
+    
+    /**
+     * 主题管理钩子
+     * 获取当前主题色和设置主题的方法
+     */
+    const { themeColor, setTheme } = useTheme();
+
+    /**
+     * 处理退出登录操作
+     * 
+     * 显示确认对话框，用户确认后执行以下操作：
+     * 1. 调用退出登录API
+     * 2. 清除本地存储的token
+     * 3. 跳转到登录页面
+     */
     const handleLogout = () => {
         Alert.alert(
             '退出登录',
@@ -28,21 +52,40 @@ export default function Settings() {
                     text: '确定',
                     onPress: async () => {
                         try {
-                            await userLogout()
-                            await removeToken()
-                            router.replace('/user/login')
+                            /**
+                             * 调用退出登录API
+                             */
+                            await userLogout();
+                            
+                            /**
+                             * 清除本地存储的token
+                             */
+                            await removeToken();
+                            
+                            /**
+                             * 跳转到登录页面
+                             * 使用replace方法替换当前页面，避免用户返回到设置页
+                             */
+                            router.replace('/user/login');
                         } catch (err: any) {
-                            Alert.alert('退出失败', err.message || '请稍后重试')
+                            /**
+                             * 退出登录失败，显示错误提示
+                             */
+                            Alert.alert('退出失败', err.message || '请稍后重试');
                         }
                     },
                     style: 'destructive'
                 }
             ]
-        )
-    }
+        );
+    };
 
     return (
         <View style={styles.container}>
+            {/**
+             * 页面头部
+             * 包含返回按钮、标题和占位元素
+             */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()}>
                     <Icon name="arrow-back" type="material" size={24} color="#333" />
@@ -51,10 +94,21 @@ export default function Settings() {
                 <View style={{ width: 24 }} />
             </View>
 
+            {/**
+             * 页面内容区域
+             * 使用ScrollView支持内容滚动
+             */}
             <ScrollView style={styles.content}>
+                {/**
+                 * 主题设置区域
+                 * 显示所有可选的主题色选项
+                 */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>主题设置</Text>
                     <View style={styles.colorGrid}>
+                        {/**
+                         * 遍历主题选项列表，渲染每个主题色选项
+                         */}
                         {THEME_OPTIONS.map((color) => (
                             <TouchableOpacity
                                 key={color.key}
@@ -64,12 +118,18 @@ export default function Settings() {
                                 ]}
                                 onPress={() => setTheme(color.key)}
                             >
+                                {/**
+                                 * 主题色预览圆点
+                                 */}
                                 <View
                                     style={[
                                         styles.colorPreview,
                                         { backgroundColor: color.value }
                                     ]}
                                 />
+                                {/**
+                                 * 主题名称
+                                 */}
                                 <Text
                                     style={[
                                         styles.colorName,
@@ -78,6 +138,10 @@ export default function Settings() {
                                 >
                                     {color.name}
                                 </Text>
+                                {/**
+                                 * 选中状态指示图标
+                                 * 仅在当前主题被选中时显示
+                                 */}
                                 {themeColor === color.value && (
                                     <Icon
                                         name="check-circle"
@@ -92,6 +156,10 @@ export default function Settings() {
                     </View>
                 </View>
 
+                {/**
+                 * 退出登录区域
+                 * 显示退出登录按钮
+                 */}
                 <View style={styles.section}>
                     <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                         <Icon name="logout" type="material" size={24} color="#ff4d4f" />
@@ -100,93 +168,5 @@ export default function Settings() {
                 </View>
             </ScrollView>
         </View>
-    )
+    );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#f5f5f5',
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#e0e0e0',
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#333',
-    },
-    content: {
-        flex: 1,
-    },
-    section: {
-        backgroundColor: '#fff',
-        marginTop: 12,
-        padding: 16,
-    },
-    sectionTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#333',
-        marginBottom: 16,
-    },
-    colorGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        marginHorizontal: -6,
-    },
-    colorItem: {
-        width: '48%',
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 12,
-        borderWidth: 1,
-        borderColor: '#e0e0e0',
-        borderRadius: 8,
-        margin: 6,
-    },
-    colorItemSelected: {
-        borderColor: '#667eea',
-        backgroundColor: '#f0f3ff',
-    },
-    colorPreview: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-    },
-    colorName: {
-        flex: 1,
-        fontSize: 14,
-        color: '#333',
-        marginLeft: 12,
-    },
-    colorNameSelected: {
-        fontWeight: 'bold',
-    },
-    checkIcon: {
-        marginLeft: 4,
-    },
-    logoutButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 16,
-        backgroundColor: '#fff',
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#ff4d4f',
-    },
-    logoutButtonText: {
-        fontSize: 16,
-        color: '#ff4d4f',
-        fontWeight: 'bold',
-        marginLeft: 8,
-    },
-})

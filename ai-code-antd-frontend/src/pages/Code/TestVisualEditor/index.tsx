@@ -6,76 +6,33 @@ import VisualEditorPanel from '@/components/VisualEditor';
 
 const {Title, Text, Paragraph} = Typography;
 
+/**
+ * 测试可视化编辑器页面组件
+ * 使用 react-frame-component 实现 iframe 可视化编辑功能
+ * @returns React 组件
+ */
 const TestVisualEditorPage: React.FC = () => {
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
   const [selectedElements, setSelectedElements] = useState<ElementInfo[]>([]);
+  const [iframeReady, setIframeReady] = useState<boolean>(false);
 
-  const iframeRef = useRef<HTMLIFrameElement>(null);
   const visualEditorRef = useRef<VisualEditor | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // 获取测试页面的HTML，包含编辑器脚本
-  const getTestHtmlWithScript = () => {
-    const script = new VisualEditor().generateEditScript();
-    return `data:text/html,${encodeURIComponent(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <style>
-          body { font-family: Arial, sans-serif; padding: 20px; }
-        </style>
-        <script>${script}</script>
-      </head>
-      <body>
-        <h1>iframe 测试页面</h1>
-        <p>这是一个嵌套的HTML页面，用于测试iframe内元素选择。</p>
-        <div style="background-color: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 4px;">
-          这是一个灰色背景的div元素
-        </div>
-        <button style="background-color: #1890ff; color: white; border: none; padding: 8px 16px; margin: 10px 5px; border-radius: 4px; cursor: pointer;">
-          蓝色按钮
-        </button>
-        <button style="background-color: #52c41a; color: white; border: none; padding: 8px 16px; margin: 10px 5px; border-radius: 4px; cursor: pointer;">
-          绿色按钮
-        </button>
-        <ul>
-          <li>列表项一</li>
-          <li>列表项二</li>
-          <li>列表项三</li>
-        </ul>
-        <div style="margin-top: 20px; padding: 16px; border: 1px solid #d9d9d9; border-radius: 4px;">
-          <h3>特殊区域</h3>
-          <p>这个区域有特殊的样式，可以测试样式选择器。</p>
-          <div style="display: flex; gap: 10px;">
-            <div style="flex: 1; padding: 10px; background-color: #e6f7ff; border-radius: 4px;">
-              子区域1
-            </div>
-            <div style="flex: 1; padding: 10px; background-color: #f6ffed; border-radius: 4px;">
-              子区域2
-            </div>
-          </div>
-        </div>
-      </body>
-      </html>
-    `)}`;
-  };
-
-  // 初始化可视化编辑器
+  /**
+   * 初始化可视化编辑器
+   */
   useEffect(() => {
     if (!visualEditorRef.current) {
       visualEditorRef.current = new VisualEditor({
         onElementSelected: (elementInfo: ElementInfo) => {
-          console.log("选择的元素" + elementInfo)
-          //选择元素方法
           setSelectedElements(prev => [...prev, elementInfo]);
         },
         onElementHover: (elementInfo: ElementInfo) => {
-          // 可以在这里实现悬浮时的效果，比如显示提示信息
         }
       });
     }
 
-    // 监听iframe消息
     const handleMessage = (event: MessageEvent) => {
       if (visualEditorRef.current) {
         visualEditorRef.current.handleIframeMessage(event);
@@ -88,31 +45,32 @@ const TestVisualEditorPage: React.FC = () => {
     };
   }, []);
 
-  // 当iframe加载完成后初始化可视化编辑器
-  useEffect(() => {
+  /**
+   * 当 iframe 加载完成后初始化可视化编辑器
+   */
+  const handleFrameLoad = () => {
     if (iframeRef.current && visualEditorRef.current) {
       visualEditorRef.current.init(iframeRef.current);
+      visualEditorRef.current.onIframeLoad();
+      setIframeReady(true);
     }
-  }, [iframeRef.current]);
+  };
 
-  // 同步编辑模式状态
-  useEffect(() => {
-    if (visualEditorRef.current) {
-      if (isEditMode) {
-        visualEditorRef.current.enableEditMode();
-      } else {
-        visualEditorRef.current.disableEditMode();
-      }
-    }
-  }, [isEditMode]);
-
-  // 切换可视化编辑模式
+  /**
+   * 切换可视化编辑模式
+   */
   const toggleEditMode = () => {
-    const newMode = !isEditMode;
+    if (!iframeRef.current || !iframeReady) {
+      console.warn('iframe未加载完成');
+      return;
+    }
+    const newMode = visualEditorRef.current?.toggleEditMode() ?? false;
     setIsEditMode(newMode);
   };
 
-  // 移除选中的元素
+  /**
+   * 移除选中的元素
+   */
   const removeSelectedElement = (index: number) => {
     setSelectedElements(prev => prev.filter((_, i) => i !== index));
     if (visualEditorRef.current) {
@@ -120,7 +78,9 @@ const TestVisualEditorPage: React.FC = () => {
     }
   };
 
-  // 清除所有选中的元素
+  /**
+   * 清除所有选中的元素
+   */
   const clearAllSelectedElements = () => {
     setSelectedElements([]);
     if (visualEditorRef.current) {
@@ -128,11 +88,12 @@ const TestVisualEditorPage: React.FC = () => {
     }
   };
 
-  // 处理iframe加载完成事件
-  const handleIframeLoad = () => {
-    if (visualEditorRef.current) {
-      visualEditorRef.current.onIframeLoad();
-    }
+  /**
+   * 获取 iframe 的测试页面 URL
+   * 使用后端服务器提供的测试页面，避免跨域问题
+   */
+  const getTestPageUrl = () => {
+    return 'http://localhost:8123/api/static/test-page.html';
   };
 
   return (
@@ -181,7 +142,7 @@ const TestVisualEditorPage: React.FC = () => {
           </div>
         </Card>
 
-        <Card title="iframe 测试" style={{flex: 1}}>
+        <Card title="iframe 测试 (标准iframe)" style={{flex: 1}}>
           <div style={{height: '100%', display: 'flex', flexDirection: 'column'}}>
             <Alert
               message="提示"
@@ -189,12 +150,14 @@ const TestVisualEditorPage: React.FC = () => {
               type="info"
               style={{marginBottom: 16}}
             />
-            <iframe
-              ref={iframeRef}
-              src={getTestHtmlWithScript()}
-              style={{border: '1px solid #ddd', borderRadius: 4, width: '100%', flex: 1}}
-              onLoad={handleIframeLoad}
-            />
+            <div style={{flex: 1, overflow: 'hidden'}}>
+              <iframe
+                ref={iframeRef}
+                src={getTestPageUrl()}
+                style={{border: '1px solid #ddd', borderRadius: 4, width: '100%', height: '100%'}}
+                onLoad={handleFrameLoad}
+              />
+            </div>
           </div>
         </Card>
       </div>

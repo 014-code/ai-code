@@ -1,10 +1,19 @@
 import React from 'react';
 
+/**
+ * Logo 组件属性接口
+ */
 interface LogoProps {
   size?: number;
   className?: string;
 }
 
+/**
+ * Logo 组件
+ * 渲染一个六边形渐变 Logo 图标
+ * @param props - 组件属性
+ * @returns React 组件
+ */
 const Logo: React.FC<LogoProps> = ({ size = 32, className = '' }) => {
   return (
     <svg
