@@ -125,3 +125,39 @@ export async function updateUser(body: API.UserUpdateRequest, options?: { [key: 
     ...(options || {}),
   });
 }
+
+/** 修改用户信息 POST /user/update/info */
+export async function updateUserInfo(body: API.UserUpdateInfoRequest, options?: { [key: string]: any }) {
+  return request<API.BaseResponseBoolean>('/user/update/info', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
+/** 修改用户密码 POST /user/update/password */
+export async function updateUserPassword(body: API.UserUpdatePasswordRequest, options?: { [key: string]: any }) {
+  return request<API.BaseResponseBoolean>('/user/update/password', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
+/** 修改用户头像 POST /user/update/avatar */
+export async function updateUserAvatar(body: API.UserUpdateAvatarRequest, options?: { [key: string]: any }) {
+  return request<API.BaseResponseBoolean>('/user/update/avatar', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}

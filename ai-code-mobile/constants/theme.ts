@@ -1,3 +1,7 @@
+/**
+ * 主题颜色配置
+ * 定义应用中使用的各种主题颜色
+ */
 export const THEME_COLORS = {
   primary: '#667eea',
   secondary: '#764ba2',
@@ -7,8 +11,16 @@ export const THEME_COLORS = {
   info: '#2196F3',
 } as const
 
+/**
+ * 主题颜色键类型
+ * 用于类型安全的主题颜色选择
+ */
 export type ThemeColorKey = keyof typeof THEME_COLORS
 
+/**
+ * 主题选项列表
+ * 用于主题切换功能，包含每个主题的键、名称和颜色值
+ */
 export const THEME_OPTIONS = [
   { key: 'primary' as ThemeColorKey, name: '紫色', value: THEME_COLORS.primary },
   { key: 'secondary' as ThemeColorKey, name: '紫罗兰', value: THEME_COLORS.secondary },

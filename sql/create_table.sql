@@ -67,3 +67,25 @@ create table if not exists chat_history
     INDEX idx_createTime (createTime),             -- 提升基于时间的查询性能
     INDEX idx_appId_createTime (appId, createTime) -- 游标查询核心索引
 ) comment '对话历史' collate = utf8mb4_unicode_ci;
+
+-- 评论表
+create table if not exists comment
+(
+    id          bigint auto_increment comment 'id' primary key,
+    appId       bigint                             not null comment '应用ID',
+    parentId    bigint                             null comment '父评论ID，如果是主评论则为null',
+    userId      bigint                             not null comment '用户ID',
+    content     text                               not null comment '评论内容',
+    likeCount   int      default 0                 not null comment '点赞数',
+    replyCount  int      default 0                 not null comment '回复数',
+    createTime  datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    updateTime  datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    isDelete    tinyint  default 0                 not null comment '是否删除',
+    INDEX idx_appId (appId),                       -- 提升基于应用的查询性能
+    INDEX idx_parentId (parentId),                 -- 提升基于父评论的查询性能
+    INDEX idx_userId (userId),                     -- 提升基于用户的查询性能
+    INDEX idx_createTime (createTime),             -- 提升基于时间的查询性能
+    INDEX idx_likeCount (likeCount),               -- 提升基于点赞数的查询性能
+    INDEX idx_replyCount (replyCount),             -- 提升基于回复数的查询性能
+    INDEX idx_appId_parentId (appId, parentId)     -- 复合索引，用于查询某个应用下的主评论或回复
+) comment '评论' collate = utf8mb4_unicode_ci;

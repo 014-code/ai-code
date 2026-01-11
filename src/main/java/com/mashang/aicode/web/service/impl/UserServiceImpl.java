@@ -178,4 +178,74 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         final String SALT = "yupi";
         return DigestUtils.md5DigestAsHex((userPassword + SALT).getBytes(StandardCharsets.UTF_8));
     }
+
+    @Override
+    public boolean updatePassword(String oldPassword, String newPassword, String checkPassword, Long userId) {
+        // 1. 校验参数
+        if (StrUtil.hasBlank(oldPassword, newPassword, checkPassword)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空");
+        }
+        if (newPassword.length() < 8 || checkPassword.length() < 8) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "密码长度过短");
+        }
+        if (!newPassword.equals(checkPassword)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "两次输入的密码不一致");
+        }
+        // 2. 查询用户是否存在
+        User user = this.getById(userId);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "用户不存在");
+        }
+        // 3. 校验原密码是否正确
+        String encryptOldPassword = getEncryptPassword(oldPassword);
+        if (!user.getUserPassword().equals(encryptOldPassword)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "原密码错误");
+        }
+        // 4. 加密新密码
+        String encryptNewPassword = getEncryptPassword(newPassword);
+        // 5. 更新密码
+        user.setUserPassword(encryptNewPassword);
+        boolean result = this.updateById(user);
+        if (!result) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "修改密码失败");
+        }
+        return true;
+    }
+
+    @Override
+    public boolean updateUserInfo(String userName, String userProfile, Long userId) {
+        // 1. 查询用户是否存在
+        User user = this.getById(userId);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "用户不存在");
+        }
+        // 2. 更新用户信息
+        if (StrUtil.isNotBlank(userName)) {
+            user.setUserName(userName);
+        }
+        if (StrUtil.isNotBlank(userProfile)) {
+            user.setUserProfile(userProfile);
+        }
+        boolean result = this.updateById(user);
+        if (!result) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "修改用户信息失败");
+        }
+        return true;
+    }
+
+    @Override
+    public boolean updateUserAvatar(String userAvatar, Long userId) {
+        // 1. 查询用户是否存在
+        User user = this.getById(userId);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "用户不存在");
+        }
+        // 2. 更新用户头像
+        user.setUserAvatar(userAvatar);
+        boolean result = this.updateById(user);
+        if (!result) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "修改用户头像失败");
+        }
+        return true;
+    }
 }

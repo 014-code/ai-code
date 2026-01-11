@@ -1,6 +1,10 @@
 import { ChatHistory, ChatHistoryVO } from "./chat";
 import { UserVO } from "./user";
 
+/**
+ * 应用实体类型
+ * 表示应用的基本信息
+ */
 type App = {
     id?: number;
     appName?: string;
@@ -18,6 +22,10 @@ type App = {
     isDelete?: number;
 };
 
+/**
+ * 应用类型视图对象
+ * 表示应用类型的详细信息
+ */
 type AppTypeVO = {
     code?: number;
     text?: string;
@@ -25,7 +33,10 @@ type AppTypeVO = {
     categoryName?: string;
 };
 
-
+/**
+ * 应用视图对象
+ * 表示应用的详细信息，包含用户信息
+ */
 export type AppVO = {
     id?: number;
     appName?: string;
@@ -47,6 +58,10 @@ export type AppVO = {
     updateTime?: string;
 };
 
+/**
+ * 应用分页对象
+ * 表示应用列表的分页信息
+ */
 type PageApp = {
     records?: App[];
     pageNumber?: number;
@@ -56,6 +71,10 @@ type PageApp = {
     optimizeCountQuery?: boolean;
 };
 
+/**
+ * 应用视图对象分页对象
+ * 表示应用视图对象列表的分页信息
+ */
 type PageAppVO = {
     records?: AppVO[];
     pageNumber?: number;
@@ -65,6 +84,10 @@ type PageAppVO = {
     optimizeCountQuery?: boolean;
 };
 
+/**
+ * 聊天历史分页对象
+ * 表示聊天历史列表的分页信息
+ */
 type PageChatHistory = {
     records?: ChatHistory[];
     pageNumber?: number;
@@ -74,6 +97,10 @@ type PageChatHistory = {
     optimizeCountQuery?: boolean;
 };
 
+/**
+ * 聊天历史视图对象分页对象
+ * 表示聊天历史视图对象列表的分页信息
+ */
 type PageChatHistoryVO = {
     records?: ChatHistoryVO[];
     pageNumber?: number;

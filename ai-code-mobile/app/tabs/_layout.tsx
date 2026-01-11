@@ -1,11 +1,21 @@
+/**
+ * 底部标签栏布局组件
+ * 
+ * 定义应用的底部标签栏导航结构，包含三个主要标签页：
+ * - 对话：AI对话生成代码
+ * - 应用市场：浏览和搜索应用
+ * - 我的：个人中心和应用管理
+ * 
+ * 使用Tabs导航器管理底部标签栏，每个标签页都有对应的图标和标题
+ * 标签栏样式使用主题色进行动态配置
+ * 
+ * @returns 底部标签栏导航组件
+ */
+
 import { Icon } from 'react-native-elements';
 import { Tabs, Stack } from "expo-router";
 import { useTheme } from '@/hooks/useTheme';
 
-/**
- * 底部栏布局组件
- * @returns 
- */
 export default function TabLayout() {
     const { themeColor } = useTheme();
 
@@ -28,6 +38,11 @@ export default function TabLayout() {
                 },
             }}
         >
+            {/**
+             * 对话标签页
+             * 用于与AI对话生成代码
+             * 图标：聊天图标
+             */}
             <Tabs.Screen
                 name="ai-app/home"
                 options={{
@@ -43,6 +58,12 @@ export default function TabLayout() {
                     headerShown: false,
                 }}
             />
+            
+            {/**
+             * 应用市场标签页
+             * 用于浏览和搜索应用
+             * 图标：应用图标
+             */}
             <Tabs.Screen
                 name="ai-app/list"
                 options={{
@@ -58,6 +79,12 @@ export default function TabLayout() {
                     headerShown: false,
                 }}
             />
+            
+            {/**
+             * 我的标签页
+             * 用于个人中心和应用管理
+             * 图标：个人图标
+             */}
             <Tabs.Screen
                 name="ai-app/mine"
                 options={{
@@ -73,6 +100,12 @@ export default function TabLayout() {
                     headerShown: false,
                 }}
             />
+            
+            {/**
+             * 堆栈导航器
+             * 用于管理代码对话和网页预览页面
+             * 这些页面不显示在底部标签栏中
+             */}
             <Stack>
                 <Stack.Screen
                     name="chat"

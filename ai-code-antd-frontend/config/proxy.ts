@@ -33,6 +33,27 @@ export default {
       // 禁用响应缓冲
       buffer: false,
     },
+    // localhost:8000/static/** -> http://localhost:8080/**
+    '/static/': {
+      // 要代理的地址
+      target: 'http://localhost:8080',
+      // 配置了这个可以从 http 代理到 https
+      // 依赖 origin 的功能可能需要这个，比如 cookie
+      changeOrigin: true,
+      // 路径重写，去掉 /static 前缀
+      pathRewrite: {
+        '^/static': '',
+      },
+      // 设置响应头，允许跨域访问
+      onProxyRes: function (proxyRes, req, res) {
+        // 添加跨域响应头
+        proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+        proxyRes.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
+        proxyRes.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
+        // 禁用缓存
+        proxyRes.headers['Cache-Control'] = 'no-cache, no-transform';
+      },
+    },
   },
 
   /**

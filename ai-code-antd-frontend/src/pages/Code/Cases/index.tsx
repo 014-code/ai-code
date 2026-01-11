@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Card, message, Row, Typography, Input, Select, Space } from 'antd';
+import { Card, message, Row, Col, Typography, Input, Select, Space } from 'antd';
 import { listFeaturedAppVoByPage, listAllAppTypes } from '@/services/backend/appController';
 import AppCard from '@/pages/Code/Home/components/AppCard';
 import { SearchOutlined } from '@ant-design/icons';
+import InteractiveBackground from '@/components/InteractiveBackground';
 import styles from './index.less';
 
 const { Title, Paragraph } = Typography;
@@ -48,13 +49,13 @@ const CasesPage: React.FC = () => {
       if (res.code === 0) {
         const newApps = res.data?.records ?? [];
         const totalCount = res.data?.totalRow ?? 0;
-        
+
         setApps(prev => {
           const updatedApps = isLoadMore ? [...prev, ...newApps] : newApps;
           setHasMore(updatedApps.length < totalCount);
           return updatedApps;
         });
-        
+
         setTotal(totalCount);
         if (isLoadMore) {
           setPageNum(prev => prev + 1);
@@ -128,7 +129,9 @@ const CasesPage: React.FC = () => {
   }, [loadMore]);
 
   return (
-    <div className={styles.casesPageContainer}>
+    <>
+      <InteractiveBackground />
+      <div className={styles.casesPageContainer}>
       <Card className={styles.filterCard}>
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
           <Search
@@ -185,9 +188,11 @@ const CasesPage: React.FC = () => {
       </Card>
 
       <Card loading={loading} className={styles.appsCard}>
-        <Row>
+        <Row gutter={[16, 16]}>
           {apps.map(app => (
-            <AppCard key={app.id} app={app as any} onCopy={handleCopy} />
+            <Col xs={24} sm={12} md={12} lg={6} xl={6} key={app.id}>
+              <AppCard app={app as any} onCopy={handleCopy} />
+            </Col>
           ))}
         </Row>
         {!apps.length && !loading && (
@@ -211,6 +216,7 @@ const CasesPage: React.FC = () => {
         )}
       </Card>
     </div>
+    </>
   );
 };
 

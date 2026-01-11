@@ -1,3 +1,6 @@
+/**
+ * 粒子爆炸效果配置选项
+ */
 export interface ParticleBurstOptions {
   particleCount?: number;
   particleSize?: number;
@@ -7,6 +10,12 @@ export interface ParticleBurstOptions {
   duration?: number;
 }
 
+/**
+ * 创建粒子爆炸效果
+ * 在指定元素位置生成圆形粒子，并向四周扩散消失
+ * @param event 鼠标事件，用于获取触发元素的位置
+ * @param options 粒子效果配置选项
+ */
 export const createParticleBurst = (
   event: React.MouseEvent,
   options: ParticleBurstOptions = {}

@@ -1,23 +1,45 @@
 import React from 'react'
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native'
 import { Icon } from 'react-native-elements'
 import { WebView } from 'react-native-webview'
+import styles from './AppWebView.less'
 
 /**
- * webView组件
+ * WebView 组件属性
  */
 interface AppWebViewProps {
   /**
-   * webView 地址
+   * WebView 加载的 URI 地址
    */
   uri: string
   /**
-   * 关闭回调
+   * 关闭 WebView 的回调函数
    */
   onClose: () => void
 }
 
+/**
+ * WebView 组件
+ * 用于在应用内显示网页内容
+ * 支持加载状态显示、错误处理和导航控制
+ *
+ * @param props - 组件属性
+ * @returns WebView 组件
+ *
+ * @example
+ * ```tsx
+ * <AppWebView
+ *   uri="https://example.com"
+ *   onClose={() => navigation.goBack()}
+ * />
+ * ```
+ */
 export default function AppWebView({ uri, onClose }: AppWebViewProps) {
+  /**
+   * 加载状态
+   * true: 正在加载
+   * false: 加载完成或未开始
+   */
   const [loading, setLoading] = React.useState(true)
 
   console.log("AppWebView 渲染，URI:", uri);
@@ -30,13 +52,13 @@ export default function AppWebView({ uri, onClose }: AppWebViewProps) {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>应用预览</Text>
       </View>
-      
+
       {loading && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#009dffff" />
         </View>
       )}
-      
+
       <WebView
         source={{ uri }}
         style={styles.webview}
@@ -59,47 +81,3 @@ export default function AppWebView({ uri, onClose }: AppWebViewProps) {
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#fff',
-    zIndex: 999,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    backgroundColor: '#fff',
-  },
-  closeButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginLeft: 8,
-  },
-  loadingContainer: {
-    position: 'absolute',
-    top: 60,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    zIndex: 1,
-  },
-  webview: {
-    flex: 1,
-  },
-})

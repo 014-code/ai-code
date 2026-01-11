@@ -92,4 +92,34 @@ public interface UserService extends IService<User> {
      * @return 加密后的用户密码
      */
     String getEncryptPassword(String userPassword);
+
+    /**
+     * 修改密码
+     *
+     * @param oldPassword  原密码
+     * @param newPassword  新密码
+     * @param checkPassword 确认新密码
+     * @param userId       用户ID
+     * @return 修改是否成功
+     */
+    boolean updatePassword(String oldPassword, String newPassword, String checkPassword, Long userId);
+
+    /**
+     * 修改用户信息
+     *
+     * @param userName    用户昵称
+     * @param userProfile 用户简介
+     * @param userId      用户ID
+     * @return 修改是否成功
+     */
+    boolean updateUserInfo(String userName, String userProfile, Long userId);
+
+    /**
+     * 修改用户头像
+     *
+     * @param userAvatar 用户头像URL
+     * @param userId     用户ID
+     * @return 修改是否成功
+     */
+    boolean updateUserAvatar(String userAvatar, Long userId);
 }

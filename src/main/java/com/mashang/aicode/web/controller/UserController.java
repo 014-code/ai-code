@@ -1,6 +1,7 @@
 package com.mashang.aicode.web.controller;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.StrUtil;
 import com.mashang.aicode.web.annotation.AuthCheck;
 import com.mashang.aicode.web.common.BaseResponse;
 import com.mashang.aicode.web.common.DeleteRequest;
@@ -169,5 +170,58 @@ public class UserController {
         List<UserVO> userVOList = userService.getUserVOList(userPage.getRecords());
         userVOPage.setRecords(userVOList);
         return ResultUtils.success(userVOPage);
+    }
+
+    /**
+     * 修改密码
+     *
+     * @param userUpdatePasswordRequest 修改密码请求
+     * @param request                   请求对象
+     * @return 修改结果
+     */
+    @PostMapping("/update/password")
+    public BaseResponse<Boolean> updatePassword(@RequestBody UserUpdatePasswordRequest userUpdatePasswordRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(userUpdatePasswordRequest == null, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        boolean result = userService.updatePassword(
+                userUpdatePasswordRequest.getOldPassword(),
+                userUpdatePasswordRequest.getNewPassword(),
+                userUpdatePasswordRequest.getCheckPassword(),
+                loginUser.getId()
+        );
+        return ResultUtils.success(result);
+    }
+
+    /**
+     * 修改用户信息
+     *
+     * @param userUpdateInfoRequest 修改用户信息请求
+     * @param request               请求对象
+     * @return 修改结果
+     */
+    @PostMapping("/update/info")
+    public BaseResponse<Boolean> updateUserInfo(@RequestBody UserUpdateInfoRequest userUpdateInfoRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(userUpdateInfoRequest == null, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        boolean result = userService.updateUserInfo(
+                userUpdateInfoRequest.getUserName(),
+                userUpdateInfoRequest.getUserProfile(),
+                loginUser.getId()
+        );
+        return ResultUtils.success(result);
+    }
+
+    /**
+     * 修改用户头像
+     *
+     * @param request    请求对象
+     * @return 修改结果
+     */
+    @PostMapping("/update/avatar")
+    public BaseResponse<Boolean> updateUserAvatar(@RequestBody UserUpdateAvatarRequest userUpdateAvatarRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(userUpdateAvatarRequest == null || StrUtil.isBlank(userUpdateAvatarRequest.getUserAvatar()), ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        boolean result = userService.updateUserAvatar(userUpdateAvatarRequest.getUserAvatar(), loginUser.getId());
+        return ResultUtils.success(result);
     }
 }

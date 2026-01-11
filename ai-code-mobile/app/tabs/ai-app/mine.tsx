@@ -1,18 +1,19 @@
 import { myAppList } from '@/api/app'
-import { AppQueryParams } from '@/api/params/appParams'
 import { getUserInfo, userLogout } from '@/api/user'
 import { AppVO } from '@/api/vo/app'
 import { LoginUserVO } from '@/api/vo/user'
-import AppCard from '@/components/AppCard'
-import AppCardSkeleton from '@/components/AppCardSkeleton'
-import AppWebView from '@/components/AppWebView'
-import MineSkeleton from '@/components/MineSkeleton'
+import AppCard from '@/components/ui/AppCard'
+import AppCardSkeleton from '@/components/skeleton/AppCardSkeleton'
+import AppWebView from '@/components/ui/AppWebView'
+import MineSkeleton from '@/components/skeleton/MineSkeleton'
 import { getStaticPreviewUrl } from '@/utils/deployUrl'
+import { usePagination } from '@/hooks/usePagination'
 import React, { useEffect, useState } from 'react'
-import { ActivityIndicator, Alert, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View, Animated, Dimensions, Easing } from 'react-native'
+import { ActivityIndicator, Alert, FlatList, RefreshControl, Text, TouchableOpacity, View, Animated, Dimensions, Easing } from 'react-native'
 import { Avatar, Button, Divider, Icon, SearchBar } from 'react-native-elements'
 import { useRouter } from 'expo-router'
 import { useTheme } from '@/hooks/useTheme'
+import styles from './mine.less'
 
 /**
  * 我的页面组件
@@ -20,156 +21,210 @@ import { useTheme } from '@/hooks/useTheme'
  * 支持应用搜索、下拉刷新、上拉加载更多、应用预览和对话查看
  */
 export default function Mine() {
+    /**
+     * 路由导航钩子
+     * 用于在应用中进行页面跳转
+     */
     const router = useRouter()
+    
+    /**
+     * 主题管理钩子
+     * 获取当前主题色，用于动态设置UI元素颜色
+     */
     const { themeColor } = useTheme()
+    
+    /**
+     * 用户信息状态
+     * 存储当前登录用户的详细信息
+     */
     const [userInfo, setUserInfo] = useState<LoginUserVO | null>(null)
+    
+    /**
+     * 加载状态
+     * 控制用户信息加载时的加载指示器显示
+     */
     const [loading, setLoading] = useState<boolean>(false)
+    
+    /**
+     * 设置抽屉显示状态
+     * 控制设置抽屉的显示/隐藏
+     */
     const [showSettingsDrawer, setShowSettingsDrawer] = useState<boolean>(false)
+    
+    /**
+     * 抽屉动画值
+     * 控制设置抽屉的滑入滑出动画
+     */
     const drawerTranslateX = useState(new Animated.Value(Dimensions.get('window').width))[0]
     
-    const [appData, setAppData] = useState<AppVO[]>([])
-    const [appLoading, setAppLoading] = useState<boolean>(false)
-    const [refreshing, setRefreshing] = useState<boolean>(false)
+    /**
+     * 搜索关键词状态
+     * 存储用户输入的搜索关键词
+     */
     const [searchKeyword, setSearchKeyword] = useState<string>('')
-    const [hasMore, setHasMore] = useState<boolean>(true)
+    
+    /**
+     * WebView显示状态
+     * 控制是否显示应用预览的WebView
+     */
     const [showWebView, setShowWebView] = useState<boolean>(false)
+    
+    /**
+     * WebView URL状态
+     * 存储当前预览的应用URL
+     */
     const [webViewUrl, setWebViewUrl] = useState<string>('')
 
-    const [listParams, setListParams] = useState<AppQueryParams>({
-        pageNum: 1, 
+    /**
+     * 分页数据管理
+     * 使用统一的分页hook管理我的应用列表数据
+     * 
+     * 配置项：
+     * - pageSize: 每页显示10条数据
+     * - fetchFunction: 使用myAppList接口获取数据
+     * - initialParams: 初始查询参数（应用名称）
+     * - autoLoad: false - 不自动加载数据，等待用户信息加载完成后再加载
+     */
+    const {
+        data: appData,
+        loading: appLoading,
+        refreshing,
+        hasMore,
+        loadMore,
+        onRefresh,
+        updateParams,
+        loadData,
+    } = usePagination<AppVO>({
         pageSize: 10,
-        appName: ''
+        fetchFunction: myAppList,
+        initialParams: {
+            appName: '',
+        },
+        autoLoad: false,
     })
 
+    /**
+     * 组件挂载时加载用户信息
+     * 在页面首次渲染时从后端获取用户信息
+     */
     useEffect(() => {
         loadUserInfo()
     }, [])
 
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setHasMore(true)
-            setListParams(prev => ({
-                ...prev,
-                appName: searchKeyword,
-                pageNum: 1
-            }));
-        }, 500);
-        
-        return () => clearTimeout(timer);
-    }, [searchKeyword]);
-
+    /**
+     * 用户信息加载完成后加载应用列表
+     * 确保用户信息可用后再加载应用数据
+     */
     useEffect(() => {
         if (userInfo) {
-            getAppList();
+            loadData(true)
         }
-    }, [listParams, userInfo]);
+    }, [userInfo, loadData])
+
+    /**
+     * 搜索防抖处理
+     * 当搜索关键词变化时，延迟500ms后更新查询参数
+     * 避免频繁触发API请求，提升性能
+     */
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            updateParams({
+                appName: searchKeyword,
+            })
+        }, 500)
+
+        /**
+         * 组件卸载或搜索关键词变化时清除定时器
+         */
+        return () => clearTimeout(timer)
+    }, [searchKeyword])
 
     /**
      * 加载用户信息
-     * 调用API获取当前登录用户的详细信息
+     * 从后端API获取当前登录用户的详细信息
+     * 成功时更新userInfo状态
+     * 失败时显示错误提示
      */
     function loadUserInfo() {
         setLoading(true)
         getUserInfo().then((res: any) => {
+            /**
+             * 更新用户信息状态
+             */
             setUserInfo(res.data)
         }).catch(err => {
+            /**
+             * 获取用户信息失败，显示错误提示
+             */
             Alert.alert('错误', err.message || '获取用户信息失败')
         }).finally(() => {
+            /**
+             * 无论成功或失败，都关闭加载状态
+             */
             setLoading(false)
         })
     }
 
     /**
-     * 获取应用列表
-     * 根据查询参数获取用户创建的应用列表
-     * 支持分页加载和搜索过滤
-     */
-    function getAppList() {
-        setAppLoading(true)
-        myAppList(listParams).then((res: any) => {
-            const records = res.data?.records || []
-            const total = res.data?.total || 0
-            
-            if (listParams.pageNum === 1) {
-                setAppData(records)
-            } else {
-                setAppData(prev => [...prev, ...records])
-            }
-            
-            setHasMore(appData.length + records.length < total)
-        }).catch(err => {
-            Alert.alert('错误', err.message || '获取应用列表失败')
-        }).finally(() => {
-            setAppLoading(false)
-            setRefreshing(false)
-        })
-    }
-
-    /**
      * 处理搜索输入
-     * 更新搜索关键词，触发防抖搜索
-     * @param text - 搜索关键词
+     * 更新搜索关键词状态
+     * @param text - 用户输入的搜索文本
      */
     const handleSearch = (text: string) => {
-        setSearchKeyword(text);
+        setSearchKeyword(text)
     }
 
     /**
-     * 下拉刷新
-     * 重置页码并重新加载应用列表
-     */
-    const onRefresh = () => {
-        setRefreshing(true)
-        setListParams(prev => ({
-            ...prev,
-            pageNum: 1
-        }));
-    }
-
-    /**
-     * 加载更多
-     * 当滚动到底部时加载下一页数据
-     */
-    const loadMore = () => {
-        if (!appLoading && hasMore && appData.length > 0) {
-            setListParams(prev => ({
-                ...prev,
-                pageNum: prev.pageNum + 1
-            }));
-        }
-    }
-
-    /**
-     * 查看应用预览
-     * 在WebView中预览应用效果
-     * @param app - 应用信息对象
+     * 处理查看应用
+     * 在WebView中预览应用
+     * @param app - 应用数据对象
      */
     const handleViewApp = (app: AppVO) => {
+        /**
+         * 验证应用信息是否完整
+         * 必须包含应用ID、代码生成类型和部署密钥
+         */
         if (app.id && app.codeGenType && app.deployKey) {
+            /**
+             * 生成应用预览URL
+             */
             const url = getStaticPreviewUrl(app.codeGenType, app.id.toString(), app.deployKey)
             setWebViewUrl(url)
             setShowWebView(true)
         } else {
+            /**
+             * 应用信息不完整，显示提示
+             */
             Alert.alert('提示', '应用信息不完整，无法预览')
         }
     }
 
     /**
-     * 查看应用对话
-     * 跳转到应用对话页面
-     * @param app - 应用信息对象
+     * 处理查看对话
+     * 跳转到对话页面查看应用对话历史
+     * @param app - 应用数据对象
      */
     const handleViewConversation = (app: AppVO) => {
+        /**
+         * 验证应用ID是否存在
+         */
         if (app.id) {
+            /**
+             * 跳转到对话页面，传递应用ID参数
+             */
             router.push({ pathname: '/code/chat', params: { appId: app.id.toString() } })
         } else {
+            /**
+             * 应用ID不存在，显示提示
+             */
             Alert.alert('提示', '应用ID不存在，无法查看对话')
         }
     }
 
     /**
      * 处理退出登录
-     * 显示确认对话框，确认后调用退出登录API
+     * 显示确认对话框，用户确认后执行退出操作
+     * 清除用户信息并调用退出登录API
      */
     const handleLogout = () => {
         Alert.alert(
@@ -180,10 +235,18 @@ export default function Mine() {
                 { 
                     text: '确定', 
                     onPress: () => {
+                        /**
+                         * 调用退出登录API
+                         */
                         userLogout().then(() => {
+                            /**
+                             * 清除用户信息状态
+                             */
                             setUserInfo(null)
-                            setAppData([])
                         }).catch(err => {
+                            /**
+                             * 退出登录失败，显示错误提示
+                             */
                             Alert.alert('错误', err.message || '退出登录失败')
                         })
                     }
@@ -192,6 +255,10 @@ export default function Mine() {
         )
     }
 
+    /**
+     * 打开设置抽屉
+     * 使用动画将抽屉从右侧滑入
+     */
     const openDrawer = () => {
         setShowSettingsDrawer(true)
         Animated.timing(drawerTranslateX, {
@@ -201,6 +268,11 @@ export default function Mine() {
         }).start()
     }
 
+    /**
+     * 关闭设置抽屉
+     * 使用动画将抽屉滑出到屏幕右侧
+     * 动画完成后隐藏抽屉
+     */
     const closeDrawer = () => {
         Animated.timing(drawerTranslateX, {
             toValue: Dimensions.get('window').width,
@@ -211,16 +283,15 @@ export default function Mine() {
         })
     }
 
+    /**
+     * 处理设置按钮点击
+     * 关闭抽屉并跳转到设置页面
+     */
     const handleSettingsClick = () => {
         closeDrawer()
         router.push('/settings')
     }
 
-    /**
-     * 渲染应用卡片
-     * @param item - 应用数据
-     * @param index - 索引
-     */
     const renderAppCard = ({ item, index }: { item: AppVO, index: number }) => {
         return (
             <AppCard 
@@ -232,10 +303,6 @@ export default function Mine() {
         )
     }
 
-    /**
-     * 渲染骨架屏列表
-     * 在加载时显示占位内容
-     */
     const renderSkeletonList = () => {
         const skeletons = Array.from({ length: 3 }, (_, index) => (
             <AppCardSkeleton key={index} />
@@ -243,10 +310,6 @@ export default function Mine() {
         return <View style={styles.listContent}>{skeletons}</View>
     }
 
-    /**
-     * 渲染空状态
-     * 当没有应用数据时显示提示信息
-     */
     const renderEmpty = () => {
         if (appLoading) return null
         return (
@@ -258,10 +321,6 @@ export default function Mine() {
         )
     }
 
-    /**
-     * 渲染列表底部加载状态
-     * 在加载更多时显示加载指示器
-     */
     const renderFooter = () => {
         if (!appLoading || appData.length === 0) return null
         return (
@@ -399,172 +458,3 @@ export default function Mine() {
         </View>
     )
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#f5f5f5',
-    },
-    contentContainer: {
-        flex: 1,
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    profileSection: {
-        backgroundColor: '#fff',
-        padding: 24,
-        alignItems: 'center',
-        position: 'relative',
-    },
-    settingsIcon: {
-        position: 'absolute',
-        top: 24,
-        right: 24,
-        padding: 8,
-    },
-    avatarContainer: {
-        marginBottom: 16,
-    },
-    avatar: {
-    },
-    userName: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#333',
-        marginBottom: 8,
-    },
-    userAccount: {
-        fontSize: 14,
-        color: '#666',
-        marginBottom: 8,
-    },
-    userProfile: {
-        fontSize: 14,
-        color: '#999',
-        textAlign: 'center',
-        marginBottom: 16,
-    },
-    divider: {
-        height: 1,
-        backgroundColor: '#e0e0e0',
-    },
-    appsSection: {
-        flex: 1,
-        backgroundColor: '#f5f5f5',
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#333',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-    },
-    searchContainer: {
-        backgroundColor: '#f5f5f5',
-        borderTopWidth: 0,
-        borderBottomWidth: 0,
-        paddingHorizontal: 16,
-    },
-    searchInputContainer: {
-        backgroundColor: '#fff',
-        borderRadius: 8,
-    },
-    emptyContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingVertical: 50,
-    },
-    emptyText: {
-        fontSize: 16,
-        color: '#999',
-    },
-    listContent: {
-        paddingHorizontal: 16,
-        paddingBottom: 20,
-    },
-    footer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    footerText: {
-        marginLeft: 10,
-        color: '#666',
-    },
-    notLoggedInContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 24,
-    },
-    notLoggedInText: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#666',
-        marginTop: 16,
-        marginBottom: 8,
-    },
-    notLoggedInHint: {
-        fontSize: 14,
-        color: '#999',
-    },
-    drawerOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        zIndex: 1,
-    },
-    drawerContainer: {
-        position: 'absolute',
-        top: 0,
-        right: 0,
-        bottom: 0,
-        width: 300,
-        backgroundColor: '#fff',
-        zIndex: 2,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: -2,
-            height: 0,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-    },
-    drawerHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e0e0e0',
-    },
-    drawerTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#333',
-    },
-    drawerItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f5f5f5',
-    },
-    drawerItemText: {
-        flex: 1,
-        fontSize: 16,
-        color: '#333',
-        marginLeft: 12,
-    },
-})

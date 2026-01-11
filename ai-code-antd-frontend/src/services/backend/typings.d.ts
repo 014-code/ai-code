@@ -396,6 +396,21 @@ declare namespace API {
     userRole?: string;
   };
 
+  type UserUpdateInfoRequest = {
+    userName?: string;
+    userProfile?: string;
+  };
+
+  type UserUpdatePasswordRequest = {
+    oldPassword?: string;
+    newPassword?: string;
+    checkPassword?: string;
+  };
+
+  type UserUpdateAvatarRequest = {
+    userAvatar?: string;
+  };
+
   type UserVO = {
     id?: number;
     userAccount?: string;
@@ -417,5 +432,102 @@ declare namespace API {
     buildResultDir?: string;
     qualityResult?: QualityResult;
     errorMessage?: string;
+  };
+
+  type Comment = {
+    id?: number;
+    appId?: number;
+    parentId?: number;
+    userId?: number;
+    content?: string;
+    likeCount?: number;
+    replyCount?: number;
+    createTime?: string;
+    updateTime?: string;
+    isDelete?: number;
+  };
+
+  type CommentVO = {
+    id?: number;
+    appId?: number;
+    app?: AppVO;
+    parentId?: number;
+    parentComment?: CommentVO;
+    userId?: number;
+    user?: UserVO;
+    content?: string;
+    likeCount?: number;
+    replyCount?: number;
+    createTime?: string;
+    updateTime?: string;
+  };
+
+  type CommentAddRequest = {
+    appId?: number;
+    content?: string;
+  };
+
+  type CommentReplyRequest = {
+    parentId?: number;
+    content?: string;
+    replyUserId?: number;
+  };
+
+  type CommentQueryRequest = {
+    pageNum?: number;
+    pageSize?: number;
+    sortField?: string;
+    sortOrder?: string;
+    id?: number;
+    appId?: number;
+    parentId?: number;
+    userId?: number;
+    content?: string;
+  };
+
+  type BaseResponseComment = {
+    code?: number;
+    data?: Comment;
+    message?: string;
+  };
+
+  type BaseResponseCommentVO = {
+    code?: number;
+    data?: CommentVO;
+    message?: string;
+  };
+
+  type BaseResponsePageComment = {
+    code?: number;
+    data?: PageComment;
+    message?: string;
+  };
+
+  type BaseResponsePageCommentVO = {
+    code?: number;
+    data?: PageCommentVO;
+    message?: string;
+  };
+
+  type PageComment = {
+    records?: Comment[];
+    pageNumber?: number;
+    pageSize?: number;
+    totalPage?: number;
+    totalRow?: number;
+    optimizeCountQuery?: boolean;
+  };
+
+  type PageCommentVO = {
+    records?: CommentVO[];
+    pageNumber?: number;
+    pageSize?: number;
+    totalPage?: number;
+    totalRow?: number;
+    optimizeCountQuery?: boolean;
+  };
+
+  type getCommentByIdParams = {
+    id: number;
   };
 }

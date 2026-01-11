@@ -17,41 +17,44 @@ interface AppData {
   user?: { userAvatar: string, userName: string },
 }
 
+/**
+ * 应用卡片组件属性接口
+ */
 interface Props {
   app: AppData,
   onCopy: (text: string) => void;
-  // 使用 children 作为默认插槽
   children?: React.ReactNode;
-  // 是否加载中
   loading?: boolean;
 }
 
 /**
  * 应用卡片组件
- * @constructor
- * @param props
+ * 显示应用信息，包括封面、标题、描述等
+ * 支持查看应用、复制提示词、查看对话等操作
+ * @param props - 组件属性
+ * @returns React 组件
  */
 // @ts-ignore
 const AppCard: React.FC<Props> = (props) => {
   const {app, onCopy, children, loading = false} = props;
 
-  // 复制到剪贴板函数
+  /**
+   * 复制文本到剪贴板
+   * @param text - 要复制的文本
+   */
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      // 同步填充到父组件输入框
       onCopy(text);
       message.success('复制成功');
     } catch (err) {
       console.error('复制失败:', err);
-      // 降级方案：使用老式方法
       const textArea = document.createElement('textarea');
       textArea.value = text;
       document.body.appendChild(textArea);
       textArea.select();
       try {
         document.execCommand('copy');
-        // 同步填充到父组件输入框
         onCopy(text);
         message.success('复制成功');
       } catch (fallbackErr) {
@@ -64,8 +67,7 @@ const AppCard: React.FC<Props> = (props) => {
 
   return (
     <div className={styles.appCardWrapper}>
-      <Col key={app.id}>
-        {loading ? (
+      {loading ? (
           <Card className={styles.skeletonCard}>
             <Skeleton.Image active className={styles.skeletonImage} />
             <Skeleton active paragraph={{ rows: 2 }} />
@@ -74,7 +76,7 @@ const AppCard: React.FC<Props> = (props) => {
           <Card
             hoverable
             //@ts-ignore
-            onClick={() => history.push(getStaticPreviewUrl(app.codeGenType, app.id, app.deployKey))}
+            onClick={() => window.open(getStaticPreviewUrl(app.codeGenType, app.id, app.deployKey), '_blank')}
             className={styles.appCard}
             cover={
               app.cover ? (
@@ -128,8 +130,7 @@ const AppCard: React.FC<Props> = (props) => {
             <Button
               size={"large"}
               className={styles.overlayButton}
-              //@ts-ignore
-              onClick={() => history.push(getStaticPreviewUrl(app.codeGenType, app.id, app.deployKey))}
+              onClick={() => window.open(getStaticPreviewUrl(app.codeGenType, app.id, app.deployKey), '_blank')}
             >
               查看应用
             </Button>
@@ -153,7 +154,6 @@ const AppCard: React.FC<Props> = (props) => {
             </Button>
           </div>
         )}
-      </Col>
     </div>
   );
 };
