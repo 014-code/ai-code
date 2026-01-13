@@ -13,7 +13,7 @@ import { ActivityIndicator, Alert, FlatList, RefreshControl, Text, TouchableOpac
 import { Avatar, Button, Divider, Icon, SearchBar } from 'react-native-elements'
 import { useRouter } from 'expo-router'
 import { useTheme } from '@/hooks/useTheme'
-import styles from './mine.less'
+import styles from '@/styles/mine.less'
 
 /**
  * 我的页面组件

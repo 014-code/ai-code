@@ -2,7 +2,7 @@ import React from 'react'
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native'
 import { Icon } from 'react-native-elements'
 import { WebView } from 'react-native-webview'
-import styles from './AppWebView.less'
+import styles from '@/styles/ui/AppWebView.less'
 
 /**
  * WebView 组件属性

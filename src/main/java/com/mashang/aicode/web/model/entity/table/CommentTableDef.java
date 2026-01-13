@@ -26,6 +26,11 @@ public class CommentTableDef extends TableDef {
     public final QueryColumn APP_ID = new QueryColumn(this, "appId");
 
     /**
+     * 评论类型
+     */
+    public final QueryColumn COMMENT_TYPE = new QueryColumn(this, "commentType");
+
+    /**
      * 父评论ID
      */
     public final QueryColumn PARENT_ID = new QueryColumn(this, "parentId");
@@ -73,7 +78,7 @@ public class CommentTableDef extends TableDef {
     /**
      * 默认字段，不包含逻辑删除或者大量字段
      */
-    public final QueryColumn[] DEFAULT_COLUMNS = new QueryColumn[]{ID, APP_ID, PARENT_ID, USER_ID, CONTENT, LIKE_COUNT, REPLY_COUNT, CREATE_TIME, UPDATE_TIME};
+    public final QueryColumn[] DEFAULT_COLUMNS = new QueryColumn[]{ID, APP_ID, COMMENT_TYPE, PARENT_ID, USER_ID, CONTENT, LIKE_COUNT, REPLY_COUNT, CREATE_TIME, UPDATE_TIME};
 
     public CommentTableDef() {
         super("", "comment");

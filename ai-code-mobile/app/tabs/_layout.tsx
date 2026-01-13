@@ -12,9 +12,9 @@
  * @returns 底部标签栏导航组件
  */
 
-import { Icon } from 'react-native-elements';
-import { Tabs, Stack } from "expo-router";
 import { useTheme } from '@/hooks/useTheme';
+import { Stack, Tabs } from "expo-router";
+import { Icon } from 'react-native-elements';
 
 export default function TabLayout() {
     const { themeColor } = useTheme();
@@ -71,6 +71,27 @@ export default function TabLayout() {
                     tabBarIcon: ({ color, focused }) => (
                         <Icon
                             name="apps"
+                            type="material"
+                            size={24}
+                            color={color}
+                        />
+                    ),
+                    headerShown: false,
+                }}
+            />
+            
+            {/**
+             * 社区标签页
+             * 用于浏览和发布社区帖子
+             * 图标：社区图标
+             */}
+            <Tabs.Screen
+                name="forum/list"
+                options={{
+                    title: "社区",
+                    tabBarIcon: ({ color, focused }) => (
+                        <Icon
+                            name="forum"
                             type="material"
                             size={24}
                             color={color}

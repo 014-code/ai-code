@@ -7,7 +7,7 @@ import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View,
 import { Icon } from 'react-native-elements'
 import { useTheme } from '@/hooks/useTheme'
 import Logo from '@/components/ui/Logo'
-import styles, { getDynamicStyles } from './home.less'
+import styles, { getDynamicStyles } from '@/styles/home.less'
 
 /**
  * 首页组件

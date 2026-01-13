@@ -1,6 +1,6 @@
 import React from 'react'
 import { View } from 'react-native'
-import styles from './AppCardSkeleton.less'
+import styles from '@/styles/skeleton/AppCardSkeleton.less'
 
 /**
  * 应用卡片骨架屏组件

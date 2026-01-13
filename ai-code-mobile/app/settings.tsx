@@ -16,7 +16,7 @@ import React from 'react';
 import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Icon } from 'react-native-elements';
 import { THEME_OPTIONS } from '@/constants/theme';
-import styles from './settings.less';
+import styles from '@/styles/settings.less';
 
 export default function Settings() {
     /**

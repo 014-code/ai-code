@@ -435,10 +435,10 @@ declare namespace API {
   };
 
   type Comment = {
-    id?: number;
-    appId?: number;
-    parentId?: number;
-    userId?: number;
+    id?: string;
+    appId?: string;
+    parentId?: string;
+    userId?: string;
     content?: string;
     likeCount?: number;
     replyCount?: number;
@@ -448,12 +448,12 @@ declare namespace API {
   };
 
   type CommentVO = {
-    id?: number;
-    appId?: number;
+    id?: string;
+    appId?: string;
     app?: AppVO;
-    parentId?: number;
+    parentId?: string;
     parentComment?: CommentVO;
-    userId?: number;
+    userId?: string;
     user?: UserVO;
     content?: string;
     likeCount?: number;
@@ -463,14 +463,14 @@ declare namespace API {
   };
 
   type CommentAddRequest = {
-    appId?: number;
+    appId?: string;
     content?: string;
   };
 
   type CommentReplyRequest = {
-    parentId?: number;
+    parentId?: string;
     content?: string;
-    replyUserId?: number;
+    replyUserId?: string;
   };
 
   type CommentQueryRequest = {
@@ -478,11 +478,13 @@ declare namespace API {
     pageSize?: number;
     sortField?: string;
     sortOrder?: string;
-    id?: number;
-    appId?: number;
-    parentId?: number;
-    userId?: number;
+    id?: string;
+    appId?: string;
+    parentId?: string;
+    userId?: string;
     content?: string;
+    relatedId?: string;
+    commentType?: number;
   };
 
   type BaseResponseComment = {
@@ -528,6 +530,91 @@ declare namespace API {
   };
 
   type getCommentByIdParams = {
-    id: number;
+    id: string;
+  };
+
+  type ForumPost = {
+    id?: string;
+    title?: string;
+    content?: string;
+    appId?: string;
+    userId?: string;
+    viewCount?: number;
+    likeCount?: number;
+    commentCount?: number;
+    isPinned?: number;
+    createTime?: string;
+    updateTime?: string;
+    isDelete?: number;
+  };
+
+  type ForumPostAddRequest = {
+    title?: string;
+    content?: string;
+    appId?: number;
+  };
+
+  type ForumPostUpdateRequest = {
+    id?: string;
+    title?: string;
+    content?: string;
+    appId?: string;
+    isPinned?: number;
+  };
+
+  type ForumPostQueryRequest = {
+    pageNum?: number;
+    pageSize?: number;
+    sortField?: string;
+    sortOrder?: string;
+    id?: string;
+    title?: string;
+    searchKey?: string;
+    appId?: string;
+    userId?: string;
+    isPinned?: number;
+  };
+
+  type ForumPostVO = {
+    id?: string;
+    title?: string;
+    content?: string;
+    appId?: string;
+    app?: AppVO;
+    userId?: string;
+    user?: UserVO;
+    viewCount?: number;
+    likeCount?: number;
+    commentCount?: number;
+    isPinned?: number;
+    createTime?: string;
+    updateTime?: string;
+  };
+
+  type BaseResponseForumPost = {
+    code?: number;
+    data?: ForumPost;
+    message?: string;
+  };
+
+  type BaseResponseForumPostVO = {
+    code?: number;
+    data?: ForumPostVO;
+    message?: string;
+  };
+
+  type BaseResponsePageForumPostVO = {
+    code?: number;
+    data?: PageForumPostVO;
+    message?: string;
+  };
+
+  type PageForumPostVO = {
+    records?: ForumPostVO[];
+    pageNumber?: number;
+    pageSize?: number;
+    totalPage?: number;
+    totalRow?: number;
+    optimizeCountQuery?: boolean;
   };
 }

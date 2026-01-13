@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { List, Avatar, Input, Button, message, Space, Typography, Empty, Spin } from 'antd';
 import { UserOutlined, LikeOutlined, MessageOutlined, DeleteOutlined, SendOutlined } from '@ant-design/icons';
 import { addComment, replyComment, deleteComment, listAppCommentsByPage } from '@/services/backend/commentController';
+import { addForumComment, replyForumComment, listForumPostCommentsByPage, likeForumComment, unlikeForumComment, deleteForumComment } from '@/services/backend/forumPostController';
 import { getLoginUser } from '@/services/backend/userController';
 import styles from './index.less';
 
@@ -9,20 +10,23 @@ const { TextArea } = Input;
 const { Text } = Typography;
 
 interface CommentSectionProps {
-  appId: number;
+  appId: string;
+  commentType?: 'app' | 'forum';
+  onCommentCountChange?: (count: number) => void;
 }
 
-const CommentSection: React.FC<CommentSectionProps> = ({ appId }) => {
+const CommentSection: React.FC<CommentSectionProps> = ({ appId, commentType = 'app', onCommentCountChange }) => {
   const [comments, setComments] = useState<API.CommentVO[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [pageNum, setPageNum] = useState(1);
   const [pageSize] = useState(10);
-  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState('');
   const [mainCommentContent, setMainCommentContent] = useState('');
   const [loginUser, setLoginUser] = useState<API.LoginUserVO>();
   const [submitting, setSubmitting] = useState(false);
+  const [total, setTotal] = useState(0);
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -64,17 +68,28 @@ const CommentSection: React.FC<CommentSectionProps> = ({ appId }) => {
 
   const loadComments = () => {
     setLoading(true);
-    listAppCommentsByPage({
-      appId,
-      pageNum: 1,
-      pageSize,
-      sortField: 'createTime',
-      sortOrder: 'desc'
-    }).then(res => {
+    const loadPromise = commentType === 'forum'
+      ? listForumPostCommentsByPage({
+          appId,
+          pageNum: 1,
+          pageSize,
+          commentType: 1,
+        })
+      : listAppCommentsByPage({
+          appId,
+          pageNum: 1,
+          pageSize,
+          sortField: 'createTime',
+          sortOrder: 'desc'
+        });
+
+    loadPromise.then(res => {
       if (res.code === 0 && res.data) {
         setComments(res.data.records || []);
         setHasMore((res.data.records?.length || 0) >= pageSize);
         setPageNum(1);
+        setTotal(res.data.totalRow || 0);
+        onCommentCountChange?.(res.data.totalRow || 0);
       }
     }).catch(error => {
       message.error('加载评论失败：' + error.message);
@@ -89,13 +104,22 @@ const CommentSection: React.FC<CommentSectionProps> = ({ appId }) => {
     setLoading(true);
     const nextPage = pageNum + 1;
 
-    listAppCommentsByPage({
-      appId,
-      pageNum: nextPage,
-      pageSize,
-      sortField: 'createTime',
-      sortOrder: 'desc'
-    }).then(res => {
+    const loadPromise = commentType === 'forum'
+      ? listForumPostCommentsByPage({
+          appId,
+          pageNum: nextPage,
+          pageSize,
+          commentType: 1,
+        })
+      : listAppCommentsByPage({
+          appId,
+          pageNum: nextPage,
+          pageSize,
+          sortField: 'createTime',
+          sortOrder: 'desc'
+        });
+
+    loadPromise.then(res => {
       if (res.code === 0 && res.data) {
         const newComments = res.data.records || [];
         setComments(prev => [...prev, ...newComments]);
@@ -116,10 +140,18 @@ const CommentSection: React.FC<CommentSectionProps> = ({ appId }) => {
     }
 
     setSubmitting(true);
-    addComment({
-      appId,
-      content: mainCommentContent.trim()
-    }).then(res => {
+    const addPromise = commentType === 'forum'
+      ? addForumComment({
+          appId,
+          content: mainCommentContent.trim(),
+          commentType: 1,
+        })
+      : addComment({
+          appId,
+          content: mainCommentContent.trim()
+        });
+
+    addPromise.then(res => {
       if (res.code === 0) {
         message.success('评论成功');
         setMainCommentContent('');
@@ -134,17 +166,24 @@ const CommentSection: React.FC<CommentSectionProps> = ({ appId }) => {
     });
   };
 
-  const handleReply = (parentId: number) => {
+  const handleReply = (parentId: string) => {
     if (!replyContent.trim()) {
       message.warning('请输入回复内容');
       return;
     }
 
     setSubmitting(true);
-    replyComment({
-      parentId,
-      content: replyContent.trim()
-    }).then(res => {
+    const replyPromise = commentType === 'forum'
+      ? replyForumComment({
+          parentId,
+          content: replyContent.trim()
+        })
+      : replyComment({
+          parentId,
+          content: replyContent.trim()
+        });
+
+    replyPromise.then(res => {
       if (res.code === 0) {
         message.success('回复成功');
         setReplyContent('');
@@ -160,12 +199,16 @@ const CommentSection: React.FC<CommentSectionProps> = ({ appId }) => {
     });
   };
 
-  const handleDelete = (commentId: number) => {
+  const handleDelete = (commentId: string) => {
     if (!confirm('确定要删除这条评论吗？')) {
       return;
     }
 
-    deleteComment({ id: commentId }).then(res => {
+    const deletePromise = commentType === 'forum'
+      ? deleteForumComment(commentId)
+      : deleteComment({ id: Number(commentId) });
+
+    deletePromise.then(res => {
       if (res.code === 0) {
         message.success('删除成功');
         loadComments();
@@ -177,8 +220,28 @@ const CommentSection: React.FC<CommentSectionProps> = ({ appId }) => {
     });
   };
 
-  const handleLike = (commentId: number) => {
-    message.info('点赞功能开发中');
+  const handleLike = (commentId: string, isLiked: boolean) => {
+    if (commentType === 'forum') {
+      const likePromise = isLiked
+        ? unlikeForumComment(commentId)
+        : likeForumComment(commentId);
+      
+      likePromise.then(res => {
+        if (res.code === 0) {
+          setComments(prev => prev.map(comment =>
+            comment.id === commentId
+              ? { ...comment, likeCount: (comment.likeCount || 0) + (isLiked ? -1 : 1), isLiked: !isLiked }
+              : comment
+          ));
+        } else {
+          message.error(res.message || '操作失败');
+        }
+      }).catch(error => {
+        message.error('操作失败：' + error.message);
+      });
+    } else {
+      message.info('点赞功能开发中');
+    }
   };
 
   const renderCommentItem = (comment: API.CommentVO) => {
@@ -220,7 +283,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ appId }) => {
               type="text"
               icon={<LikeOutlined />}
               size="small"
-              onClick={() => comment.id && handleLike(comment.id)}
+              onClick={() => comment.id && handleLike(comment.id, comment.isLiked || false)}
             >
               {comment.likeCount || 0}
             </Button>
@@ -277,7 +340,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ appId }) => {
   return (
     <div className={styles.commentSection}>
       <div className={styles.commentHeader}>
-        <h3>评论 ({comments.length})</h3>
+        <h3>评论 ({total})</h3>
       </div>
 
       <div className={styles.addComment}>

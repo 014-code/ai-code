@@ -3,49 +3,176 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator,
 import { Avatar, Icon } from 'react-native-elements';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { addComment, replyComment, deleteComment, listAppComments } from '@/api/comment';
+import { addForumComment, replyForumComment, deleteForumComment, listForumComments } from '@/api/forum';
 import { getUserInfo } from '@/api/user';
-import styles from './CommentSection.less';
+import styles from '@/styles/ui/CommentSection.less';
 
+/**
+ * 评论组件属性接口
+ */
 interface CommentSectionProps {
-  appId: string;
+  /**
+   * 应用ID或帖子ID
+   */
+  id: string;
+  /**
+   * 评论类型
+   * - app: 应用评论
+   * - forum: 论坛评论
+   */
+  type: 'app' | 'forum';
+  /**
+   * 评论数量变化回调函数
+   * @param count - 当前的评论总数
+   */
+  onCommentCountChange?: (count: number) => void;
 }
 
+/**
+ * 评论数据接口
+ */
 interface CommentVO {
-  id?: number;
-  appId?: number;
-  userId?: number;
-  parentId?: number;
+  /**
+   * 评论ID
+   */
+  id?: number | string;
+  /**
+   * 应用ID
+   */
+  appId?: number | string;
+  /**
+   * 帖子ID（论坛评论专用）
+   */
+  postId?: string;
+  /**
+   * 用户ID
+   */
+  userId?: number | string;
+  /**
+   * 父评论ID（用于回复）
+   */
+  parentId?: number | string;
+  /**
+   * 评论内容
+   */
   content?: string;
+  /**
+   * 点赞数量
+   */
   likeCount?: number;
+  /**
+   * 回复数量
+   */
   replyCount?: number;
+  /**
+   * 创建时间
+   */
   createTime?: string;
+  /**
+   * 是否为主评论
+   */
+  mainComment?: boolean;
+  /**
+   * 用户信息
+   */
   user?: {
-    id?: number;
+    /**
+     * 用户ID
+     */
+    id?: number | string;
+    /**
+     * 用户名
+     */
     userName?: string;
+    /**
+     * 用户头像
+     */
     userAvatar?: string;
   };
 }
 
-const CommentSection: React.FC<CommentSectionProps> = ({ appId }) => {
+/**
+ * 评论组件
+ * 用于显示应用或论坛帖子的评论列表
+ * 支持评论发布、回复、删除、加载更多等功能
+ * 
+ * @param props - 组件属性
+ * @returns 评论组件
+ * 
+ * @example
+ * ```tsx
+ * <CommentSection
+ *   id="123"
+ *   type="app"
+ *   onCommentCountChange={(count) => console.log(count)}
+ * />
+ * ```
+ */
+const CommentSection: React.FC<CommentSectionProps> = ({ id, type, onCommentCountChange }) => {
+  /**
+   * 获取安全区域边距
+   * 用于适配不同设备的安全区域（如刘海屏、圆角屏等）
+   */
   const insets = useSafeAreaInsets();
   
+  /**
+   * 评论列表数据
+   */
   const [comments, setComments] = useState<CommentVO[]>([]);
+  /**
+   * 加载状态
+   */
   const [loading, setLoading] = useState(false);
+  /**
+   * 是否还有更多数据
+   */
   const [hasMore, setHasMore] = useState(true);
+  /**
+   * 当前页码
+   */
   const [pageNum, setPageNum] = useState(1);
+  /**
+   * 每页显示数量
+   */
   const [pageSize] = useState(10);
+  /**
+   * 正在回复的评论对象
+   */
   const [replyingTo, setReplyingTo] = useState<CommentVO | null>(null);
+  /**
+   * 评论输入框内容
+   */
   const [commentContent, setCommentContent] = useState('');
+  /**
+   * 当前登录用户信息
+   */
   const [loginUser, setLoginUser] = useState<any>();
+  /**
+   * 提交状态
+   */
   const [submitting, setSubmitting] = useState(false);
 
+  /**
+   * ScrollView引用
+   */
   const scrollViewRef = useRef<ScrollView>(null);
+  /**
+   * 加载状态引用
+   * 用于防止重复加载
+   */
+  const loadingRef = useRef(false);
 
+  /**
+   * 组件挂载时加载评论和用户信息
+   */
   useEffect(() => {
     loadComments();
     loadUserInfo();
-  }, [appId]);
+  }, [id, type]);
 
+  /**
+   * 加载当前登录用户信息
+   */
   const loadUserInfo = () => {
     getUserInfo().then(res => {
       if (res.code === 0) {
@@ -56,41 +183,72 @@ const CommentSection: React.FC<CommentSectionProps> = ({ appId }) => {
     });
   };
 
+  /**
+   * 加载评论列表
+   * 根据type参数调用不同的API接口
+   */
   const loadComments = () => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     setLoading(true);
-    listAppComments({
-      appId: Number(appId),
-      pageNum: 1,
-      pageSize,
-      sortField: 'createTime',
-      sortOrder: 'desc'
-    }).then(res => {
+    const apiCall = type === 'app' 
+      ? listAppComments({
+          appId: Number(id),
+          pageNum: 1,
+          pageSize,
+          sortField: 'createTime',
+          sortOrder: 'desc'
+        })
+      : listForumComments({
+          appId: id,
+          pageNum: 1,
+          pageSize,
+          commentType: 1,
+        });
+
+    apiCall.then(res => {
       if (res.code === 0 && res.data) {
-        setComments(res.data.records || []);
-        setHasMore((res.data.records?.length || 0) >= pageSize);
+        const records = res.data.records || [];
+        setComments(records);
+        setHasMore(records.length >= pageSize);
         setPageNum(1);
+        onCommentCountChange?.(records.length);
       }
     }).catch(error => {
       console.error('加载评论失败：', error);
       Alert.alert('错误', '加载评论失败');
     }).finally(() => {
       setLoading(false);
+      loadingRef.current = false;
     });
   };
 
+  /**
+   * 加载更多评论
+   * 当用户滚动到底部时触发
+   */
   const loadMoreComments = () => {
     if (!hasMore || loading) return;
 
     setLoading(true);
     const nextPage = pageNum + 1;
 
-    listAppComments({
-      appId: Number(appId),
-      pageNum: nextPage,
-      pageSize,
-      sortField: 'createTime',
-      sortOrder: 'desc'
-    }).then(res => {
+    const apiCall = type === 'app'
+      ? listAppComments({
+          appId: Number(id),
+          pageNum: nextPage,
+          pageSize,
+          sortField: 'createTime',
+          sortOrder: 'desc'
+        })
+      : listForumComments({
+          appId: id,
+          pageNum: nextPage,
+          pageSize,
+          commentType: 1,
+        });
+
+    apiCall.then(res => {
       if (res.code === 0 && res.data) {
         const newComments = res.data.records || [];
         setComments(prev => [...prev, ...newComments]);
@@ -105,6 +263,9 @@ const CommentSection: React.FC<CommentSectionProps> = ({ appId }) => {
     });
   };
 
+  /**
+   * 添加评论
+   */
   const handleAddComment = () => {
     if (!commentContent.trim()) {
       Alert.alert('提示', '请输入评论内容');
@@ -112,10 +273,18 @@ const CommentSection: React.FC<CommentSectionProps> = ({ appId }) => {
     }
 
     setSubmitting(true);
-    addComment({
-      appId: Number(appId),
-      content: commentContent.trim()
-    }).then(res => {
+    const apiCall = type === 'app'
+      ? addComment({
+          appId: Number(id),
+          content: commentContent.trim()
+        })
+      : addForumComment({
+          appId: id,
+          content: commentContent.trim(),
+          commentType: 1,
+        });
+
+    apiCall.then(res => {
       if (res.code === 0) {
         setCommentContent('');
         loadComments();
@@ -130,6 +299,9 @@ const CommentSection: React.FC<CommentSectionProps> = ({ appId }) => {
     });
   };
 
+  /**
+   * 回复评论
+   */
   const handleReply = () => {
     if (!commentContent.trim()) {
       Alert.alert('提示', '请输入回复内容');
@@ -142,10 +314,17 @@ const CommentSection: React.FC<CommentSectionProps> = ({ appId }) => {
     }
 
     setSubmitting(true);
-    replyComment({
-      parentId: replyingTo.id,
-      content: commentContent.trim()
-    }).then(res => {
+    const apiCall = type === 'app'
+      ? replyComment({
+          parentId: Number(replyingTo.id),
+          content: commentContent.trim()
+        })
+      : replyForumComment({
+          parentId: String(replyingTo.id),
+          content: commentContent.trim()
+        });
+
+    apiCall.then(res => {
       if (res.code === 0) {
         setCommentContent('');
         setReplyingTo(null);
@@ -161,14 +340,22 @@ const CommentSection: React.FC<CommentSectionProps> = ({ appId }) => {
     });
   };
 
-  const handleDelete = (commentId: number) => {
+  /**
+   * 删除评论
+   * @param commentId - 要删除的评论ID
+   */
+  const handleDelete = (commentId: number | string) => {
     Alert.alert('确认', '确定要删除这条评论吗？', [
       { text: '取消', style: 'cancel' },
       {
         text: '确定',
         style: 'destructive',
         onPress: () => {
-          deleteComment({ id: commentId }).then(res => {
+          const apiCall = type === 'app'
+            ? deleteComment(Number(commentId))
+            : deleteForumComment(String(commentId));
+
+          apiCall.then(res => {
             if (res.code === 0) {
               Alert.alert('成功', '删除成功');
               loadComments();
@@ -184,10 +371,19 @@ const CommentSection: React.FC<CommentSectionProps> = ({ appId }) => {
     ]);
   };
 
+  /**
+   * 点赞评论
+   * @param commentId - 要点赞的评论ID
+   */
   const handleLike = (commentId: number) => {
     Alert.alert('提示', '点赞功能开发中');
   };
 
+  /**
+   * 渲染单个评论项
+   * @param comment - 评论数据对象
+   * @returns 评论项组件
+   */
   const renderCommentItem = (comment: CommentVO) => {
     const isMainComment = !comment.parentId;
     const canDelete = loginUser && comment.userId === loginUser.id;
@@ -231,7 +427,13 @@ const CommentSection: React.FC<CommentSectionProps> = ({ appId }) => {
     );
   };
 
+  /**
+   * 过滤出主评论（没有parentId的评论）
+   */
   const mainComments = comments.filter(c => !c.parentId);
+  /**
+   * 过滤出回复评论（有parentId的评论）
+   */
   const replyComments = comments.filter(c => c.parentId);
 
   return (

@@ -4,7 +4,6 @@ import {deleteApp, listAllAppsByPage, setAppFeatured} from '@/services/backend/a
 import {PlusOutlined} from '@ant-design/icons';
 import type {ActionType, ProColumns} from '@ant-design/pro-components';
 import {PageContainer, ProTable} from '@ant-design/pro-components';
-import '@umijs/max';
 import {Button, message, Space, Typography} from 'antd';
 import React, {useRef, useState} from 'react';
 
@@ -25,6 +24,10 @@ const COLUMN_WIDTHS = {
   option: 120,
 };
 
+/**
+ * 管理员应用管理页面
+ * 提供应用的增删改查、设置精选应用等功能
+ */
 const AppAdminPage: React.FC = () => {
   const [createModalVisible, setCreateModalVisible] = useState<boolean>(false);
   const [updateModalVisible, setUpdateModalVisible] = useState<boolean>(false);

@@ -11,7 +11,7 @@ import { ActivityIndicator, FlatList, RefreshControl, Text, View } from 'react-n
 import { SearchBar } from 'react-native-elements'
 import { useRouter } from 'expo-router'
 import { useTheme } from '@/hooks/useTheme'
-import styles from './list.less'
+import styles from '@/styles/list.less'
 
 /**
  * 全部应用页

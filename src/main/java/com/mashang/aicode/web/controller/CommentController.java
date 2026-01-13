@@ -221,4 +221,131 @@ public class CommentController {
 
         return ResultUtils.success(commentPage);
     }
+
+    /**
+     * 【用户】添加论坛评论
+     * 为指定论坛帖子添加新评论
+     *
+     * @param comment 评论对象，包含帖子ID和评论内容
+     * @param request HTTP请求，用于获取当前登录用户
+     * @return 返回评论ID
+     */
+    @PostMapping("/forum/add")
+    public BaseResponse<Long> addForumComment(@RequestBody Comment comment, HttpServletRequest request) {
+        ThrowUtils.throwIf(comment == null, ErrorCode.PARAMS_ERROR);
+
+        User loginUser = userService.getLoginUser(request);
+
+        Long commentId = commentService.addForumComment(comment, loginUser.getId());
+        return ResultUtils.success(commentId);
+    }
+
+    /**
+     * 【用户】回复论坛评论
+     * 回复某条论坛评论
+     *
+     * @param comment 评论对象，包含父评论ID和回复内容
+     * @param request HTTP请求，用于获取当前登录用户
+     * @return 返回评论ID
+     */
+    @PostMapping("/forum/reply")
+    public BaseResponse<Long> replyForumComment(@RequestBody Comment comment, HttpServletRequest request) {
+        ThrowUtils.throwIf(comment == null, ErrorCode.PARAMS_ERROR);
+
+        User loginUser = userService.getLoginUser(request);
+
+        Long commentId = commentService.replyForumComment(comment, loginUser.getId());
+        return ResultUtils.success(commentId);
+    }
+
+    /**
+     * 【用户】查询论坛帖子评论（分页）
+     * 获取指定论坛帖子的评论列表，支持分页和排序
+     *
+     * @param commentQueryRequest 评论查询请求，包含分页信息、排序字段、帖子ID等筛选条件
+     * @return 返回指定帖子的评论列表
+     */
+    @PostMapping("/forum/list/page/vo")
+    public BaseResponse<Page<CommentVO>> listForumPostCommentsByPage(@RequestBody CommentQueryRequest commentQueryRequest) {
+        ThrowUtils.throwIf(commentQueryRequest == null, ErrorCode.PARAMS_ERROR);
+
+        Page<CommentVO> commentVOPage = commentService.listForumPostCommentVOByPage(commentQueryRequest);
+        return ResultUtils.success(commentVOPage);
+    }
+
+    /**
+     * 【用户】点赞论坛评论
+     *
+     * @param id      评论ID
+     * @param request HTTP请求，用于获取当前登录用户
+     * @return 返回点赞结果
+     */
+    @PostMapping("/forum/like")
+    public BaseResponse<Boolean> likeForumComment(@RequestBody Long id, HttpServletRequest request) {
+        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR, "评论ID无效");
+
+        User loginUser = userService.getLoginUser(request);
+
+        Comment comment = commentService.getById(id);
+        ThrowUtils.throwIf(comment == null, ErrorCode.NOT_FOUND_ERROR, "评论不存在");
+        ThrowUtils.throwIf(comment.getCommentType() != 2, ErrorCode.PARAMS_ERROR, "该评论不是论坛评论");
+
+        boolean result = commentService.incrementLikeCount(id);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "点赞失败");
+
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 【用户】取消点赞论坛评论
+     *
+     * @param id      评论ID
+     * @param request HTTP请求，用于获取当前登录用户
+     * @return 返回取消点赞结果
+     */
+    @PostMapping("/forum/unlike")
+    public BaseResponse<Boolean> unlikeForumComment(@RequestBody Long id, HttpServletRequest request) {
+        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR, "评论ID无效");
+
+        User loginUser = userService.getLoginUser(request);
+
+        Comment comment = commentService.getById(id);
+        ThrowUtils.throwIf(comment == null, ErrorCode.NOT_FOUND_ERROR, "评论不存在");
+        ThrowUtils.throwIf(comment.getCommentType() != 2, ErrorCode.PARAMS_ERROR, "该评论不是论坛评论");
+
+        boolean result = commentService.decrementLikeCount(id);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "取消点赞失败");
+
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 【用户】删除论坛评论
+     *
+     * @param id      评论ID
+     * @param request HTTP请求，用于获取当前登录用户
+     * @return 返回删除结果
+     */
+    @PostMapping("/forum/delete/user")
+    public BaseResponse<Boolean> deleteForumComment(@RequestBody Long id, HttpServletRequest request) {
+        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR, "评论ID无效");
+
+        User loginUser = userService.getLoginUser(request);
+
+        Comment comment = commentService.getById(id);
+        ThrowUtils.throwIf(comment == null, ErrorCode.NOT_FOUND_ERROR, "评论不存在");
+        ThrowUtils.throwIf(comment.getCommentType() != 2, ErrorCode.PARAMS_ERROR, "该评论不是论坛评论");
+        ThrowUtils.throwIf(!comment.getUserId().equals(loginUser.getId()), ErrorCode.NO_AUTH_ERROR, "无权限删除该评论");
+
+        boolean result = commentService.removeById(id);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "删除评论失败");
+
+        commentService.decrementForumPostCommentCount(comment.getAppId());
+
+        if (comment.getParentId() != null) {
+            commentService.decrementReplyCount(comment.getParentId());
+        }
+
+        return ResultUtils.success(true);
+    }
 }

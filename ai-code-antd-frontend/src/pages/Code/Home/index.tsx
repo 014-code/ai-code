@@ -24,10 +24,8 @@ const DEFAULT_FEATURED_APPS_PAGE_SIZE = 10;
 const MAX_VISIBLE_APP_TYPES = 6;
 
 /**
- * 首页组件
- * AI 零代码应用生成器的主页面
- * 提供应用创建、应用商城、我的应用等功能
- * @returns React 组件
+ * AI代码生成首页
+ * 提供应用创建、应用商城、个人应用管理等功能
  */
 const HomePage: React.FC = () => {
   const [prompt, setPrompt] = useState('');
@@ -56,10 +54,6 @@ const HomePage: React.FC = () => {
     setCodeType(e.key);
   };
 
-  /**
-   * 创建新应用
-   * 根据用户输入的提示词创建新应用，并跳转到对话页面
-   */
   const handleCreateApp = async () => {
     if (!prompt.trim()) return message.warning('请输入提示词');
     setLoading(true);
@@ -73,11 +67,6 @@ const HomePage: React.FC = () => {
     setLoading(false);
   };
 
-  /**
-   * 加载我的应用列表
-   * @param pageNum - 页码，默认为 1
-   * @param pageSize - 每页数量，默认为 DEFAULT_MY_APPS_PAGE_SIZE
-   */
   const loadMyApps = async (pageNum: number = 1, pageSize: number = DEFAULT_MY_APPS_PAGE_SIZE) => {
     setMyAppsLoading(true);
     try {
@@ -90,21 +79,12 @@ const HomePage: React.FC = () => {
     setMyAppsLoading(false);
   };
 
-  /**
-   * 处理分页变化
-   * @param page - 当前页码
-   * @param pageSize - 每页数量
-   */
   const handlePageChange = (page: number, pageSize: number) => {
     setMyAppsPageNum(page);
     setMyAppsPageSize(pageSize);
     loadMyApps(page, pageSize);
   };
 
-  /**
-   * 加载精选应用列表
-   * @param appType - 应用类型，'all' 表示所有类型
-   */
   const loadFeaturedApps = async (appType: string) => {
     setFeaturedAppsLoading(true);
     try {
@@ -120,9 +100,6 @@ const HomePage: React.FC = () => {
     setFeaturedAppsLoading(false);
   };
 
-  /**
-   * 加载应用类型列表
-   */
   const loadAppTypes = async () => {
     try {
       const { data } = await listAllAppTypes();
@@ -132,9 +109,6 @@ const HomePage: React.FC = () => {
     }
   };
 
-  /**
-   * 加载预设提示词列表
-   */
   const loadPresetPrompts = async () => {
     try {
       const { data } = await listAllPresetPrompts();
@@ -144,19 +118,10 @@ const HomePage: React.FC = () => {
     }
   };
 
-  /**
-   * 复制文本到输入框
-   * @param text - 要复制的文本
-   */
   const inputCopy = (text: string) => {
     setPrompt(text);
   };
 
-  /**
-   * 处理预设标签点击
-   * @param text - 提示词文本
-   * @param event - 鼠标事件
-   */
   const handlePresetTagClick = (text: string, event: React.MouseEvent) => {
     createParticleBurst(event);
     setPrompt(text);

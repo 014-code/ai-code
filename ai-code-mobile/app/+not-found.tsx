@@ -7,7 +7,7 @@
 
 import { Link, Stack } from 'expo-router';
 import { View } from 'react-native';
-import styles from './+not-found.less';
+import styles from '@/styles/+not-found.less';
 
 export default function NotFoundScreen() {
     return (

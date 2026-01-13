@@ -45,11 +45,9 @@ public class Comment implements Serializable {
     @Column("appId")
     private Long appId;
 
-    /**
-     * 父评论ID
-     * 如果是主评论，则为null
-     * 如果是回复评论，则为被回复的评论ID
-     */
+    @Column("commentType")
+    private Integer commentType;
+
     @Column("parentId")
     private Long parentId;
 

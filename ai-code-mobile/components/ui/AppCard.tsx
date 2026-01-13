@@ -3,7 +3,7 @@ import React, { useState } from 'react'
 import { Image, Text, TouchableOpacity, View } from 'react-native'
 import { Avatar, Button, Icon } from 'react-native-elements'
 import { useTheme } from '@/hooks/useTheme'
-import styles from './AppCard.less'
+import styles from '@/styles/ui/AppCard.less'
 
 /**
  * 应用卡片组件的属性接口

@@ -1,7 +1,7 @@
 import React from 'react'
 import { View } from 'react-native'
 import Svg, { Defs, LinearGradient, Stop, Path, Circle, G, Polygon, Filter, FeGaussianBlur, FeMerge, FeMergeNode, Line } from 'react-native-svg'
-import styles from './Logo.less'
+import styles from '@/styles/ui/Logo.less'
 
 /**
  * Logo 组件的属性接口

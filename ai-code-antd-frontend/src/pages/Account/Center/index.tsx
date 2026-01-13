@@ -2,13 +2,17 @@ import { getLoginUser, updateUserInfo, updateUserPassword, updateUserAvatar } fr
 import { LockOutlined, MailOutlined, UserOutlined } from '@ant-design/icons';
 import { PageContainer, ProCard, ProDescriptions } from '@ant-design/pro-components';
 import { useModel } from '@umijs/max';
-import { Avatar, Button, Card, Col, Form, Input, message, Modal, Row, Space, Tabs, Upload } from 'antd';
+import { Avatar, Button, Card, Col, Form, Input, message, Row, Space, Tabs, Upload } from 'antd';
 import type { UploadChangeParam, UploadFile } from 'antd/es/upload';
 import React, { useEffect, useState } from 'react';
 import styles from './index.less';
 
 const { TabPane } = Tabs;
 
+/**
+ * 账户中心页面
+ * 提供用户信息展示、基本信息修改、密码修改、头像上传等功能
+ */
 const AccountCenter: React.FC = () => {
   const { initialState, setInitialState } = useModel('@@initialState');
   const [currentUser, setCurrentUser] = useState<API.LoginUserVO>(initialState?.currentUser);

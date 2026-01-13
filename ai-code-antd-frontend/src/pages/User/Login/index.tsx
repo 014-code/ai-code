@@ -26,14 +26,12 @@ const Login: React.FC = () => {
 
   const handleSubmit = async (values: API.UserLoginRequest) => {
     try {
-      // 登录
       const res = await userLogin({
         ...values,
       });
 
       const defaultLoginSuccessMessage = '登录成功！';
       message.success(defaultLoginSuccessMessage);
-      // 保存已登录用户信息
       setInitialState({
         ...initialState,
         currentUser: res.data,

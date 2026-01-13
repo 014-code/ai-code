@@ -1,6 +1,6 @@
 import React from 'react'
 import { View } from 'react-native'
-import styles from './HomeSkeleton.less'
+import styles from '@/styles/skeleton/HomeSkeleton.less'
 
 /**
  * 首页骨架屏组件

@@ -12,7 +12,7 @@ import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { hasToken } from '../utils/cookies';
 import { setNavigationRef } from '../utils/navigationManager';
-import styles from './index.less';
+import styles from '@/styles/index.less';
 
 export default function IndexPage() {
     /**
