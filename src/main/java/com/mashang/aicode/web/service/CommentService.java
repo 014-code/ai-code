@@ -54,4 +54,22 @@ public interface CommentService extends IService<Comment> {
      * @return 分页结果
      */
     Page<CommentVO> listAppCommentVOByPage(CommentQueryRequest commentQueryRequest);
+
+    Long addForumComment(Comment comment, Long userId);
+
+    Long replyForumComment(Comment comment, Long userId);
+
+    Page<CommentVO> listForumPostCommentVOByPage(CommentQueryRequest commentQueryRequest);
+
+    boolean incrementForumPostCommentCount(Long postId);
+
+    boolean decrementForumPostCommentCount(Long postId);
+
+    boolean incrementLikeCount(Long id);
+
+    boolean decrementLikeCount(Long id);
+
+    boolean incrementReplyCount(Long id);
+
+    boolean decrementReplyCount(Long id);
 }

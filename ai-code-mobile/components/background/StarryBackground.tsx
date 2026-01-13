@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Dimensions, View } from 'react-native';
-import styles from './StarryBackground.less';
+import styles from '@/styles/background/StarryBackground.less';
 
 /**
  * 星空背景组件属性

@@ -789,7 +789,7 @@ export default function ChatPage() {
          */}
         <TabView.Item style={{ width: '100%', flex: 1 }}>
           <View style={{ flex: 1, backgroundColor: '#fff' }}>
-            {appId ? <CommentSection appId={appId} /> : null}
+            {appId ? <CommentSection id={appId} type="app" /> : null}
           </View>
         </TabView.Item>
       </TabView>

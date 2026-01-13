@@ -1,7 +1,7 @@
 import React from 'react';
 import { Animated, View, ViewStyle } from 'react-native';
-import { useBounceAnimation } from '../hooks/useBounceAnimation';
-import styles from './AnimatedBounceView.less';
+import { useBounceAnimation } from '../../hooks/useBounceAnimation';
+import styles from '@/styles/ui/AnimatedBounceView.less';
 
 /**
  * 弹跳动画容器属性

@@ -9,40 +9,24 @@ import Logo from './components/Logo';
 
 const loginPath = '/user/login';
 
-/**
- * @see  https://umijs.org/zh-CN/plugins/plugin-initial-state
- * */
 export async function getInitialState(): Promise<InitialState> {
   const initialState: InitialState = {
     currentUser: undefined,
   };
-  // 如果不是登录页面，执行
   const { location } = history;
   if (location.pathname !== loginPath) {
     try {
       const res = await getLoginUser();
-      // 确保响应成功且数据有效
       if (res && res.data) {
         initialState.currentUser = res.data;
       }
     } catch (error: any) {
-      // 如果未登录，不抛出错误，保持currentUser为undefined
       console.log('未登录或获取用户信息失败:', error.message);
     }
-
-    // 模拟登录用户
-    // const mockUser: API.LoginUserVO = {
-    //   userAvatar: 'https://gw.alipayobjects.com/zos/rmsportal/BiazfanxmamNRoxxVxka.png',
-    //   userName: 'aa',
-    //   userRole: 'admin',
-    // };
-    // initialState.currentUser = mockUser;
   }
   return initialState;
 }
 
-// ProLayout 支持的api https://procomponents.ant.design/components/layout
-// @ts-ignore
 export const layout: RunTimeLayoutConfig = ({ initialState }) => {
   return {
     avatarProps: {
@@ -55,8 +39,6 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
     },
     footerRender: () => <Footer />,
     menuHeaderRender: () => <Logo size={32} />,
-    // 自定义 403 页面
-    // unAccessible: <div>unAccessible</div>,
     ...defaultSettings,
   };
 };

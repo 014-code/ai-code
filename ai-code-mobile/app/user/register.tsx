@@ -16,7 +16,7 @@ import { Button, Icon, Input } from 'react-native-elements';
 import { register } from '../../api/user';
 import { useTheme } from '@/hooks/useTheme';
 import Logo from '@/components/ui/Logo';
-import styles from './register.less';
+import styles from '@/styles/register.less';
 
 /**
  * 注册表单参数类型

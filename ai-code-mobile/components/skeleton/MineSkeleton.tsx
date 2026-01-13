@@ -1,6 +1,6 @@
 import React from 'react'
 import { View } from 'react-native'
-import styles from './MineSkeleton.less'
+import styles from '@/styles/skeleton/MineSkeleton.less'
 
 /**
  * 个人页骨架屏组件

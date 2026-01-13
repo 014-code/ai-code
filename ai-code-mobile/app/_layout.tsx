@@ -89,6 +89,18 @@ export default function RootLayout() {
            * headerShown: false - 隐藏导航栏
            */}
           <Stack.Screen name='code/webview' options={{ headerShown: false }} />
+
+          {/**
+           * 文章发布页面
+           * headerShown: false - 隐藏导航栏
+           */}
+          <Stack.Screen name='forum/publish' options={{ headerShown: false }} />
+
+          {/**
+           * 文章详情页面
+           * headerShown: false - 隐藏导航栏
+           */}
+          <Stack.Screen name='forum/detail' options={{ headerShown: false }} />
         </Stack>
       </SafeAreaView>
     </SafeAreaProvider>

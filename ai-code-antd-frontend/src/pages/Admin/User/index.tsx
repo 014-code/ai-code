@@ -4,29 +4,19 @@ import {deleteUser, listUserVoByPage} from '@/services/backend/userController';
 import {PlusOutlined} from '@ant-design/icons';
 import type {ActionType, ProColumns} from '@ant-design/pro-components';
 import {PageContainer, ProTable} from '@ant-design/pro-components';
-import '@umijs/max';
 import {Button, message, Space, Typography} from 'antd';
 import React, {useRef, useState} from 'react';
 
 /**
- * 用户管理页面
- *
- * @constructor
+ * 管理员用户管理页面
+ * 提供用户的增删改查功能
  */
 const UserAdminPage: React.FC = () => {
-  // 是否显示新建窗口
   const [createModalVisible, setCreateModalVisible] = useState<boolean>(false);
-  // 是否显示更新窗口
   const [updateModalVisible, setUpdateModalVisible] = useState<boolean>(false);
   const actionRef = useRef<ActionType>();
-  // 当前用户点击的数据
   const [currentRow, setCurrentRow] = useState<API.User>();
 
-  /**
-   * 删除节点
-   *
-   * @param row
-   */
   const handleDelete = (row: API.User) => {
     const hide = message.loading('正在删除');
     if (!row) return true;
@@ -44,9 +34,6 @@ const UserAdminPage: React.FC = () => {
     });
   };
 
-  /**
-   * 表格列配置
-   */
   const columns: ProColumns<API.User>[] = [
     {
       title: 'id',

@@ -19,69 +19,60 @@ import CommentSection from "@/components/CommentSection";
 import InteractiveBackground from "@/components/InteractiveBackground";
 import styles from './index.less';
 
-// 从antd组件库中解构出需要的组件
 const {TextArea} = Input, {Title, Text} = Typography;
 
-// ==================== 布局常量定义 ====================
-const MAX_MESSAGE_WIDTH = 500;       // 消息最大宽度
-const LOAD_MORE_PAGE_SIZE = 10;      // 加载更多消息的每页数量
+const MAX_MESSAGE_WIDTH = 500;
+const LOAD_MORE_PAGE_SIZE = 10;
 
-// ==================== 类型定义 ====================
-/** 加载更多状态接口 */
 interface LoadMoreState {
-  hasMore: boolean;          // 是否还有更多历史消息
-  loading: boolean;          // 是否正在加载
-  lastCreateTime?: string;   // 最后一条消息的创建时间，用于分页
+  hasMore: boolean;
+  loading: boolean;
+  lastCreateTime?: string;
 }
 
-// ==================== 聊天页面组件 ====================
+/**
+ * AI代码生成聊天页面
+ * 提供用户与AI交互的界面，支持代码生成、实时预览、可视化编辑等功能
+ */
 const ChatPage: React.FC = () => {
-  // 从路由参数中获取应用ID
   const {appId} = useParams<{ appId: string }>();
 
-  // ==================== 状态管理 ====================
-  const [messages, setMessages] = useState<API.ChatHistoryVO[]>([]);      // 聊天消息列表
-  const [inputValue, setInputValue] = useState('');                        // 输入框内容
-  const [loading, setLoading] = useState(false);                            // AI回复加载状态
-  const [deployUrl, setDeployUrl] = useState<string>('');                  // 部署后的URL
-  const [deploying, setDeploying] = useState(false);                        // 部署中状态
-  const [appInfo, setAppInfo] = useState<API.AppVO>();                      // 应用信息
-  const [loginUser, setLoginUser] = useState<API.LoginUserVO>();           // 当前登录用户信息
-  const [loadMore, setLoadMore] = useState<LoadMoreState>({                // 加载更多状态
+  const [messages, setMessages] = useState<API.ChatHistoryVO[]>([]);
+  const [inputValue, setInputValue] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [deployUrl, setDeployUrl] = useState<string>('');
+  const [deploying, setDeploying] = useState(false);
+  const [appInfo, setAppInfo] = useState<API.AppVO>();
+  const [loginUser, setLoginUser] = useState<API.LoginUserVO>();
+  const [loadMore, setLoadMore] = useState<LoadMoreState>({
     hasMore: false,
     loading: false,
   });
-  const [downloading, setDownloading] = useState<boolean>(false);          // 下载代码状态
-  const [isEditMode, setIsEditMode] = useState<boolean>(false);            // 是否处于编辑模式
-  const [selectedElements, setSelectedElements] = useState<ElementInfo[]>([]); // 选中的元素列表
-  const [previewLoading, setPreviewLoading] = useState<boolean>(false);    // 预览加载状态
-  const [showPreview, setShowPreview] = useState<boolean>(false);          // 是否显示预览
-  const [isStreaming, setIsStreaming] = useState<boolean>(false);            // 是否正在流式输出
-  const [isInitialLoad, setIsInitialLoad] = useState<boolean>(true);        // 是否首次加载
+  const [downloading, setDownloading] = useState<boolean>(false);
+  const [isEditMode, setIsEditMode] = useState<boolean>(false);
+  const [selectedElements, setSelectedElements] = useState<ElementInfo[]>([]);
+  const [previewLoading, setPreviewLoading] = useState<boolean>(false);
+  const [showPreview, setShowPreview] = useState<boolean>(false);
+  const [isStreaming, setIsStreaming] = useState<boolean>(false);
+  const [isInitialLoad, setIsInitialLoad] = useState<boolean>(true);
 
-  // ==================== Ref引用 ====================
-  const messagesEndRef = useRef<HTMLDivElement>(null);                      // 消息列表底部引用，用于自动滚动
-  const iframeRef = useRef<HTMLIFrameElement>(null);                       // 预览iframe引用
-  const visualEditorRef = useRef<VisualEditor | null>(null);               // 可视化编辑器引用
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const visualEditorRef = useRef<VisualEditor | null>(null);
 
-  // ==================== 副作用钩子 ====================
-  // 当appId变化时，初始化页面数据
   useEffect(() => {
     if (appId) {
       initPageData();
     }
   }, [appId]);
 
-  // 当消息列表更新时，只在非流式输出且非首次加载时自动滚动到底部
   useEffect(() => {
     if (!isStreaming && !isInitialLoad) {
       messagesEndRef.current?.scrollIntoView({behavior: 'smooth'});
     }
   }, [messages, isStreaming, isInitialLoad]);
 
-  // 初始化可视化编辑器并管理编辑模式
   useEffect(() => {
-    // 首次创建VisualEditor实例
     if (!visualEditorRef.current) {
       visualEditorRef.current = new VisualEditor({
         onElementSelected: (elementInfo: ElementInfo) => {
@@ -92,16 +83,12 @@ const ChatPage: React.FC = () => {
         }
       });
     }
-    // 监听来自iframe的消息
     window.addEventListener('message', handleMessage);
     return () => {
       window.removeEventListener('message', handleMessage);
     };
   }, []);
 
-  /**
-   * 当 iframe 加载完成后初始化可视化编辑器
-   */
   const handleFrameLoad = () => {
     if (iframeRef.current && visualEditorRef.current) {
       visualEditorRef.current.init(iframeRef.current);
@@ -109,9 +96,6 @@ const ChatPage: React.FC = () => {
     }
   };
 
-  /**
-   * 同步编辑模式状态
-   */
   useEffect(() => {
     if (visualEditorRef.current) {
       if (isEditMode) {
@@ -122,11 +106,6 @@ const ChatPage: React.FC = () => {
     }
   }, [isEditMode]);
 
-  // ==================== 数据初始化 ====================
-  /**
-   * 初始化页面数据
-   * 获取当前登录用户信息、应用信息和最新对话历史
-   */
   const initPageData = () => {
     getLoginUser().then(userRes => {
       if (userRes.code === 0) {
@@ -814,7 +793,7 @@ const ChatPage: React.FC = () => {
       </div>
       {appInfo?.id && (
         <div className={styles.commentArea}>
-          <CommentSection appId={appInfo.id}/>
+          <CommentSection appId={String(appInfo.id)}/>
         </div>
       )}
     </div>

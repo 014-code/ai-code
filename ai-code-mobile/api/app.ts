@@ -130,3 +130,11 @@ export function listAllPresetPrompts() {
 		method: 'GET',
 	})
 }
+
+export function listApps(data: AppQueryParams) {
+	return request({
+		url: '/api/app/list/page/vo',
+		method: 'POST',
+		data,
+	})
+}

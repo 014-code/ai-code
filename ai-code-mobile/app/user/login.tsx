@@ -21,7 +21,7 @@ import { login } from '../../api/user';
 import { setToken } from '../../utils/cookies';
 import { useTheme } from '@/hooks/useTheme';
 import Logo from '@/components/ui/Logo';
-import styles from './login.less';
+import styles from '@/styles/login.less';
 
 export default function Login() {
     /**

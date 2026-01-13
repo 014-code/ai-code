@@ -1,0 +1,102 @@
+.hotPostsCard {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  position: sticky;
+  top: 24px;
+}
+
+.hotPostItem {
+  cursor: pointer;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+  transition: all 0.3s;
+
+  &:hover {
+    background-color: #f8f9fa;
+    padding-left: 8px;
+    padding-right: 8px;
+    border-radius: 4px;
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.hotPostContent {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.hotPostRank {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 2px;
+}
+
+.rankBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background-color: #f0f0f0;
+  color: #8c8c8c;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.rankTop1 {
+  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+  color: #d48806;
+  box-shadow: 0 2px 4px rgba(255, 215, 0, 0.3);
+}
+
+.rankTop2 {
+  background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%);
+  color: #595959;
+  box-shadow: 0 2px 4px rgba(192, 192, 192, 0.3);
+}
+
+.rankTop3 {
+  background: linear-gradient(135deg, #cd7f32 0%, #daa06d 100%);
+  color: #8c4b31;
+  box-shadow: 0 2px 4px rgba(205, 127, 50, 0.3);
+}
+
+.hotPostInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.hotPostTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: #262626;
+  margin-bottom: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pinnedTag {
+  color: #ff4d4f;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.hotPostMeta {
+  .metaItem {
+    color: #8c8c8c;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+  }
+}

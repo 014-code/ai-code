@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient'
 import React from 'react'
 import { View } from 'react-native'
-import styles from './HomeBackground.less'
+import styles from '@/styles/background/HomeBackground.less'
 
 /**
  * 首页背景组件属性

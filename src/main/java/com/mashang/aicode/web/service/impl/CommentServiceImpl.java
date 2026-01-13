@@ -20,6 +20,7 @@ import com.mashang.aicode.web.model.vo.CommentVO;
 import com.mashang.aicode.web.model.vo.UserVO;
 import com.mashang.aicode.web.service.AppService;
 import com.mashang.aicode.web.service.CommentService;
+import com.mashang.aicode.web.service.ForumPostService;
 import com.mashang.aicode.web.service.UserService;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
@@ -51,6 +52,9 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 
     @Resource
     private AppService appService;
+
+    @Resource
+    private ForumPostService forumPostService;
 
     @Resource
     private UserMapper userMapper;
@@ -218,5 +222,185 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         commentVOPage.setRecords(commentVOList);
 
         return commentVOPage;
+    }
+
+    @Override
+    public Long addForumComment(Comment comment, Long userId) {
+        ThrowUtils.throwIf(comment == null, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(userId == null, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(comment.getAppId() == null, ErrorCode.PARAMS_ERROR, "帖子ID不能为空");
+        ThrowUtils.throwIf(comment.getContent() == null || comment.getContent().trim().isEmpty(), ErrorCode.PARAMS_ERROR, "评论内容不能为空");
+
+        comment.setUserId(userId);
+        comment.setCommentType(2);
+        comment.setLikeCount(0);
+        comment.setReplyCount(0);
+        comment.setIsDelete(0);
+
+        boolean saved = this.save(comment);
+        ThrowUtils.throwIf(!saved, ErrorCode.OPERATION_ERROR, "保存失败");
+
+        incrementForumPostCommentCount(comment.getAppId());
+
+        return comment.getId();
+    }
+
+    @Override
+    public Long replyForumComment(Comment comment, Long userId) {
+        ThrowUtils.throwIf(comment == null, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(userId == null, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(comment.getParentId() == null, ErrorCode.PARAMS_ERROR, "父评论ID不能为空");
+        ThrowUtils.throwIf(comment.getContent() == null || comment.getContent().trim().isEmpty(), ErrorCode.PARAMS_ERROR, "回复内容不能为空");
+
+        Comment parentComment = this.getById(comment.getParentId());
+        ThrowUtils.throwIf(parentComment == null, ErrorCode.NOT_FOUND_ERROR, "父评论不存在");
+        ThrowUtils.throwIf(parentComment.getCommentType() != 2, ErrorCode.PARAMS_ERROR, "只能回复论坛评论");
+
+        comment.setUserId(userId);
+        comment.setAppId(parentComment.getAppId());
+        comment.setCommentType(2);
+        comment.setLikeCount(0);
+        comment.setReplyCount(0);
+        comment.setIsDelete(0);
+
+        boolean saved = this.save(comment);
+        ThrowUtils.throwIf(!saved, ErrorCode.OPERATION_ERROR, "保存失败");
+
+        incrementReplyCount(comment.getParentId());
+
+        return comment.getId();
+    }
+
+    @Override
+    public Page<CommentVO> listForumPostCommentVOByPage(CommentQueryRequest commentQueryRequest) {
+        ThrowUtils.throwIf(commentQueryRequest == null, ErrorCode.PARAMS_ERROR);
+
+        long pageNum = commentQueryRequest.getPageNum();
+        long pageSize = commentQueryRequest.getPageSize();
+
+        QueryWrapper queryWrapper = getQueryWrapper(commentQueryRequest);
+        queryWrapper.and(COMMENT.COMMENT_TYPE.eq(2));
+
+        String sortField = commentQueryRequest.getSortField();
+        String sortOrder = commentQueryRequest.getSortOrder();
+        if (sortField != null && !sortField.trim().isEmpty()) {
+            boolean isAsc = "asc".equalsIgnoreCase(sortOrder);
+            if ("createTime".equalsIgnoreCase(sortField)) {
+                queryWrapper.orderBy(COMMENT.CREATE_TIME, isAsc);
+            } else if ("likeCount".equalsIgnoreCase(sortField)) {
+                queryWrapper.orderBy(COMMENT.LIKE_COUNT, isAsc);
+            } else if ("replyCount".equalsIgnoreCase(sortField)) {
+                queryWrapper.orderBy(COMMENT.REPLY_COUNT, isAsc);
+            }
+        } else {
+            queryWrapper.orderBy(COMMENT.CREATE_TIME, false);
+        }
+
+        Page<Comment> commentPage = this.page(Page.of(pageNum, pageSize), queryWrapper);
+
+        Page<CommentVO> commentVOPage = new Page<>(pageNum, pageSize, commentPage.getTotalRow());
+        List<CommentVO> commentVOList = getCommentVOList(commentPage.getRecords());
+        commentVOPage.setRecords(commentVOList);
+
+        return commentVOPage;
+    }
+
+    @Override
+    public boolean incrementForumPostCommentCount(Long postId) {
+        ThrowUtils.throwIf(postId == null || postId <= 0, ErrorCode.PARAMS_ERROR);
+
+        com.mashang.aicode.web.model.entity.ForumPost forumPost = forumPostService.getById(postId);
+        ThrowUtils.throwIf(forumPost == null, ErrorCode.NOT_FOUND_ERROR, "帖子不存在");
+
+        com.mashang.aicode.web.model.entity.ForumPost updatePost = new com.mashang.aicode.web.model.entity.ForumPost();
+        updatePost.setId(postId);
+        updatePost.setCommentCount((forumPost.getCommentCount() == null ? 0 : forumPost.getCommentCount()) + 1);
+
+        return forumPostService.updateById(updatePost);
+    }
+
+    @Override
+    public boolean decrementForumPostCommentCount(Long postId) {
+        ThrowUtils.throwIf(postId == null || postId <= 0, ErrorCode.PARAMS_ERROR);
+
+        com.mashang.aicode.web.model.entity.ForumPost forumPost = forumPostService.getById(postId);
+        ThrowUtils.throwIf(forumPost == null, ErrorCode.NOT_FOUND_ERROR, "帖子不存在");
+
+        int currentCommentCount = forumPost.getCommentCount() == null ? 0 : forumPost.getCommentCount();
+        if (currentCommentCount <= 0) {
+            return true;
+        }
+
+        com.mashang.aicode.web.model.entity.ForumPost updatePost = new com.mashang.aicode.web.model.entity.ForumPost();
+        updatePost.setId(postId);
+        updatePost.setCommentCount(currentCommentCount - 1);
+
+        return forumPostService.updateById(updatePost);
+    }
+
+    @Override
+    public boolean incrementLikeCount(Long id) {
+        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
+
+        Comment comment = this.getById(id);
+        ThrowUtils.throwIf(comment == null, ErrorCode.NOT_FOUND_ERROR, "评论不存在");
+
+        Comment updateComment = new Comment();
+        updateComment.setId(id);
+        updateComment.setLikeCount((comment.getLikeCount() == null ? 0 : comment.getLikeCount()) + 1);
+
+        return this.updateById(updateComment);
+    }
+
+    @Override
+    public boolean decrementLikeCount(Long id) {
+        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
+
+        Comment comment = this.getById(id);
+        ThrowUtils.throwIf(comment == null, ErrorCode.NOT_FOUND_ERROR, "评论不存在");
+
+        int currentLikeCount = comment.getLikeCount() == null ? 0 : comment.getLikeCount();
+        if (currentLikeCount <= 0) {
+            return true;
+        }
+
+        Comment updateComment = new Comment();
+        updateComment.setId(id);
+        updateComment.setLikeCount(currentLikeCount - 1);
+
+        return this.updateById(updateComment);
+    }
+
+    @Override
+    public boolean incrementReplyCount(Long id) {
+        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
+
+        Comment comment = this.getById(id);
+        ThrowUtils.throwIf(comment == null, ErrorCode.NOT_FOUND_ERROR, "评论不存在");
+
+        Comment updateComment = new Comment();
+        updateComment.setId(id);
+        updateComment.setReplyCount((comment.getReplyCount() == null ? 0 : comment.getReplyCount()) + 1);
+
+        return this.updateById(updateComment);
+    }
+
+    @Override
+    public boolean decrementReplyCount(Long id) {
+        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
+
+        Comment comment = this.getById(id);
+        ThrowUtils.throwIf(comment == null, ErrorCode.NOT_FOUND_ERROR, "评论不存在");
+
+        int currentReplyCount = comment.getReplyCount() == null ? 0 : comment.getReplyCount();
+        if (currentReplyCount <= 0) {
+            return true;
+        }
+
+        Comment updateComment = new Comment();
+        updateComment.setId(id);
+        updateComment.setReplyCount(currentReplyCount - 1);
+
+        return this.updateById(updateComment);
     }
 }
