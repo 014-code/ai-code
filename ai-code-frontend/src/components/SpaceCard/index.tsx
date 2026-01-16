@@ -12,6 +12,8 @@ interface SpaceData {
   spaceDesc: string,
   memberCount?: number,
   appCount?: number,
+  ownerName?: string,
+  ownerAvatar?: string,
   user?: { userAvatar: string, userName: string },
 }
 
@@ -66,6 +68,17 @@ const SpaceCard: React.FC<Props> = (props) => {
           <div className={styles.cardContent}>
             <div className={styles.spaceName}>{space.spaceName}</div>
             <div className={styles.spaceDesc}>{space.spaceDesc || '暂无描述'}</div>
+            {space.ownerName && (
+              <div className={styles.spaceOwner}>
+                <Avatar 
+                  size={20} 
+                  src={space.ownerAvatar} 
+                  icon={<UserOutlined />} 
+                  style={{ marginRight: 6 }}
+                />
+                <span>所有者: {space.ownerName}</span>
+              </div>
+            )}
             <div className={styles.spaceStats}>
               <div className={styles.statItem}>
                 <TeamOutlined />

@@ -1,5 +1,4 @@
 import request from '@/utils/request';
-import type { BaseResponse } from '@/services/backend/types';
 
 export async function createSpace(data: { spaceName: string; spaceType: number; description: string }) {
   return request.post<BaseResponse<number>>('/space/add', data);

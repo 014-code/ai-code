@@ -1,5 +1,4 @@
 import request from '@/utils/request';
-import type { BaseResponse } from '@/services/backend/types';
 
 export async function sendFriendRequest(data: { addresseeId: string; message: string }) {
   return request.post<BaseResponse<any>>('/friend/request', data);

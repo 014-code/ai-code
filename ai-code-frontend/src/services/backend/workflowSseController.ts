@@ -4,7 +4,7 @@ export async function executeWorkflow(
   params: API.executeWorkflowParams,
   options?: { [key: string]: any },
 ) {
-  return request.post<any, API.WorkflowContext>('/workflow/execute', {}, { params, ...options });
+  return request.post<any, any>('/workflow/execute', {}, { params, ...options });
 }
 
 export async function executeWorkflowWithFlux(

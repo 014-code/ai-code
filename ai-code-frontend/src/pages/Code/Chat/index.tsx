@@ -109,14 +109,21 @@ const ChatPage: React.FC = () => {
     window.addEventListener('message', handleMessage);
     return () => {
       window.removeEventListener('message', handleMessage);
+      // 组件卸载时关闭WebSocket连接
+      if (websocket) {
+        websocket.disconnect();
+      }
     };
-  }, []);
+  }, [websocket]);
 
   // 处理iframe加载完成事件
   const handleFrameLoad = () => {
     if (iframeRef.current && visualEditorRef.current) {
-      visualEditorRef.current.init(iframeRef.current);
-      visualEditorRef.current.onIframeLoad();
+      // 添加延迟，确保iframe完全加载
+      setTimeout(() => {
+        visualEditorRef.current.init(iframeRef.current);
+        visualEditorRef.current.onIframeLoad();
+      }, 500);
     }
   };
 
@@ -169,7 +176,7 @@ const ChatPage: React.FC = () => {
     // 加载最新对话历史
     loadLatestChatHistory();
   };
-
+  
   /**
    * 加载最新对话历史
    */
@@ -613,14 +620,16 @@ const ChatPage: React.FC = () => {
 
     if (!websocket) {
       const ws = new AppEditWebSocket(appId);
-      setWebsocket(ws);
-
+      
+      // 先注册所有事件监听器
       ws.on('open', () => {
         message.success('WebSocket连接已建立');
         // 连接成功后发送进入编辑消息
         ws.sendMessage({
           type: EditStatusEnum.ENTER_EDIT,
         });
+        // 启用编辑模式
+        setIsEditMode(true);
         message.success('已进入协同编辑模式');
       });
 
@@ -686,7 +695,9 @@ const ChatPage: React.FC = () => {
         console.error('WebSocket错误:', error);
       });
 
+      // 最后调用connect方法，建立WebSocket连接
       ws.connect();
+      setWebsocket(ws);
     }
   };
 
@@ -698,6 +709,8 @@ const ChatPage: React.FC = () => {
       websocket.sendMessage({
         type: EditStatusEnum.EXIT_EDIT,
       });
+      // 禁用编辑模式
+      setIsEditMode(false);
       // 延迟关闭连接，确保消息发送成功
       setTimeout(() => {
         websocket?.disconnect();
@@ -747,11 +760,15 @@ const ChatPage: React.FC = () => {
           }
           setIsOtherUserGenerating(false);
           setOtherGeneratingUser(null);
-          message.info(`${userName} ${EditStatusEnum.EXIT_EDIT}`);
+          message.info(`${userName} 退出协同编辑`);
           // 关闭 websocket
           if (data.user.id !== loginUser?.id) {
             websocket?.disconnect();
             setWebsocket(null);
+          }
+          // 清除指定用户的高亮样式
+          if (visualEditorRef.current && visualEditorRef.current.isIframeReady()) {
+            visualEditorRef.current.clearHighlight(userName);
           }
         }
         break;
@@ -837,8 +854,7 @@ const ChatPage: React.FC = () => {
     const { type, data } = event.data;
 
     // 如果在协同编辑模式，发送WebSocket消息通知其他用户
-    // if (websocket && websocket.isActive()) {
-      console.log("子页面发送type", type, data)
+    if (websocket && websocket.isActive()) {
       switch (type) {
         case 'ELEMENT_HOVER':
           if (data.elementInfo) {
@@ -859,7 +875,7 @@ const ChatPage: React.FC = () => {
           }
           break;
       }
-    // }
+    }
   };
 
   /**

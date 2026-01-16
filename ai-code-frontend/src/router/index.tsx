@@ -9,7 +9,6 @@ const ForumList = lazy(() => import('@/pages/Forum/List'));
 const ForumPublish = lazy(() => import('@/pages/Forum/Publish'));
 const ForumDetail = lazy(() => import('@/pages/Forum/Detail'));
 const AccountCenter = lazy(() => import('@/pages/Account/Center'));
-const TestVisualEditor = lazy(() => import('@/pages/Code/TestVisualEditor'));
 const Chat = lazy(() => import('@/pages/Code/Chat'));
 const AppEdit = lazy(() => import('@/pages/Code/AppEdit'));
 const UserLogin = lazy(() => import('@/pages/User/Login'));
@@ -62,7 +61,6 @@ const router = createBrowserRouter([
   { path: '/forum/detail/:id', element: <Suspense fallback={<LoadingFallback />}><ForumDetail /></Suspense> },
   { path: '/space/:id', element: <Suspense fallback={<LoadingFallback />}><SpaceDetail /></Suspense> },
   { path: '/account/center', element: <Suspense fallback={<LoadingFallback />}><AccountCenter /></Suspense> },
-  { path: '/test', element: <Suspense fallback={<LoadingFallback />}><TestVisualEditor /></Suspense> },
   { path: '/chat/:appId', element: <Suspense fallback={<LoadingFallback />}><Chat /></Suspense> },
   { path: '/app/edit/:appId', element: <Suspense fallback={<LoadingFallback />}><AppEdit /></Suspense> },
   { path: '*', element: <Suspense fallback={<LoadingFallback />}><NotFound /></Suspense> },

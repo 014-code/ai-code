@@ -14,6 +14,10 @@ public class SpaceVO implements Serializable {
 
     private Integer spaceType;
 
+    private Boolean isOwner;
+
+    private String ownerAvatar;
+
     private String spaceTypeText;
 
     private Long ownerId;
