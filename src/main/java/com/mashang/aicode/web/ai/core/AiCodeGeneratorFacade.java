@@ -12,6 +12,8 @@ import com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum;
 import com.mashang.aicode.web.ai.model.message.AiResponseMessage;
 import com.mashang.aicode.web.ai.model.message.ToolExecutedMessage;
 import com.mashang.aicode.web.ai.model.message.ToolRequestMessage;
+import com.mashang.aicode.web.manager.task.GenerationTaskManager;
+import com.mashang.aicode.web.service.ChatHistoryService;
 import com.mashang.aicode.web.exception.BusinessException;
 import com.mashang.aicode.web.exception.ErrorCode;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -20,14 +22,16 @@ import dev.langchain4j.service.tool.ToolExecution;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 
 import java.io.File;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 /**
- * ai生成代码门面类
+ * AI代码生成门面类
  */
 @Service
 @Slf4j
@@ -36,7 +40,68 @@ public class AiCodeGeneratorFacade {
     @Resource
     private AiCodeGeneratorServiceFactory aiCodeGeneratorServiceFactory;
 
+    @Resource
+    private ChatHistoryService chatHistoryService;
 
+    @Resource
+    private GenerationTaskManager generationTaskManager;
+
+    /**
+     * 中断标志映射，用于控制不同应用的流式输出的中断
+     * 
+     * 这个Map存储了每个应用ID对应的中断标志，就像一个"控制台"，
+     * 可以单独控制每个应用的代码生成任务是否需要中断。
+     * 
+     * 使用ConcurrentHashMap是为了保证多线程环境下的安全性。
+     * 
+     * Key: 应用ID (appId)
+     * Value: 中断标志 (true表示需要中断，false表示正常进行)
+     */
+    private final Map<Long, Boolean> interruptedFlags = new ConcurrentHashMap<>();
+
+    /**
+     * 中断指定应用的流式输出
+     * @param appId 应用ID
+     * @param userId 用户ID
+     * @return 是否成功中断
+     */
+    public boolean interrupt(Long appId, Long userId) {
+        interruptedFlags.put(appId, true);
+        log.info("已设置中断标志，appId: {} 流式输出将被中断", appId);
+        
+        // 使用 GenerationTaskManager 取消任务
+        boolean cancelled = generationTaskManager.cancelTask(appId, userId);
+        if (cancelled) {
+            log.info("成功取消生成任务，appId: {}, userId: {}", appId, userId);
+        } else {
+            log.warn("取消生成任务失败，appId: {}, userId: {}", appId, userId);
+        }
+        
+        return cancelled;
+    }
+
+    /**
+     * 重置指定应用的中断标志
+     * @param appId 应用ID
+     */
+    public void resetInterrupt(Long appId) {
+        interruptedFlags.put(appId, false);
+        log.info("已重置中断标志，appId: {}", appId);
+    }
+
+    /**
+     * 检查指定应用是否被中断
+     * @param appId 应用ID
+     * @return 是否被中断
+     */
+    public boolean isInterrupted(Long appId) {
+        return interruptedFlags.getOrDefault(appId, false);
+    }
+
+
+    /**
+     * 生成并保存代码（非流式）
+     */
     public File generateAndSaveCode(String userMessage, CodeGenTypeEnum codeGenTypeEnum, Long appId) {
         if (codeGenTypeEnum == null) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "生成类型为空");
@@ -51,14 +116,18 @@ public class AiCodeGeneratorFacade {
         };
     }
 
-
+    /**
+     * 生成并保存HTML代码
+     */
     private File generateAndSaveHtmlCode(String userMessage, Long appId) {
         AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId);
         HtmlCodeResult result = aiCodeGeneratorService.generateHtmlCode(Math.toIntExact(appId), userMessage);
         return CodeFileSaverExecutor.executeSaver(result, CodeGenTypeEnum.HTML, appId);
     }
 
-
+    /**
+     * 生成并保存多文件代码
+     */
     private File generateAndSaveMultiFileCode(String userMessage, Long appId) {
         AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId);
         MultiFileCodeResult result = aiCodeGeneratorService.generateMultiFileCode(userMessage);
@@ -66,39 +135,9 @@ public class AiCodeGeneratorFacade {
     }
 
     /**
-     * ai单文件流式返回
-     *
-     * @param userMessage
-     * @return
+     * 流式生成并保存代码（不带SSE回调）
      */
-    private Flux<String> generateAndSaveHtmlCodeStream(String userMessage, Long appId) {
-        AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId);
-        Flux<String> result = aiCodeGeneratorService.generateHtmlCodeStream(userMessage);
-
-        StringBuilder codeBuilder = new StringBuilder();
-        return result.doOnNext(codeBuilder::append).doOnComplete(() -> {
-
-            try {
-                String completeHtmlCode = codeBuilder.toString();
-                HtmlCodeResult htmlCodeResult = (HtmlCodeResult) CodeParserExecutor.executeParser(completeHtmlCode, CodeGenTypeEnum.HTML);
-
-                File savedDir = CodeFileSaverExecutor.executeSaver(htmlCodeResult, CodeGenTypeEnum.HTML, appId);
-                log.info("保存成功，路径为：" + savedDir.getAbsolutePath());
-            } catch (Exception e) {
-                log.error("保存失败: {}", e.getMessage());
-            }
-        });
-    }
-
-    /**
-     * 统一流式返回方法
-     *
-     * @param userMessage
-     * @param codeGenTypeEnum
-     * @param appId
-     * @return
-     */
-    public Flux<String> generateAndSaveCodeStream(String userMessage, CodeGenTypeEnum codeGenTypeEnum, Long appId) {
+    public Flux<String> generateAndSaveCodeStream(String userMessage, CodeGenTypeEnum codeGenTypeEnum, Long appId, Long userId) {
         if (codeGenTypeEnum == null) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "生成类型为空");
         }
@@ -135,11 +174,11 @@ public class AiCodeGeneratorFacade {
             }
             case VUE_PROJECT -> {
                 TokenStream tokenStream = aiCodeGeneratorService.generateVueProjectCodeStream(appId, userMessage);
-                yield processTokenStream(tokenStream, appId);
+                yield processTokenStream(tokenStream, appId, userId);
             }
             case REACT_PROJECT -> {
                 TokenStream tokenStream = aiCodeGeneratorService.generateReactProjectCodeStream(appId, userMessage);
-                yield processTokenStream(tokenStream, appId);
+                yield processTokenStream(tokenStream, appId, userId);
             }
             default -> {
                 String errorMessage = "不支持的生成类型：" + codeGenTypeEnum.getValue();
@@ -150,14 +189,9 @@ public class AiCodeGeneratorFacade {
 
     /**
      * 统一流式返回方法（带SSE回调）
-     *
-     * @param userMessage
-     * @param codeGenTypeEnum
-     * @param appId
-     * @param sseCallback SSE消息回调
      * @return
      */
-    public Flux<String> generateAndSaveCodeStream(String userMessage, CodeGenTypeEnum codeGenTypeEnum, Long appId, Consumer<String> sseCallback) {
+    public Flux<String> generateAndSaveCodeStream(String userMessage, CodeGenTypeEnum codeGenTypeEnum, Long appId, Consumer<String> sseCallback, Long userId) {
         if (codeGenTypeEnum == null) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "生成类型为空");
         }
@@ -193,11 +227,11 @@ public class AiCodeGeneratorFacade {
             }
             case VUE_PROJECT -> {
                 TokenStream tokenStream = aiCodeGeneratorService.generateVueProjectCodeStream(appId, userMessage);
-                yield processTokenStreamWithCallback(tokenStream, appId, sseCallback);
+                yield processTokenStreamWithCallback(tokenStream, appId, sseCallback, userId);
             }
             case REACT_PROJECT -> {
                 TokenStream tokenStream = aiCodeGeneratorService.generateReactProjectCodeStream(appId, userMessage);
-                yield processTokenStreamWithCallback(tokenStream, appId, sseCallback);
+                yield processTokenStreamWithCallback(tokenStream, appId, sseCallback, userId);
             }
             default -> {
                 String errorMessage = "不支持的生成类型：" + codeGenTypeEnum.getValue();
@@ -205,37 +239,81 @@ public class AiCodeGeneratorFacade {
             }
         };
     }
+
     /**
      * 将 TokenStream 转换为 Flux<String>，并传递工具调用信息
      *
      * @param tokenStream TokenStream 对象
      * @param appId       应用 ID
+     * @param userId      用户 ID
      * @return Flux<String> 流式响应
      */
-    private Flux<String> processTokenStream(TokenStream tokenStream, Long appId) {
+    private Flux<String> processTokenStream(TokenStream tokenStream, Long appId, Long userId) {
         return Flux.create(sink -> {
+            // 使用 StringBuilder 实时接收内容
+            StringBuilder contentBuilder = new StringBuilder();
+            
+            // 创建一个占位符 Disposable
+            Disposable placeholderDisposable = Flux.never().subscribe();
+            
+            // 注册任务到任务管理器
+            generationTaskManager.registerTask(appId, "CODE_GENERATION", placeholderDisposable, sink, userId, contentBuilder);
+            
+            // 添加取消处理器
+            sink.onCancel(() -> {
+                log.info("FluxSink 被取消，appId: {}", appId);
+                // 完成任务
+                generationTaskManager.completeTask(appId, contentBuilder, userId);
+            });
+            
             tokenStream.onPartialResponse((String partialResponse) -> {
-                        AiResponseMessage aiResponseMessage = new AiResponseMessage(partialResponse);
-                        sink.next(JSONUtil.toJsonStr(aiResponseMessage));
-                    })
-                    .onPartialToolExecutionRequest((index, toolExecutionRequest) -> {
-                        ToolRequestMessage toolRequestMessage = new ToolRequestMessage(toolExecutionRequest);
-                        String json = JSONUtil.toJsonStr(toolRequestMessage);
-                        sink.next(json);
-                    })
-                    .onToolExecuted((ToolExecution toolExecution) -> {
-                        ToolExecutedMessage toolExecutedMessage = new ToolExecutedMessage(toolExecution);
-                        sink.next(JSONUtil.toJsonStr(toolExecutedMessage));
-                    })
-                    .onCompleteResponse((ChatResponse response) -> {
-                        log.info("项目代码生成完成，appId: {}", appId);
-                        sink.complete();
-                    })
-                    .onError((Throwable error) -> {
-                        log.error("项目代码生成失败: {}", error.getMessage(), error);
-                        sink.error(error);
-                    })
-                    .start();
+                // 检查是否被中断
+                if (isInterrupted(appId)) {
+                    log.info("检测到中断信号，停止流式输出，appId: {}", appId);
+                    // 完成任务
+                generationTaskManager.completeTask(appId, contentBuilder, userId);
+                    sink.complete();
+                    return;
+                }
+                
+                AiResponseMessage aiResponseMessage = new AiResponseMessage(partialResponse);
+                sink.next(JSONUtil.toJsonStr(aiResponseMessage));
+            }).onPartialToolExecutionRequest((index, toolExecutionRequest) -> {
+                // 检查是否被中断
+                if (isInterrupted(appId)) {
+                    log.info("检测到中断信号，停止流式输出，appId: {}", appId);
+                    // 完成任务
+                generationTaskManager.completeTask(appId, contentBuilder, userId);
+                    sink.complete();
+                    return;
+                }
+                
+                ToolRequestMessage toolRequestMessage = new ToolRequestMessage(toolExecutionRequest);
+                String json = JSONUtil.toJsonStr(toolRequestMessage);
+                sink.next(json);
+            }).onToolExecuted((ToolExecution toolExecution) -> {
+                // 检查是否被中断
+                if (isInterrupted(appId)) {
+                    log.info("检测到中断信号，停止流式输出，appId: {}", appId);
+                    // 完成任务
+                generationTaskManager.completeTask(appId, contentBuilder, userId);
+                    sink.complete();
+                    return;
+                }
+                
+                ToolExecutedMessage toolExecutedMessage = new ToolExecutedMessage(toolExecution);
+                sink.next(JSONUtil.toJsonStr(toolExecutedMessage));
+            }).onCompleteResponse((ChatResponse response) -> {
+                log.info("项目代码生成完成，appId: {}", appId);
+                // 完成任务
+                generationTaskManager.completeTask(appId, contentBuilder, userId);
+                sink.complete();
+            }).onError((Throwable error) -> {
+                log.error("项目代码生成失败: {}", error.getMessage(), error);
+                // 完成任务
+                generationTaskManager.completeTask(appId, contentBuilder, userId);
+                sink.error(error);
+            }).start();
         });
     }
 
@@ -245,51 +323,89 @@ public class AiCodeGeneratorFacade {
      * @param tokenStream TokenStream 对象
      * @param appId       应用 ID
      * @param sseCallback SSE消息回调
+     * @param userId      用户ID
      * @return Flux<String> 流式响应
      */
-    private Flux<String> processTokenStreamWithCallback(TokenStream tokenStream, Long appId, Consumer<String> sseCallback) {
+    private Flux<String> processTokenStreamWithCallback(TokenStream tokenStream, Long appId, Consumer<String> sseCallback, Long userId) {
         return Flux.create(sink -> {
-            log.info("processTokenStreamWithCallback called, appId: {}, sseCallback: {}", appId, sseCallback != null);
+            // 重置中断标志
+            resetInterrupt(appId);
+            
+            // 使用 StringBuilder 实时接收内容
+            StringBuilder contentBuilder = new StringBuilder();
+            
+            // 创建一个占位符 Disposable
+            Disposable placeholderDisposable = Flux.never().subscribe();
+            
+            // 注册任务到任务管理器
+            generationTaskManager.registerTask(appId, "CODE_GENERATION", placeholderDisposable, sink, userId, contentBuilder);
+            
+            // 添加取消处理器
+            sink.onCancel(() -> {
+                log.info("FluxSink 被取消，appId: {}", appId);
+                // 完成任务
+                generationTaskManager.completeTask(appId, contentBuilder, userId);
+            });
+            
             tokenStream.onPartialResponse((String partialResponse) -> {
-                        log.info("onPartialResponse called, partialResponse: {}", partialResponse);
-                        if (sseCallback != null) {
-                            sseCallback.accept(partialResponse);
-                        }
-                        sink.next(partialResponse);
-                    })
-                    .onPartialToolExecutionRequest((index, toolExecutionRequest) -> {
-                        log.info("onPartialToolExecutionRequest called, index: {}, toolName: {}, arguments: {}", index, toolExecutionRequest.name(), toolExecutionRequest.arguments());
-                        ToolRequestMessage toolRequestMessage = new ToolRequestMessage(toolExecutionRequest);
-                        String json = JSONUtil.toJsonStr(toolRequestMessage);
-                        log.info("Sending tool request message: {}", json);
-                        log.info("sseCallback是否为null: {}", sseCallback == null);
-                        if (sseCallback != null) {
-                            log.info("正在调用sseCallback.accept()");
-                            sseCallback.accept(json);
-                            log.info("sseCallback.accept()调用完成");
-                        } else {
-                            log.warn("sseCallback为null，无法发送SSE消息");
-                        }
-                        sink.next(json);
-                    })
-                    .onToolExecuted((ToolExecution toolExecution) -> {
-                        log.info("onToolExecuted called, toolName: {}", toolExecution.request().name());
-                        ToolExecutedMessage toolExecutedMessage = new ToolExecutedMessage(toolExecution);
-                        String json = JSONUtil.toJsonStr(toolExecutedMessage);
-                        if (sseCallback != null) {
-                            sseCallback.accept(json);
-                        }
-                        sink.next(json);
-                    })
-                    .onCompleteResponse((ChatResponse response) -> {
-                        log.info("项目代码生成完成，appId: {}", appId);
-                        sink.complete();
-                    })
-                    .onError((Throwable error) -> {
-                        log.error("项目代码生成失败: {}", error.getMessage(), error);
-                        sink.error(error);
-                    })
-                    .start();
+                // 检查是否被中断
+                if (isInterrupted(appId)) {
+                    log.info("检测到中断信号，停止流式输出，appId: {}", appId);
+                    // 完成任务
+                generationTaskManager.completeTask(appId, contentBuilder, userId);
+                    sink.complete();
+                    return;
+                }
+                
+                contentBuilder.append(partialResponse);
+                
+                if (sseCallback != null) {
+                    sseCallback.accept(partialResponse);
+                }
+                sink.next(partialResponse);
+            }).onPartialToolExecutionRequest((index, toolExecutionRequest) -> {
+                // 检查是否被中断
+                if (isInterrupted(appId)) {
+                    log.info("检测到中断信号，停止流式输出，appId: {}", appId);
+                    // 完成任务
+                generationTaskManager.completeTask(appId, contentBuilder, userId);
+                    sink.complete();
+                    return;
+                }
+                
+                ToolRequestMessage toolRequestMessage = new ToolRequestMessage(toolExecutionRequest);
+                String json = JSONUtil.toJsonStr(toolRequestMessage);
+                if (sseCallback != null) {
+                    sseCallback.accept(json);
+                }
+                sink.next(json);
+            }).onToolExecuted((ToolExecution toolExecution) -> {
+                // 检查是否被中断
+                if (isInterrupted(appId)) {
+                    log.info("检测到中断信号，停止流式输出，appId: {}", appId);
+                    // 完成任务
+                generationTaskManager.completeTask(appId, contentBuilder, userId);
+                    sink.complete();
+                    return;
+                }
+                
+                ToolExecutedMessage toolExecutedMessage = new ToolExecutedMessage(toolExecution);
+                String json = JSONUtil.toJsonStr(toolExecutedMessage);
+                if (sseCallback != null) {
+                    sseCallback.accept(json);
+                }
+                sink.next(json);
+            }).onCompleteResponse((ChatResponse response) -> {
+                log.info("项目代码生成完成，appId: {}", appId);
+                // 完成任务
+                generationTaskManager.completeTask(appId, contentBuilder, userId);
+                sink.complete();
+            }).onError((Throwable error) -> {
+                log.error("项目代码生成失败: {}", error.getMessage(), error);
+                // 完成任务
+                generationTaskManager.completeTask(appId, contentBuilder, userId);
+                sink.error(error);
+            }).start();
         });
     }
 
