@@ -211,6 +211,44 @@
   }
 }
 
+.membersCard {
+  position: sticky;
+  top: 24px;
+  height: fit-content;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+
+  .memberListItem {
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  .memberItem {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+
+    .memberInfo {
+      flex: 1;
+      min-width: 0;
+
+      .memberName {
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 4px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+  }
+}
+
 .loadingContainer {
   display: flex;
   justify-content: center;

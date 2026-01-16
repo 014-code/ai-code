@@ -254,111 +254,114 @@ const SpaceDetailPage: React.FC = () => {
         </Row>
       </Card>
 
-      {/* 成员列表 */}
-      <Card 
-        className={styles.membersCard} 
-        title={
-          <Space>
-            <TeamOutlined />
-            成员列表 ({members.length})
-          </Space>
-        }
-      >
-        {members.length > 0 ? (
-          <List
-            grid={{ gutter: 16, column: 4 }}
-            dataSource={members}
-            renderItem={(member) => (
-              <List.Item>
-                <Card>
-                  <div className={styles.memberItem}>
-                    <Avatar 
-                      size={64} 
-                      src={member.userAvatar} 
-                      icon={<UserOutlined />} 
-                      style={{ marginBottom: 8 }}
-                    />
-                    <div className={styles.memberInfo}>
-                      <div className={styles.memberName}>{member.userName}</div>
-                      <Tag 
-                        color={getSpaceUserRoleColor(member.role)}
-                        style={{ marginTop: 4 }}
-                      >
-                        {getSpaceUserRoleLabel(member.role)}
-                      </Tag>
-                    </div>
-                  </div>
-                </Card>
-              </List.Item>
-            )}
-          />
-        ) : (
-          <Empty description="暂无成员" />
-        )}
-      </Card>
-
-      {/* 应用列表 */}
-      <Card 
-        className={styles.appsCard} 
-        title={
-          <Space>
-            <SearchOutlined />
-            应用列表
-          </Space>
-        }
-        extra={
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />} 
-            onClick={handleOpenAddAppModal}
+      {/* 主要内容区域 */}
+      <Row gutter={[24, 0]}>
+        {/* 应用列表 */}
+        <Col xs={24} sm={24} md={24} lg={18} xl={18}>
+          <Card 
+            className={styles.appsCard} 
+            title={
+              <Space>
+                <SearchOutlined />
+                应用列表
+              </Space>
+            }
+            extra={
+              <Button 
+                type="primary" 
+                icon={<PlusOutlined />} 
+                onClick={handleOpenAddAppModal}
+              >
+                添加应用
+              </Button>
+            }
           >
-            添加应用
-          </Button>
-        }
-      >
-        <Row gutter={[16, 16]}>
-          {apps.length > 0 ? (
-            apps.map((app) => (
-              <Col key={app.id} xs={24} sm={12} md={8} lg={8}>
-                <Card
-                  actions={[
-                    <Button 
-                      danger 
-                      size="small"
-                      onClick={() => handleRemoveAppFromSpace(app.id!)}
+            <Row gutter={[16, 16]}>
+              {apps.length > 0 ? (
+                apps.map((app) => (
+                  <Col key={app.id} xs={24} sm={12} md={8} lg={8}>
+                    <Card
+                      actions={[
+                        <Button 
+                          danger 
+                          size="small"
+                          onClick={() => handleRemoveAppFromSpace(app.id!)}
+                        >
+                          移除
+                        </Button>
+                      ]}
                     >
-                      移除
-                    </Button>
-                  ]}
-                >
-                  <AppCard
-                    app={{
-                      id: app.id!,
-                      appName: app.appName || '',
-                      appDesc: app.appDesc || '',
-                      appType: app.appType || '',
-                      cover: app.cover || app.appCover || '',
-                      pageViews: app.pageViews || 0,
-                      initPrompt: app.initPrompt || '',
-                      deployKey: app.deployKey || '',
-                      codeGenType: app.codeGenType || '',
-                      user: app.user ? {
-                        userAvatar: app.user.userAvatar || '',
-                        userName: app.user.userName || ''
-                      } : undefined
-                    }}
-                    onCopy={(text) => {}}
-                  />
-                </Card>
-              </Col>
-            ))
-          ) : (
-            <Col span={24}>
-              <Empty description="暂无应用" />
-            </Col>
-          )}
-        </Row>
-      </Card>
+                      <AppCard
+                        app={{
+                          id: app.id!,
+                          appName: app.appName || '',
+                          appDesc: app.appDesc || '',
+                          appType: app.appType || '',
+                          cover: app.cover || app.appCover || '',
+                          pageViews: app.pageViews || 0,
+                          initPrompt: app.initPrompt || '',
+                          deployKey: app.deployKey || '',
+                          codeGenType: app.codeGenType || '',
+                          user: app.user ? {
+                            userAvatar: app.user.userAvatar || '',
+                            userName: app.user.userName || ''
+                          } : undefined
+                        }}
+                        onCopy={(text) => {}}
+                      />
+                    </Card>
+                  </Col>
+                ))
+              ) : (
+                <Col span={24}>
+                  <Empty description="暂无应用" />
+                </Col>
+              )}
+            </Row>
+          </Card>
+        </Col>
+
+        {/* 成员列表 */}
+        <Col xs={24} sm={24} md={24} lg={6} xl={6}>
+          <Card 
+            className={styles.membersCard} 
+            title={
+              <Space>
+                <TeamOutlined />
+                成员列表 ({members.length})
+              </Space>
+            }
+          >
+            {members.length > 0 ? (
+              <List
+                dataSource={members}
+                renderItem={(member) => (
+                  <List.Item className={styles.memberListItem}>
+                    <div className={styles.memberItem}>
+                      <Avatar 
+                        size={40} 
+                        src={member.userAvatar} 
+                        icon={<UserOutlined />} 
+                      />
+                      <div className={styles.memberInfo}>
+                        <div className={styles.memberName}>{member.userName}</div>
+                        <Tag 
+                          color={getSpaceUserRoleColor(member.role)}
+                          size="small"
+                        >
+                          {getSpaceUserRoleLabel(member.role)}
+                        </Tag>
+                      </div>
+                    </div>
+                  </List.Item>
+                )}
+              />
+            ) : (
+              <Empty description="暂无成员" />
+            )}
+          </Card>
+        </Col>
+      </Row>
 
       {/* 添加应用弹窗 */}
       <Modal

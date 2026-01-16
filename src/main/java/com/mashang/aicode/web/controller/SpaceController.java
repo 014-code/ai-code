@@ -38,6 +38,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * 空间管理控制器
@@ -169,8 +171,17 @@ public class SpaceController {
 
         User loginUser = userService.getLoginUser(request);
 
+        List<Long> joinedSpaceIds = spaceUserService.list(
+                QueryWrapper.create().eq("userId", loginUser.getId())
+        ).stream().map(SpaceUser::getSpaceId).toList();
+
         QueryWrapper queryWrapper = new QueryWrapper();
-        queryWrapper.eq("ownerId", loginUser.getId());
+        queryWrapper.and((Consumer<QueryWrapper>) wrapper -> {
+            wrapper.eq("ownerId", loginUser.getId());
+            if (!joinedSpaceIds.isEmpty()) {
+                wrapper.or((Consumer<QueryWrapper>) w -> w.in("id", joinedSpaceIds));
+            }
+        });
         if (StrUtil.isNotBlank(spaceQueryRequest.getSpaceName())) {
             queryWrapper.like("spaceName", spaceQueryRequest.getSpaceName());
         }
@@ -212,6 +223,11 @@ public class SpaceController {
             spaceVO.setAppCount(space.getAppCount());
             spaceVO.setCreateTime(space.getCreateTime());
             spaceVO.setUpdateTime(space.getUpdateTime());
+            spaceVO.setOwnerId(space.getOwnerId());
+            spaceVO.setIsOwner(space.getOwnerId().equals(loginUser.getId()));
+            User owner = userService.getById(space.getOwnerId());
+            spaceVO.setOwnerName(owner != null ? owner.getUserName() : "");
+            spaceVO.setOwnerAvatar(owner != null ? owner.getUserAvatar() : "");
             return spaceVO;
         }).toList();
 

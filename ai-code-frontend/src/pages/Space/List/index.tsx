@@ -91,9 +91,9 @@ const SpaceListPage: React.FC = () => {
       >
         <Spin spinning={loading}>
           {spaces.length > 0 ? (
-            <Row gutter={[16, 16]}>
+            <Row gutter={[24, 24]}>
               {spaces.map(space => (
-                <Col xs={24} sm={12} md={8} lg={6} xl={6} key={space.id}>
+                <Col xs={24} sm={12} md={8} lg={8} xl={6} xxl={6} key={space.id}>
                   <SpaceCard
                     space={space}
                     onEdit={handleEditSpace}

@@ -58,10 +58,10 @@ export class VisualEditor {
       return;
     }
     this.isEditMode = true;
-    // 延迟注入脚本，确保iframe已完全加载
+    // 增加延迟，确保iframe已完全加载
     setTimeout(() => {
       this.injectEditScript();
-    }, 300);
+    }, 1000);
   }
 
   /**
@@ -150,16 +150,12 @@ export class VisualEditor {
    * 根据当前编辑模式状态执行相应操作
    */
   onIframeLoad() {
+    // 只有在编辑模式下才注入脚本
     if (this.isEditMode) {
-      // 如果是编辑模式，重新注入编辑脚本
+      // 增加延迟，确保iframe完全加载
       setTimeout(() => {
         this.injectEditScript();
-      }, 500);
-    } else {
-      // 如果不是编辑模式，同步状态
-      setTimeout(() => {
-        this.syncState();
-      }, 500);
+      }, 1000);
     }
   }
 
@@ -169,6 +165,7 @@ export class VisualEditor {
    */
   handleIframeMessage(event: MessageEvent) {
     const { type, data } = event.data;
+    console.log("我是type", type, data)
     switch (type) {
       case 'ELEMENT_SELECTED':
         // 处理元素选中事件
@@ -208,14 +205,10 @@ export class VisualEditor {
     const waitForIframeLoad = () => {
       try {
         if (this.iframe!.contentWindow && this.iframe!.contentDocument) {
-          // 检查脚本是否已存在
-          if (this.iframe!.contentDocument.getElementById('visual-edit-script')) {
-            // 脚本已存在，直接开启编辑模式
-            this.sendMessageToIframe({
-              type: 'TOGGLE_EDIT_MODE',
-              editMode: true,
-            });
-            return;
+          // 移除已存在的脚本
+          const existingScript = this.iframe!.contentDocument.getElementById('visual-edit-script');
+          if (existingScript) {
+            existingScript.remove();
           }
 
           // 生成编辑脚本并注入
@@ -406,19 +399,19 @@ export class VisualEditor {
            // 鼠标悬停处理
            const mouseoverHandler = (event) => {
              if (!isEditMode) return;
-
+             injectStyles();
              const target = event.target;
              if (target === currentHoverElement || target === currentSelectedElement) return;
              if (target === document.body || target === document.documentElement) return;
              if (target.tagName === 'SCRIPT' || target.tagName === 'STYLE') return;
 
              clearHoverEffect();
-             target.classList.add('edit-hover');
-             currentHoverElement = target;
+           target.classList.add('edit-hover');
+           currentHoverElement = target;
 
-             // 获取元素信息并发送给父窗口
-             const elementInfo = getElementInfo(target);
-             try {
+           // 获取元素信息并发送给父窗口
+           const elementInfo = getElementInfo(target);
+           try {
                window.parent.postMessage({
                  type: 'ELEMENT_HOVER',
                  data: { elementInfo }
@@ -480,8 +473,8 @@ export class VisualEditor {
          }
 
          /**
-          * 处理来自父窗口的消息
-          */
+         * 处理来自父窗口的消息
+         */
          window.addEventListener('message', (event) => {
            const { type, editMode } = event.data;
            switch (type) {
@@ -489,7 +482,6 @@ export class VisualEditor {
                isEditMode = editMode;
                if (isEditMode) {
                  injectStyles();
-                 setupEventListeners();
                  showEditTip();
                } else {
                  clearHoverEffect();
@@ -508,11 +500,15 @@ export class VisualEditor {
                break;
              case 'HIGHLIGHT_ELEMENT':
                if (event.data.elementInfo) {
+                 injectStyles();
                  highlightElement(event.data.elementInfo, event.data.userName);
                }
                break;
              case 'CLEAR_HIGHLIGHT':
                clearHighlightEffect();
+               break;
+             default:
+               console.log('未处理的消息类型:', type, event.data);
                break;
            }
          });
