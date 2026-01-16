@@ -285,7 +285,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         );
 
         // 6. 调用 AI 生成代码（流式）
-        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
+        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId, null, loginUser.getId());
 
         //流式响应完成后再清除上下文
         //7. 收集 AI 响应内容并在完成后记录到对话历史
@@ -516,13 +516,48 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     /**
      * 取消正在进行的代码生成
-     *
-     * @param appId 应用ID
-     * @param userId 用户ID
+     * 
+     * 这个方法用于中断指定应用的代码生成任务。
+     * 
+     * 工作流程：
+     * 1. 调用 AiCodeGeneratorFacade.interrupt(appId) 设置中断标志
+     * 2. AI检测到中断标志后，停止生成代码
+     * 3. 已生成的内容会自动保存到对话历史中
+     * 
+     * 参数说明：
+     * @param appId 应用ID，用于指定要中断哪个应用的代码生成
+     * @param userId 用户ID，用于权限验证
+     * 
+     * 返回值：
      * @return 是否成功取消
+     * 
+     * 使用场景：
+     * - 用户点击"停止生成"按钮
+     * - 用户切换到其他页面，需要停止当前生成
+     * - 系统检测到异常，需要立即停止生成
+     * 
+     * 注意：
+     * - 中断后，已生成的内容会自动保存到对话历史中
+     * - 如果应用没有正在进行的生成任务，这个方法也会返回true
      */
     public boolean cancelGeneration(Long appId, Long userId) {
-        return true;
+        try {
+            log.info("开始取消代码生成，appId: {}, userId: {}", appId, userId);
+            
+            // 调用 AiCodeGeneratorFacade 的中断方法
+            boolean success = aiCodeGeneratorFacade.interrupt(appId, userId);
+            
+            if (success) {
+                log.info("成功取消代码生成，appId: {}, userId: {}", appId, userId);
+            } else {
+                log.warn("取消代码生成失败，appId: {}, userId: {}", appId, userId);
+            }
+            
+            return success;
+        } catch (Exception e) {
+            log.error("取消代码生成失败，appId: {}, userId: {}, 错误: {}", appId, userId, e.getMessage(), e);
+            return false;
+        }
     }
 
 }

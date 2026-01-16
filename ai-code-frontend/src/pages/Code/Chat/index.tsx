@@ -73,11 +73,16 @@ const ChatPage: React.FC = () => {
   const [currentEditingUser, setCurrentEditingUser] = useState<any>(null);  // 当前编辑用户
   const [isOtherUserGenerating, setIsOtherUserGenerating] = useState<boolean>(false);  // 是否有其他用户正在生成
   const [otherGeneratingUser, setOtherGeneratingUser] = useState<any>(null);  // 其他生成用户
+  const [hasSentInitMessage, setHasSentInitMessage] = useState<boolean>(false);  // 是否已发送初始消息
+  const [isSendingMessage, setIsSendingMessage] = useState<boolean>(false);  // 是否正在发送消息
 
   // 引用管理
   const messagesEndRef = useRef<HTMLDivElement>(null);  // 消息滚动到底部的引用
   const iframeRef = useRef<HTMLIFrameElement>(null);  // iframe引用
   const visualEditorRef = useRef<VisualEditor | null>(null);  // 可视化编辑器引用
+  const eventSourceRef = useRef<EventSource | null>(null);  // SSE连接引用
+  const sendingMessageRef = useRef<boolean>(false);  // 使用 ref 来防止重复发送，避免 React 状态更新的异步问题
+  const messageLockRef = useRef<boolean>(false);  // 使用全局锁来防止重复发送
 
   // 初始化页面数据
   useEffect(() => {
@@ -162,12 +167,13 @@ const ChatPage: React.FC = () => {
     // 处理URL中的提示词
     const urlParams = new URLSearchParams(window.location.search);
     const promptFromUrl = urlParams.get('prompt');
-    if (promptFromUrl && !hasSentUrlPrompt) {
-      setHasSentUrlPrompt(true);
+    if (promptFromUrl && !hasSentInitMessage) {
       setTimeout(() => {
         handleSendMessage(promptFromUrl, true).catch(error => {
           console.error('自动发送提示词失败：', error);
         });
+        // 发送消息后再设置标志，防止重复发送
+        setHasSentInitMessage(true);
         const newUrl = window.location.pathname;
         window.history.replaceState({}, '', newUrl);
       }, 500);
@@ -182,6 +188,8 @@ const ChatPage: React.FC = () => {
    */
   const loadLatestChatHistory = () => {
     if (!appId) return;
+    
+    console.log('loadLatestChatHistory 被调用，appId:', appId);
 
     listLatestChatHistoryVo({appId: appId}).then(res => {
       // 按时间排序消息
@@ -198,9 +206,10 @@ const ChatPage: React.FC = () => {
       }
 
       // 如果没有消息且是应用所有者，自动发送初始消息
-      // 只有在没有从 URL 发送过消息时才自动发送
+      // 只有在没有发送过初始消息时才自动发送
       if (sortedMessages.length === 0 && appInfo && loginUser &&
-        appInfo.userId === loginUser.id && !appInfo.deployKey && !hasSentUrlPrompt) {
+        appInfo.userId === loginUser.id && !appInfo.deployKey && !hasSentInitMessage) {
+        console.log('准备自动发送初始消息');
         autoSendInitMessage();
       }
     }).catch(error => {
@@ -271,6 +280,17 @@ const ChatPage: React.FC = () => {
    */
   const autoSendInitMessage = () => {
     if (!appInfo?.initPrompt || !loginUser) return;
+    
+    // 检查是否已经发送过初始消息
+    if (hasSentInitMessage) {
+      console.log('已经发送过初始消息，跳过');
+      return;
+    }
+    
+    console.log('准备发送初始消息，内容:', appInfo.initPrompt);
+    
+    // 设置标志，防止重复发送
+    setHasSentInitMessage(true);
 
     handleSendMessage(appInfo.initPrompt, true).catch(error => {
       console.error('自动发送初始消息失败：', error);
@@ -332,10 +352,26 @@ const ChatPage: React.FC = () => {
    * @returns Promise
    */
   const handleSendMessage = (customMessage?: string, isAutoSend = false): Promise<void> => {
-    return new Promise((resolve, reject) => {
+    console.log('handleSendMessage 被调用，isAutoSend:', isAutoSend, 'sendingMessageRef.current:', sendingMessageRef.current, 'messageLockRef.current:', messageLockRef.current);
+    
+    return new Promise((resolve) => {
       if (!appId) {
         message.error('应用不存在');
-        reject(new Error('应用不存在'));
+        return;
+      }
+
+      // 检查是否正在发送消息，防止重复发送（即使是自动发送也要检查）
+      if (sendingMessageRef.current) {
+        console.log('正在发送消息，忽略本次请求');
+        if (!isAutoSend) {
+          message.warning('正在发送消息，请稍候');
+        }
+        return;
+      }
+
+      // 检查全局锁，防止重复发送（即使是自动发送也要检查）
+      if (messageLockRef.current) {
+        console.log('全局锁已开启，忽略本次请求');
         return;
       }
 
@@ -343,7 +379,6 @@ const ChatPage: React.FC = () => {
       const messageContent = (normalized ?? inputValue).trim();
       if (!messageContent) {
         message.warning('请输入消息内容');
-        reject(new Error('请输入消息内容'));
         return;
       }
 
@@ -351,15 +386,27 @@ const ChatPage: React.FC = () => {
         setInputValue('');
       }
 
+      // 设置发送标志（使用 ref，立即生效）
+      sendingMessageRef.current = true;
+      setIsSendingMessage(true);
+      
+      // 设置全局锁
+      messageLockRef.current = true;
+      console.log('设置发送标志为 true，全局锁已开启');
+
       // 构建消息内容，包含选中的元素信息
       let finalMessageContent = messageContent;
       if (selectedElements.length > 0) {
         finalMessageContent = `${messageContent}\n\n[选中的元素信息]:\n${JSON.stringify(selectedElements)}`;
       }
 
+      // 创建用户消息ID（使用时间戳 + 随机数，确保唯一性）
+      const userMessageId = Date.now() + Math.floor(Math.random() * 1000000);
+      console.log('创建用户消息，ID:', userMessageId, '内容:', finalMessageContent);
+
       // 创建用户消息
       const userMessage: API.ChatHistoryVO = {
-        id: Date.now(),
+        id: userMessageId,
         appId: appId,
         messageType: 'user',
         messageContent: finalMessageContent,
@@ -376,12 +423,10 @@ const ChatPage: React.FC = () => {
         });
       }
 
-      // 添加用户消息到列表
-      setMessages(prev => [...prev, userMessage]);
-      setLoading(true);
-
-      // 创建AI消息占位符
-      const aiMessageId = Date.now() + 1;
+      // 一次性添加用户消息和AI消息到列表
+      const aiMessageId = Date.now() + Math.floor(Math.random() * 1000000) + 1000000;
+      console.log('创建AI消息占位符，ID:', aiMessageId);
+      
       const aiMessage: API.ChatHistoryVO = {
         id: aiMessageId,
         appId: appId,
@@ -390,8 +435,9 @@ const ChatPage: React.FC = () => {
         createTime: new Date().toISOString(),
       };
 
-      // 添加AI消息到列表
-      setMessages(prev => [...prev, aiMessage]);
+      // 一次性添加用户消息和AI消息到列表
+      setMessages(prev => [...prev, userMessage, aiMessage]);
+      setLoading(true);
 
       // 清除选中的元素
       if (selectedElements.length > 0) {
@@ -408,15 +454,14 @@ const ChatPage: React.FC = () => {
       const url = `${baseURL}/app/chat/gen/code?${params}`;
 
       // 流式处理
-      let eventSource: EventSource | null = null;
       let closed = false;
       let streamCompleted = false;
       let aiResponse = '';
 
       // 关闭事件源
       const closeES = () => {
-        if (!closed && eventSource) {
-          eventSource.close();
+        if (!closed && eventSourceRef.current) {
+          eventSourceRef.current.close();
           closed = true;
         }
       };
@@ -429,21 +474,30 @@ const ChatPage: React.FC = () => {
         ));
         setLoading(false);
         setIsStreaming(false);
+        setIsSendingMessage(false);
+        sendingMessageRef.current = false;
+        messageLockRef.current = false;
+        console.log('重置发送标志和全局锁');
         message.error('生成失败，请重试');
       };
 
       // 建立SSE连接
-      eventSource = new EventSource(url, {withCredentials: true});
+      eventSourceRef.current = new EventSource(url, {withCredentials: true});
       
       // 连接建立成功
-      eventSource.onopen = () => {
+      eventSourceRef.current.onopen = () => {
         console.log('SSE 连接已建立');
-        setLoading(false);
+        // 不要在这里设置 setLoading(false)，保持 loading 状态，直到 AI 生成完成
+        // setLoading(false);
         setIsStreaming(true);
+        setIsSendingMessage(false);
+        sendingMessageRef.current = false;
+        messageLockRef.current = false;
+        console.log('重置发送标志和全局锁');
       };
 
       // 接收消息
-      eventSource.onmessage = function (event) {
+      eventSourceRef.current.onmessage = function (event) {
         if (streamCompleted) return;
 
         // 检查是否是结束消息
@@ -497,7 +551,7 @@ const ChatPage: React.FC = () => {
       };
 
       // 业务错误事件
-      eventSource.addEventListener('business-error', function (event: MessageEvent) {
+      eventSourceRef.current.addEventListener('business-error', function (event: MessageEvent) {
         if (streamCompleted) return;
 
         try {
@@ -521,13 +575,17 @@ const ChatPage: React.FC = () => {
       });
 
       // 连接错误
-      eventSource.onerror = function () {
+      eventSourceRef.current.onerror = function () {
         if (streamCompleted || !loading) return;
-        if (eventSource?.readyState === EventSource.CONNECTING) {
+        if (eventSourceRef.current?.readyState === EventSource.CONNECTING) {
           streamCompleted = true;
           closeES();
           setLoading(false);
           setIsStreaming(false);
+          setIsSendingMessage(false);
+          sendingMessageRef.current = false;
+          messageLockRef.current = false;
+          console.log('重置发送标志和全局锁');
 
           // 更新应用信息并检查网站状态
           setTimeout(async () => {
@@ -548,7 +606,7 @@ const ChatPage: React.FC = () => {
    * @returns Promise
    */
   const handleDeploy = (): Promise<void> => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       if (!appId) {
         message.error('应用不存在');
         return;
@@ -583,6 +641,22 @@ const ChatPage: React.FC = () => {
 
   /**
    * 取消代码生成
+   * 
+   * 这个方法用于中断正在进行的代码生成任务。
+   * 
+   * 工作流程：
+   * 1. 调用后端的取消接口，设置中断标志
+   * 2. 关闭 SSE 连接，停止接收新的流式数据
+   * 3. 更新前端状态，显示取消成功提示
+   * 
+   * 使用场景：
+   * - 用户点击"取消"按钮
+   * - 用户切换到其他页面，需要停止当前生成
+   * - 系统检测到异常，需要立即停止生成
+   * 
+   * 注意：
+   * - 取消后，已生成的内容会自动保存到对话历史中
+   * - 如果没有正在进行的生成任务，这个方法也会返回成功
    */
   const handleCancelGeneration = async () => {
     if (!appId) {
@@ -591,10 +665,23 @@ const ChatPage: React.FC = () => {
     }
 
     try {
+      // 调用后端的取消接口，设置中断标志
       await cancelCodeGeneration({appId: Number(appId)});
-      message.success('已取消生成');
+      
+      // 关闭 SSE 连接，停止接收新的流式数据
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      
+      // 更新前端状态
       setLoading(false);
       setIsStreaming(false);
+      setIsSendingMessage(false);
+      sendingMessageRef.current = false;
+      messageLockRef.current = false;
+      console.log('重置发送标志和全局锁');
+      message.success('已取消生成');
     } catch (error: any) {
       message.error('取消失败：' + (error.message || '未知错误'));
     }
@@ -606,7 +693,6 @@ const ChatPage: React.FC = () => {
   const toggleEditMode = () => {
     const newMode = !isEditMode;
     setIsEditMode(newMode);
-    !isEditMode ? message.info("进入编辑模式") : message.info("退出编辑模式");
   };
 
   /**
@@ -634,57 +720,46 @@ const ChatPage: React.FC = () => {
       });
 
       ws.on(NotificationTypeEnum.INFO, (data: any) => {
-        console.log('收到INFO消息:', data);
         handleWebSocketMessage(data);
       });
 
       ws.on(EditStatusEnum.ENTER_EDIT, (data: any) => {
-        console.log('收到ENTER_EDIT消息:', data);
         handleWebSocketMessage(data);
       });
 
       ws.on(EditStatusEnum.EXIT_EDIT, (data: any) => {
-        console.log('收到EXIT_EDIT消息:', data);
         handleWebSocketMessage(data);
       });
 
       ws.on(EditStatusEnum.EDIT_ACTION, (data: any) => {
-        console.log('收到EDIT_ACTION消息:', data);
         handleWebSocketMessage(data);
       });
 
       ws.on(InteractionActionEnum.SEND_MESSAGE, (data: any) => {
-        console.log('收到SEND_MESSAGE消息:', data);
         handleWebSocketMessage(data);
       });
 
       ws.on(InteractionActionEnum.HOVER_ELEMENT, (data: any) => {
-        console.log('收到HOVER_ELEMENT消息:', data);
         handleWebSocketMessage(data);
       });
 
       ws.on(InteractionActionEnum.SELECT_ELEMENT, (data: any) => {
-        console.log('收到SELECT_ELEMENT消息:', data);
         handleWebSocketMessage(data);
       });
 
       ws.on(InteractionActionEnum.CLEAR_ELEMENT, (data: any) => {
-        console.log('收到CLEAR_ELEMENT消息:', data);
         handleWebSocketMessage(data);
       });
 
       ws.on(DeployActionEnum.DEPLOY_PROJECT, (data: any) => {
-        console.log('收到DEPLOY_PROJECT消息:', data);
         handleWebSocketMessage(data);
       });
 
       ws.on(DeployActionEnum.STOP_RESPONSE, (data: any) => {
-        console.log('收到STOP_RESPONSE消息:', data);
         handleWebSocketMessage(data);
       });
 
       ws.on('close', () => {
-        message.info('WebSocket连接已关闭');
         setOnlineUsers([]);
         setCurrentEditingUser(null);
         setIsOtherUserGenerating(false);
@@ -692,7 +767,6 @@ const ChatPage: React.FC = () => {
 
       ws.on('error', (error: any) => {
         message.error('WebSocket连接错误');
-        console.error('WebSocket错误:', error);
       });
 
       // 最后调用connect方法，建立WebSocket连接
@@ -748,7 +822,6 @@ const ChatPage: React.FC = () => {
           if (data.user.id !== loginUser?.id) {
             setIsOtherUserGenerating(true);
             setOtherGeneratingUser(data.user);
-            message.info(`${userName} ${EditStatusEnum.ENTER_EDIT}`);
           }
         }
         break;
@@ -760,7 +833,6 @@ const ChatPage: React.FC = () => {
           }
           setIsOtherUserGenerating(false);
           setOtherGeneratingUser(null);
-          message.info(`${userName} 退出协同编辑`);
           // 关闭 websocket
           if (data.user.id !== loginUser?.id) {
             websocket?.disconnect();
@@ -821,7 +893,6 @@ const ChatPage: React.FC = () => {
 
       case DeployActionEnum.DEPLOY_PROJECT:
         if (data.user && data.user.id !== loginUser?.id) {
-          message.info(`${userName} ${DeployActionEnum.DEPLOY_PROJECT}`);
           // 调用部署项目方法
           handleDeploy().catch(err => {
             console.error('自动部署失败:', err);
@@ -831,7 +902,6 @@ const ChatPage: React.FC = () => {
 
       case DeployActionEnum.STOP_RESPONSE:
         if (data.user && data.user.id !== loginUser?.id) {
-          message.info(`${userName} ${DeployActionEnum.STOP_RESPONSE}`);
           // 停止回复（预留）
           handleCancelGeneration();
         }
