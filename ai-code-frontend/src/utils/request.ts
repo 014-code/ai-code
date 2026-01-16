@@ -13,7 +13,7 @@ const isDev = import.meta.env.MODE === 'development';
  */
 const request = axios.create({
   baseURL: isDev ? '/api' : '/api',  // API基础路径
-  withCredentials: true,             // 携带凭证信息
+  withCredentials: true,             // 携带凭证信息（Cookie）
   timeout: 60000,                    // 请求超时时间：60秒
 });
 
@@ -29,11 +29,16 @@ interface ResponseStructure {
 
 /**
  * 请求拦截器
- * 可用于添加认证信息等
+ * 添加认证信息等
  */
 request.interceptors.request.use(
   (config) => {
-    // 这里可以添加token等认证信息
+    // Sa-Token 会自动从 Cookie 中读取，无需手动添加
+    // 如果需要手动添加 token，可以从 localStorage 中获取
+    const token = localStorage.getItem('satoken');
+    if (token) {
+      config.headers['satoken'] = token;
+    }
     return config;
   },
   (error) => {

@@ -19,6 +19,11 @@ public class AppTableDef extends TableDef {
     public final QueryColumn ID = new QueryColumn(this, "id");
 
     /**
+     * 空间id
+     */
+    public final QueryColumn SPACE_ID = new QueryColumn(this, "spaceId");
+
+    /**
      * 应用名称
      */
     public final QueryColumn APP_NAME = new QueryColumn(this, "appName");

@@ -54,6 +54,11 @@ public class AppQueryRequest extends PageRequest implements Serializable {
     private String appType;
 
     /**
+     * 空间ID
+     */
+    private Long spaceId;
+
+    /**
      * 排序字段（pageViews-浏览量，createTime-创建时间）
      */
     private String sortField;

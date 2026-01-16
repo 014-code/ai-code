@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGlobalContext } from '@/context/GlobalContext';
 import { getAppVoById, updateApp, updateAppByAdmin } from '@/services/backend/appController';
-import { Button, Card, Form, Input, message, Typography } from 'antd';
+import { Button, Card, Form, Input, message, Typography, Row, Col } from 'antd';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -72,21 +72,25 @@ const AppEditPage: React.FC = () => {
   );
 
   return (
-    <Card style={{ margin: 32, maxWidth: 600 }}>
-      <Title level={2}>编辑应用</Title>
-      <Form form={form} layout="vertical" onFinish={handleSubmit}>
-        <Form.Item label="应用名称" name="appName" rules={[{ required: true, message: '必填' }]}>
-          <Input />
-        </Form.Item>
-        <Form.Item label="应用描述" name="appDesc">
-          <TextArea rows={3} />
-        </Form.Item>
-        <Form.Item>
-          <Button htmlType="submit" type="primary" loading={loading}>保存</Button>
-          <Button onClick={() => navigate('/home')} style={{ marginLeft: 16 }}>取消</Button>
-        </Form.Item>
-      </Form>
-    </Card>
+    <Row gutter={16} style={{ margin: 32 }}>
+      <Col span={24}>
+        <Card>
+          <Title level={2}>编辑应用</Title>
+          <Form form={form} layout="vertical" onFinish={handleSubmit}>
+            <Form.Item label="应用名称" name="appName" rules={[{ required: true, message: '必填' }]}>
+              <Input />
+            </Form.Item>
+            <Form.Item label="应用描述" name="appDesc">
+              <TextArea rows={3} />
+            </Form.Item>
+            <Form.Item>
+              <Button htmlType="submit" type="primary" loading={loading}>保存</Button>
+              <Button onClick={() => navigate('/home')} style={{ marginLeft: 16 }}>取消</Button>
+            </Form.Item>
+          </Form>
+        </Card>
+      </Col>
+    </Row>
   );
 };
 

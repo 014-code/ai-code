@@ -61,6 +61,11 @@ public class UserController {
         String userAccount = userLoginRequest.getUserAccount();
         String userPassword = userLoginRequest.getUserPassword();
         LoginUserVO loginUserVO = userService.userLogin(userAccount, userPassword, request);
+        
+        // 获取 token 并返回
+        String token = cn.dev33.satoken.stp.StpUtil.getTokenValue();
+        loginUserVO.setToken(token);
+        
         return ResultUtils.success(loginUserVO);
     }
 

@@ -8,9 +8,9 @@ import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { LoginForm, ProFormText } from '@ant-design/pro-components';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { message, Tabs } from 'antd';
-import React, { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { GlobalContext } from '@/context/GlobalContext';
+import { useGlobal } from '@/context/GlobalContext';
 
 /**
  * 登录组件
@@ -18,7 +18,7 @@ import { GlobalContext } from '@/context/GlobalContext';
 const Login: React.FC = () => {
   // 状态管理
   const [type, setType] = useState<string>('account');  // 登录方式
-  const { setInitialState, initialState } = useContext(GlobalContext);  // 全局上下文
+  const { setUserInfo, currentUser } = useGlobal();  // 全局上下文
   const navigate = useNavigate();  // 导航
   const [searchParams] = useSearchParams();  // URL参数
 
@@ -50,11 +50,20 @@ const Login: React.FC = () => {
       const defaultLoginSuccessMessage = '登录成功！';
       message.success(defaultLoginSuccessMessage);
       
+      // 保存 Sa-Token 到 localStorage
+      // 优先从响应数据中获取 token
+      const token = res.data?.token || document.cookie
+        .split('; ')
+        .find(row => row.startsWith('satoken='))
+        ?.split('=')[1];
+      
+      if (token) {
+        localStorage.setItem('satoken', token);
+        console.log('Token 已保存:', token);
+      }
+      
       // 更新全局状态
-      setInitialState({
-        ...initialState,
-        currentUser: res.data,
-      });
+      setUserInfo(res.data);
       
       // 跳转到指定页面或首页
       const redirect = searchParams.get('redirect') || '/';

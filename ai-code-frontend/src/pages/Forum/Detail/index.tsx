@@ -4,7 +4,7 @@
  */
 import React, { useEffect, useState, useCallback } from 'react';
 import { Card, message, Avatar, Space, Button, Tag, Divider } from 'antd';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import { EyeOutlined, LikeOutlined, MessageOutlined, UserOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { getForumPostVOById, likeForumPost, unlikeForumPost } from '@/services/backend/forumPostController';
@@ -153,8 +153,13 @@ const ForumDetail: React.FC = () => {
               {/* 作者信息 */}
               <div className={styles.postAuthor}>
                 <Space>
-                  <Avatar size="small" src={post.user?.userAvatar} icon={post.user?.userAvatar ? undefined : <UserOutlined />} />
-                  <span className={styles.authorName}>{post.user?.userName}</span>
+                  <Link 
+                    to={`/user/profile/${post.user?.id}`}
+                    style={{ display: 'flex', alignItems: 'center' }}
+                  >
+                    <Avatar size="small" src={post.user?.userAvatar} icon={post.user?.userAvatar ? undefined : <UserOutlined />} />
+                    <span className={styles.authorName}>{post.user?.userName}</span>
+                  </Link>
                   <span className={styles.createTime}>{post.createTime}</span>
                 </Space>
               </div>

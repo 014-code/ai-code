@@ -44,6 +44,12 @@ public class ChatHistory implements Serializable {
     private Long userId;
 
     /**
+     * 消息状态
+     */
+    @Column("status")
+    private String status;
+
+    /**
      * 消息类型：user/ai/error
      */
     @Column("messageType")

@@ -58,6 +58,9 @@ public class App implements Serializable {
     //创建用户id
     @Column("userId")
     private Long userId;
+    //所属空间id
+    @Column("spaceId")
+    private Long spaceId;
     //编辑时间
     @Column("editTime")
     private Date editTime;

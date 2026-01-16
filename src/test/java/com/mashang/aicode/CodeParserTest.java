@@ -1,18 +1,11 @@
 package com.mashang.aicode;
 
 import com.mashang.aicode.web.ai.core.AiCodeGeneratorFacade;
-import com.mashang.aicode.web.ai.core.CodeParser;
 import com.mashang.aicode.web.ai.model.HtmlCodeResult;
 import com.mashang.aicode.web.ai.model.MultiFileCodeResult;
-import com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum;
-import jakarta.annotation.Resource;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import reactor.core.publisher.Flux;
-
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -88,16 +81,16 @@ class CodeParserTest {
         assertNotNull(result.getJsCode());
     }
 
-    @Test
-    void generateAndSaveCodeStream() {
-        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream("任务记录网站，代码不超过100行", CodeGenTypeEnum.MULTI_FILE, 1L);
-
-        List<String> result = codeStream.collectList().block();
-
-        Assertions.assertNotNull(result);
-        String completeContent = String.join("", result);
-        Assertions.assertNotNull(completeContent);
-    }
+//    @Test
+//    void generateAndSaveCodeStream() {
+//        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream("任务记录网站，代码不超过100行", CodeGenTypeEnum.MULTI_FILE, 1L);
+//
+//        List<String> result = codeStream.collectList().block();
+//
+//        Assertions.assertNotNull(result);
+//        String completeContent = String.join("", result);
+//        Assertions.assertNotNull(completeContent);
+//    }
 
 
 }

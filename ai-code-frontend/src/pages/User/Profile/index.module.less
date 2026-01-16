@@ -1,0 +1,247 @@
+/* 用户主页样式 */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.loadingContainer,
+.errorContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 80vh;
+}
+
+/* 用户信息卡片 */
+.userInfoCard {
+  margin-bottom: 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.userInfo {
+  display: flex;
+  align-items: flex-start;
+  padding: 24px;
+}
+
+.avatarSection {
+  margin-right: 32px;
+}
+
+.avatar {
+  border: 4px solid #f0f0f0;
+}
+
+.infoSection {
+  flex: 1;
+}
+
+.userName {
+  font-size: 28px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  color: #333;
+}
+
+.userProfile {
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0 0 24px 0;
+  color: #666;
+}
+
+.actionButtons {
+  display: flex;
+  gap: 12px;
+}
+
+/* 好友请求卡片 */
+.requestsCard {
+  margin-bottom: 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 帖子列表卡片 */
+.postsCard {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.postsList {
+  max-height: 600px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.postCard {
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e8e8e8;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(24, 144, 255, 0.15);
+    border-color: #1890ff;
+  }
+
+  :global {
+    .ant-card-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+    }
+  }
+}
+
+.postHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.postTitle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pinnedTag {
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #ff4d4f 0%, #ff7875 100%);
+  border: none;
+  padding: 2px 10px;
+  border-radius: 16px;
+  font-weight: 600;
+  font-size: 11px;
+  box-shadow: 0 2px 6px rgba(255, 77, 79, 0.25);
+}
+
+.titleText {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f1f1f;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  letter-spacing: 0.3px;
+  line-height: 1.4;
+  flex: 1;
+}
+
+.appInfo {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 100%);
+  border-radius: 8px;
+  border-left: 3px solid #1890ff;
+  box-shadow: 0 2px 6px rgba(24, 144, 255, 0.08);
+}
+
+.appName {
+  color: #1890ff;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.2px;
+}
+
+.appType {
+  font-size: 11px;
+  background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
+  border: none;
+  border-radius: 12px;
+  padding: 1px 8px;
+  color: white;
+  font-weight: 500;
+}
+
+.postBody {
+  margin-bottom: 12px;
+  flex: 1;
+}
+
+.postExcerpt {
+  color: #434343;
+  font-size: 13px;
+  line-height: 1.6;
+  max-height: 60px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  letter-spacing: 0.2px;
+}
+
+.postFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+  margin-top: auto;
+}
+
+.metaItem {
+  color: #595959;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.3s;
+
+  &:hover {
+    color: #1890ff;
+  }
+}
+
+.createTime {
+  color: #bfbfbf;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.loadingMore {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .container {
+    padding: 16px;
+  }
+  
+  .userInfo {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  
+  .avatarSection {
+    margin-right: 0;
+    margin-bottom: 24px;
+  }
+  
+  .infoSection {
+    width: 100%;
+  }
+}

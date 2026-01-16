@@ -55,7 +55,7 @@ const HomePage: React.FC = () => {
   const menuItems: MenuProps['items'] = Object.values(CodeGenTypeEnum).map(type => ({
     label: CODE_GEN_TYPE_CONFIG[type].label,
     key: type,
-    icon: <ProductOutlined />,
+    icon: <ProductOutlined key={`icon-${type}`} />,
   }));
 
   /**
@@ -249,11 +249,11 @@ const HomePage: React.FC = () => {
             <div className={styles.presetTagsWrapper}>
               {presetPrompts.map((item) => (
                 <Tag
-                  key={item.label}
+                  key={item.id}
                   className={styles.presetTag}
                   onClick={(e) => handlePresetTagClick(item.prompt || '', e)}
                 >
-                  {item.label}
+                  {item.label || '预设'}
                 </Tag>
               ))}
             </div>
@@ -321,7 +321,7 @@ const HomePage: React.FC = () => {
             {featuredApps.map(app => (
               <Col xs={24} sm={12} md={8} lg={6} xl={6} key={app.id}>
                 <AppCard app={app} onCopy={inputCopy} loading={featuredAppsLoading}>
-                  <Tag icon={<CheckCircleOutlined />} color="success">
+                  <Tag key="featured" icon={<CheckCircleOutlined />} color="success">
                     精选
                   </Tag>
                 </AppCard>

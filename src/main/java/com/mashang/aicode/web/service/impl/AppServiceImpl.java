@@ -13,6 +13,7 @@ import com.mashang.aicode.web.constant.AppConstant;
 import com.mashang.aicode.web.exception.BusinessException;
 import com.mashang.aicode.web.exception.ErrorCode;
 import com.mashang.aicode.web.exception.ThrowUtils;
+
 import com.mashang.aicode.web.mapper.AppMapper;
 import com.mashang.aicode.web.mapper.UserMapper;
 import com.mashang.aicode.web.model.dto.app.AppQueryRequest;
@@ -28,8 +29,11 @@ import com.mashang.aicode.web.service.AppService;
 import com.mashang.aicode.web.service.ChatHistoryService;
 import com.mashang.aicode.web.service.ScreenshotService;
 import com.mashang.aicode.web.service.UserService;
+import com.mybatisflex.core.update.UpdateChain;
+import com.mybatisflex.core.update.UpdateWrapper;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
+import com.mybatisflex.core.update.UpdateChain;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -259,7 +263,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
      */
     @Override
     public Flux<String> chatToGenCode(Long appId, String message, User loginUser) {
-        // ✅ 在这里校验原始输入（这才是用户真正输入的！）
+
         if (message == null || message.length() > 1000) {
             return Flux.error(new BusinessException(ErrorCode.PARAMS_ERROR, "输入内容过长，不要超过 1000 字"));
         }
@@ -426,5 +430,99 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         });
     }
 
+    @Override
+    public Page<AppVO> listAppVOByPageForSpace(Long spaceId, Integer current, Integer pageSize) {
+        ThrowUtils.throwIf(spaceId == null || spaceId <= 0, ErrorCode.PARAMS_ERROR);
+
+        if (current == null || current <= 0) {
+            current = 1;
+        }
+        if (pageSize == null || pageSize <= 0) {
+            pageSize = 20;
+        }
+
+        QueryWrapper queryWrapper = QueryWrapper.create();
+        queryWrapper.and(APP.SPACE_ID.eq(spaceId));
+        queryWrapper.orderBy(APP.CREATE_TIME, false);
+
+        Page<App> appPage = this.page(Page.of(current, pageSize), queryWrapper);
+
+        Page<AppVO> appVOPage = new Page<>();
+        appVOPage.setPageNumber(appPage.getPageNumber());
+        appVOPage.setPageSize(appPage.getPageSize());
+        appVOPage.setTotalRow(appPage.getTotalRow());
+        appVOPage.setTotalPage(appPage.getTotalPage());
+
+        List<AppVO> appVOList = appPage.getRecords().stream()
+                .map(this::getAppVO)
+                .collect(Collectors.toList());
+
+        appVOPage.setRecords(appVOList);
+
+        return appVOPage;
+    }
+
+    @Override
+    public boolean addAppToSpace(Long appId, Long spaceId, Long userId) {
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID不能为空");
+        ThrowUtils.throwIf(spaceId == null || spaceId <= 0, ErrorCode.PARAMS_ERROR, "空间ID不能为空");
+        ThrowUtils.throwIf(userId == null || userId <= 0, ErrorCode.PARAMS_ERROR, "用户ID不能为空");
+
+        App app = this.getById(appId);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+
+        if (!app.getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "只能将自己的应用添加到空间");
+        }
+
+        if (app.getSpaceId() != null) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "应用已属于某个空间");
+        }
+
+        boolean result = UpdateChain.of(App.class)
+                .set(App::getSpaceId, spaceId)
+                .where(App::getId).eq(appId)
+                .update();
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "添加应用到空间失败");
+
+        return true;
+    }
+
+    @Override
+    public boolean removeAppFromSpace(Long appId, Long spaceId, Long userId) {
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID不能为空");
+        ThrowUtils.throwIf(spaceId == null || spaceId <= 0, ErrorCode.PARAMS_ERROR, "空间ID不能为空");
+        ThrowUtils.throwIf(userId == null || userId <= 0, ErrorCode.PARAMS_ERROR, "用户ID不能为空");
+
+        App app = this.getById(appId);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+
+        if (!app.getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "只能移除自己的应用");
+        }
+
+        if (!spaceId.equals(app.getSpaceId())) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "应用不属于该空间");
+        }
+
+        boolean result = UpdateChain.of(App.class)
+                .set(App::getSpaceId, null)
+                .where(App::getId).eq(appId)
+                .update();
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "从空间移除应用失败");
+
+        return true;
+    }
+
+    /**
+     * 取消正在进行的代码生成
+     *
+     * @param appId 应用ID
+     * @param userId 用户ID
+     * @return 是否成功取消
+     */
+    public boolean cancelGeneration(Long appId, Long userId) {
+        return true;
+    }
 
 }

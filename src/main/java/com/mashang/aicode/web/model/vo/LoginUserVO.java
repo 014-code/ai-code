@@ -51,5 +51,10 @@ public class LoginUserVO implements Serializable {
      */
     private LocalDateTime updateTime;
 
+    /**
+     * Sa-Token
+     */
+    private String token;
+
     private static final long serialVersionUID = 1L;
 }

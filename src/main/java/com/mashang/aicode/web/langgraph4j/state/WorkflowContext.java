@@ -47,6 +47,9 @@ public class WorkflowContext implements Serializable {
     //应用ID
     private Long appId;
 
+    //应用ID
+    private Long userId;
+
     //代码文件生成路径
     private String generatedCodeDir;
 

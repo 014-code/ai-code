@@ -4,7 +4,7 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
 import com.mashang.aicode.web.exception.ErrorCode;
 import com.mashang.aicode.web.exception.ThrowUtils;
-import com.mashang.aicode.web.manager.CosManager;
+import com.mashang.aicode.web.manager.cos.CosManager;
 import com.mashang.aicode.web.service.ScreenshotService;
 import com.mashang.aicode.web.utils.WebScreenshotUtils;
 import jakarta.annotation.Resource;

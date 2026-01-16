@@ -39,5 +39,10 @@ public class AppAddRequest implements Serializable {
      */
     private String codeGenType;
 
+    /**
+     * 所属空间ID
+     */
+    private Long spaceId;
+
     private static final long serialVersionUID = 1L;
 }

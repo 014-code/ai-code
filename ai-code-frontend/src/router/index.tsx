@@ -14,11 +14,15 @@ const Chat = lazy(() => import('@/pages/Code/Chat'));
 const AppEdit = lazy(() => import('@/pages/Code/AppEdit'));
 const UserLogin = lazy(() => import('@/pages/User/Login'));
 const UserRegister = lazy(() => import('@/pages/User/Register'));
+const UserProfile = lazy(() => import('@/pages/User/Profile'));
 const NotFound = lazy(() => import('@/pages/404/index'));
 
 const AdminUser = lazy(() => import('@/pages/Admin/User'));
 const AdminApp = lazy(() => import('@/pages/Admin/App'));
 const AdminChatHistory = lazy(() => import('@/pages/Admin/ChatHistory'));
+
+const SpaceList = lazy(() => import('@/pages/Space/List'));
+const SpaceDetail = lazy(() => import('@/pages/Space/Detail'));
 
 const LoadingFallback = () => (
   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -32,6 +36,7 @@ const router = createBrowserRouter([
     children: [
       { path: 'login', element: <Suspense fallback={<LoadingFallback />}><UserLogin /></Suspense> },
       { path: 'register', element: <Suspense fallback={<LoadingFallback />}><UserRegister /></Suspense> },
+      { path: 'profile/:userId', element: <Suspense fallback={<LoadingFallback />}><UserProfile /></Suspense> },
     ],
   },
   {
@@ -39,6 +44,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Suspense fallback={<LoadingFallback />}><Home /></Suspense> },
       { path: 'home', element: <Suspense fallback={<LoadingFallback />}><Home /></Suspense> },
+      { path: 'space', element: <Suspense fallback={<LoadingFallback />}><SpaceList /></Suspense> },
       { path: 'cases', element: <Suspense fallback={<LoadingFallback />}><Cases /></Suspense> },
       { path: 'forum', element: <Suspense fallback={<LoadingFallback />}><ForumList /></Suspense> },
       {
@@ -54,6 +60,7 @@ const router = createBrowserRouter([
   },
   { path: '/forum/publish', element: <Suspense fallback={<LoadingFallback />}><ForumPublish /></Suspense> },
   { path: '/forum/detail/:id', element: <Suspense fallback={<LoadingFallback />}><ForumDetail /></Suspense> },
+  { path: '/space/:id', element: <Suspense fallback={<LoadingFallback />}><SpaceDetail /></Suspense> },
   { path: '/account/center', element: <Suspense fallback={<LoadingFallback />}><AccountCenter /></Suspense> },
   { path: '/test', element: <Suspense fallback={<LoadingFallback />}><TestVisualEditor /></Suspense> },
   { path: '/chat/:appId', element: <Suspense fallback={<LoadingFallback />}><Chat /></Suspense> },

@@ -7,6 +7,7 @@ import {
   MessageOutlined,
   CrownOutlined,
   TableOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 import Logo from '@/components/Logo';
 import Footer from '@/components/Footer';
@@ -41,6 +42,11 @@ const BasicLayout = () => {
             path: '/home',
             name: '首页',
             icon: <SmileOutlined />,
+          },
+          {
+            path: '/space',
+            name: '应用空间',
+            icon: <TeamOutlined />,
           },
           {
             path: '/cases',
