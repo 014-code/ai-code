@@ -121,6 +121,31 @@ export class VisualEditor {
   }
 
   /**
+   * 高亮显示元素（用于协同编辑）
+   * @param elementInfo 元素信息
+   * @param userName 操作用户名称
+   */
+  highlightElement(elementInfo: ElementInfo, userName: string) {
+    // 先清除之前的高亮效果
+    this.clearHighlight();
+    // 再显示新的高亮
+    this.sendMessageToIframe({
+      type: 'HIGHLIGHT_ELEMENT',
+      elementInfo,
+      userName
+    });
+  }
+
+  /**
+   * 清除高亮效果
+   */
+  clearHighlight() {
+    this.sendMessageToIframe({
+      type: 'CLEAR_HIGHLIGHT',
+    });
+  }
+
+  /**
    * 处理iframe加载完成事件
    * 根据当前编辑模式状态执行相应操作
    */
@@ -266,6 +291,26 @@ export class VisualEditor {
               pointer-events: none !important;
               z-index: -1 !important;
             }
+            .edit-highlight {
+              outline: 3px solid #ff7a45 !important;
+              outline-offset: 2px !important;
+              position: relative !important;
+            }
+            .edit-highlight::before {
+              content: attr(data-highlight-user) !important;
+              position: absolute !important;
+              top: -28px !important;
+              left: -2px !important;
+              background: #ff7a45 !important;
+              color: white !important;
+              padding: 4px 8px !important;
+              border-radius: 4px !important;
+              font-size: 12px !important;
+              font-weight: bold !important;
+              white-space: nowrap !important;
+              z-index: 10000 !important;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+            }
           \`;
           document.head.appendChild(style);
         }
@@ -370,6 +415,16 @@ export class VisualEditor {
              clearHoverEffect();
              target.classList.add('edit-hover');
              currentHoverElement = target;
+
+             // 获取元素信息并发送给父窗口
+             const elementInfo = getElementInfo(target);
+             try {
+               window.parent.postMessage({
+                 type: 'ELEMENT_HOVER',
+                 data: { elementInfo }
+               }, '*');
+             } catch {
+             }
            };
 
            // 鼠标离开处理
@@ -451,8 +506,43 @@ export class VisualEditor {
                const tip = document.getElementById('edit-tip');
                if (tip) tip.remove();
                break;
+             case 'HIGHLIGHT_ELEMENT':
+               if (event.data.elementInfo) {
+                 highlightElement(event.data.elementInfo, event.data.userName);
+               }
+               break;
+             case 'CLEAR_HIGHLIGHT':
+               clearHighlightEffect();
+               break;
            }
          });
+
+         /**
+          * 高亮显示元素（用于协同编辑）
+          * @param elementInfo 元素信息
+          * @param userName 操作用户名称
+          */
+         function highlightElement(elementInfo, userName) {
+           // 先清除之前的高亮效果
+           clearHighlightEffect();
+           // 再显示新的高亮
+           const element = document.querySelector(elementInfo.selector);
+           if (element) {
+             element.classList.add('edit-highlight');
+             element.setAttribute('data-highlight-user', userName);
+           }
+         }
+
+         /**
+          * 清除高亮效果
+          */
+         function clearHighlightEffect() {
+           const highlighted = document.querySelectorAll('.edit-highlight');
+           highlighted.forEach(el => {
+             el.classList.remove('edit-highlight');
+             el.removeAttribute('data-highlight-user');
+           });
+         }
 
          /**
           * 显示编辑模式提示

@@ -141,5 +141,15 @@ public interface ChatHistoryService extends IService<ChatHistory> {
      */
     int loadChatHistoryToMemory(Long appId, MessageWindowChatMemory chatMemory, int maxCount);
 
+    /**
+     * 更新聊天记录状态
+     *
+     * @param appId  应用ID
+     * @param userId 用户ID
+     * @param status 状态值
+     * @return 是否成功
+     */
+    boolean updateChatHistoryStatus(Long appId, Long userId, Integer status);
+
 
 }

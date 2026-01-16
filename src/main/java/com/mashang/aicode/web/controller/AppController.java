@@ -39,6 +39,7 @@ import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
@@ -128,6 +129,7 @@ public class AppController {
         App app = new App();
         BeanUtil.copyProperties(appAddRequest, app);
         app.setUserId(loginUser.getId());
+        app.setSpaceId(appAddRequest.getSpaceId());
 //        app.setPriority(0); // 默认非精选
         app.setPriority(0); // 默认优先级
         //ai自动选择应用类型
@@ -392,6 +394,27 @@ public class AppController {
                                 .data("[DONE]")
                                 .build()
                 ));
+    }
+
+    /**
+     * 取消正在进行的代码生成
+     *
+     * @param appId   应用 ID
+     * @param request 请求对象
+     * @return 取消结果
+     */
+    @PostMapping("/chat/cancel")
+    public BaseResponse<Boolean> cancelCodeGeneration(@RequestParam Long appId,
+                                                      HttpServletRequest request) {
+        // 参数校验
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID无效");
+        // 获取当前登录用户
+        User loginUser = userService.getLoginUser(request);
+
+        // 执行取消操作
+        boolean success = appService.cancelGeneration(appId, loginUser.getId());
+
+        return ResultUtils.success(success);
     }
 
     /**

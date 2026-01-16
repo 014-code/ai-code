@@ -50,6 +50,7 @@ declare namespace API {
     userRole?: string;
     createTime?: string;
     updateTime?: string;
+    token?: string;
   }
 
   interface UserVO {
@@ -63,7 +64,7 @@ declare namespace API {
   }
 
   interface App {
-    id?: number;
+    id?: string;
     appName?: string;
     appType?: string;
     pageViews?: number;
@@ -73,7 +74,7 @@ declare namespace API {
     deployKey?: string;
     deployedTime?: string;
     priority?: number;
-    userId?: number;
+    userId?: string;
     editTime?: string;
     createTime?: string;
     updateTime?: string;
@@ -90,7 +91,7 @@ declare namespace API {
   }
 
   interface AppDeployRequest {
-    appId?: number;
+    appId?: string;
   }
 
   interface AppQueryRequest {
@@ -98,13 +99,15 @@ declare namespace API {
     pageSize?: number;
     sortField?: string;
     sortOrder?: string;
-    id?: number;
+    id?: string;
     appName?: string;
     appDesc?: string;
     codeGenType?: string;
-    userId?: number;
+    userId?: string;
     isFeatured?: number;
     searchKey?: string;
+    appType?: string;
+    spaceId?: string;
   }
 
   interface AppTypeVO {
@@ -115,7 +118,7 @@ declare namespace API {
   }
 
   interface AppUpdateRequest {
-    id?: number;
+    id?: string;
     appName?: string;
     appDesc?: string;
     appIcon?: string;
@@ -124,7 +127,7 @@ declare namespace API {
   }
 
   interface AppVO {
-    id?: number;
+    id?: string;
     appName?: string;
     appType?: string;
     appDesc?: string;
@@ -133,7 +136,7 @@ declare namespace API {
     appCover?: string;
     initPrompt?: string;
     codeGenType?: string;
-    userId?: number;
+    userId?: string;
     user?: UserVO;
     cover?: string;
     deployKey?: string;
@@ -142,6 +145,7 @@ declare namespace API {
     editTime?: string;
     createTime?: string;
     updateTime?: string;
+    spaceId?: string;
   }
 
   interface BaseResponseApp {
@@ -288,6 +292,22 @@ declare namespace API {
   interface chatToGenCodeParams {
     appId: number;
     message: string;
+  }
+
+  interface cancelCodeGenerationParams {
+    appId: number;
+  }
+
+  interface DialogueRequestMessage {
+    type: string;
+    editAction?: string;
+  }
+
+  interface DialogueResponseMessage {
+    type: string;
+    message?: string;
+    editAction?: string;
+    user?: API.UserVO;
   }
 
   interface DeleteRequest {
@@ -669,5 +689,91 @@ declare namespace API {
     code?: number;
     data?: PresetPromptVO[];
     message?: string;
+  }
+
+  interface SpaceVO {
+    id?: string;
+    spaceName?: string;
+    spaceType?: number;
+    spaceTypeText?: string;
+    ownerId?: string;
+    ownerName?: string;
+    description?: string;
+    memberCount?: number;
+    appCount?: number;
+    createTime?: string;
+    updateTime?: string;
+  }
+
+  interface SpaceUserVO {
+    id?: string;
+    spaceId?: string;
+    userId?: string;
+    userName?: string;
+    userAvatar?: string;
+    role?: string;
+    roleText?: string;
+    permissions?: string;
+    joinTime?: string;
+  }
+
+  interface SpaceAddRequest {
+    spaceName?: string;
+    spaceType?: number;
+    spaceDesc?: string;
+  }
+
+  interface SpaceUpdateRequest {
+    id?: string;
+    spaceName?: string;
+    description?: string;
+  }
+
+  interface SpaceQueryRequest {
+    pageNum?: number;
+    pageSize?: number;
+    id?: string;
+    spaceName?: string;
+    spaceType?: number;
+    ownerId?: string;
+    sortField?: string;
+    sortOrder?: string;
+  }
+
+  interface SpaceMemberRequest {
+    spaceId?: string;
+    userId?: string;
+  }
+
+  interface SpaceAppRequest {
+    spaceId?: string;
+    appId?: string;
+  }
+
+  interface BaseResponseSpaceVO {
+    code?: number;
+    data?: SpaceVO;
+    message?: string;
+  }
+
+  interface BaseResponseListSpaceUserVO {
+    code?: number;
+    data?: SpaceUserVO[];
+    message?: string;
+  }
+
+  interface BaseResponsePageSpaceVO {
+    code?: number;
+    data?: PageSpaceVO;
+    message?: string;
+  }
+
+  interface PageSpaceVO {
+    records?: SpaceVO[];
+    pageNumber?: number;
+    pageSize?: number;
+    totalPage?: number;
+    totalRow?: number;
+    optimizeCountQuery?: boolean;
   }
 }

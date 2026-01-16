@@ -95,5 +95,41 @@ public interface AppService extends IService<App> {
      */
     void generateAppScreenshotAsync(Long appId, String appUrl);
 
+    /**
+     * 分页获取空间下的应用列表
+     *
+     * @param spaceId   空间ID
+     * @param current   当前页
+     * @param pageSize  每页大小
+     * @return 分页结果
+     */
+    Page<AppVO> listAppVOByPageForSpace(Long spaceId, Integer current, Integer pageSize);
 
+    /**
+     * 将应用添加到空间
+     *
+     * @param appId     应用ID
+     * @param spaceId   空间ID
+     * @param userId    用户ID
+     * @return 操作结果
+     */
+    boolean addAppToSpace(Long appId, Long spaceId, Long userId);
+
+    /**
+     * 从空间移除应用
+     *
+     * @param appId     应用ID
+     * @param spaceId   空间ID
+     * @param userId    用户ID
+     * @return 操作结果
+     */
+    boolean removeAppFromSpace(Long appId, Long spaceId, Long userId);
+
+    /**
+     * 取消代码生成
+     * @param appId
+     * @param id
+     * @return
+     */
+    boolean cancelGeneration(Long appId, Long id);
 }

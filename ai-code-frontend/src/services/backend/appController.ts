@@ -28,6 +28,19 @@ export async function chatToGenCode(
 }
 
 /**
+ * 取消正在进行的代码生成
+ * @param params 取消代码生成参数
+ * @param options 额外配置
+ * @returns Promise<API.BaseResponseBoolean>
+ */
+export async function cancelCodeGeneration(
+  params: API.cancelCodeGenerationParams,
+  options?: { [key: string]: any },
+) {
+  return request.post<any, API.BaseResponseBoolean>('/app/chat/cancel', null, { params, ...options });
+}
+
+/**
  * 管理员删除应用
  * @param body 删除请求参数
  * @param options 额外配置

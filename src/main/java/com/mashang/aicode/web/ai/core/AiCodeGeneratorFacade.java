@@ -1,6 +1,9 @@
 package com.mashang.aicode.web.ai.core;
 
 import cn.hutool.json.JSONUtil;
+import com.mashang.aicode.web.ai.core.parser.CodeParserExecutor;
+import com.mashang.aicode.web.ai.core.parser.MultiFileCodeParser;
+import com.mashang.aicode.web.ai.core.saver.CodeFileSaverExecutor;
 import com.mashang.aicode.web.ai.service.AiCodeGeneratorService;
 import com.mashang.aicode.web.ai.factory.AiCodeGeneratorServiceFactory;
 import com.mashang.aicode.web.ai.model.HtmlCodeResult;
@@ -52,14 +55,14 @@ public class AiCodeGeneratorFacade {
     private File generateAndSaveHtmlCode(String userMessage, Long appId) {
         AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId);
         HtmlCodeResult result = aiCodeGeneratorService.generateHtmlCode(Math.toIntExact(appId), userMessage);
-        return CodeFileSaver.saveHtmlCodeResult(result, appId);
+        return CodeFileSaverExecutor.executeSaver(result, CodeGenTypeEnum.HTML, appId);
     }
 
 
     private File generateAndSaveMultiFileCode(String userMessage, Long appId) {
         AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId);
         MultiFileCodeResult result = aiCodeGeneratorService.generateMultiFileCode(userMessage);
-        return CodeFileSaver.saveMultiFileCodeResult(result, appId);
+        return CodeFileSaverExecutor.executeSaver(result, CodeGenTypeEnum.MULTI_FILE, appId);
     }
 
     /**
@@ -77,33 +80,12 @@ public class AiCodeGeneratorFacade {
 
             try {
                 String completeHtmlCode = codeBuilder.toString();
-                HtmlCodeResult htmlCodeResult = CodeParser.parseHtmlCode(completeHtmlCode);
+                HtmlCodeResult htmlCodeResult = (HtmlCodeResult) CodeParserExecutor.executeParser(completeHtmlCode, CodeGenTypeEnum.HTML);
 
-                File savedDir = CodeFileSaver.saveHtmlCodeResult(htmlCodeResult, appId);
+                File savedDir = CodeFileSaverExecutor.executeSaver(htmlCodeResult, CodeGenTypeEnum.HTML, appId);
                 log.info("保存成功，路径为：" + savedDir.getAbsolutePath());
             } catch (Exception e) {
                 log.error("保存失败: {}", e.getMessage());
-            }
-        });
-    }
-
-    /**
-     * ai多文件流式返回
-     *
-     * @param userMessage
-     * @return
-     */
-    private Flux<String> generateAndSaveMultiFileCodeStream(String userMessage, Long appId) {
-        AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId);
-        Flux<String> result = aiCodeGeneratorService.generateMultiFileCodeStream(userMessage);
-        StringBuilder codeBuilder = new StringBuilder();
-        return result.doOnNext(codeBuilder::append).doOnComplete(() -> {
-            try {
-                String completeMultiFileCode = codeBuilder.toString();
-                MultiFileCodeResult multiFileResult = CodeParser.parseMultiFileCode(completeMultiFileCode);
-                File savedDir = CodeFileSaver.saveMultiFileCodeResult(multiFileResult, appId);
-            } catch (Exception e) {
-                log.error("保存失败: {}", e.getMessage(), e);
             }
         });
     }
@@ -129,8 +111,8 @@ public class AiCodeGeneratorFacade {
                 yield codeStream.doOnNext(codeBuilder::append).doOnComplete(() -> {
                     try {
                         String completeHtmlCode = codeBuilder.toString();
-                        HtmlCodeResult htmlCodeResult = CodeParser.parseHtmlCode(completeHtmlCode);
-                        File savedDir = CodeFileSaver.saveHtmlCodeResult(htmlCodeResult, appId);
+                        HtmlCodeResult htmlCodeResult = (HtmlCodeResult) CodeParserExecutor.executeParser(completeHtmlCode, CodeGenTypeEnum.HTML);
+                        File savedDir = CodeFileSaverExecutor.executeSaver(htmlCodeResult, CodeGenTypeEnum.HTML, appId);
                         log.info("保存成功，路径为：" + savedDir.getAbsolutePath());
                     } catch (Exception e) {
                         log.error("保存失败: {}", e.getMessage());
@@ -143,8 +125,8 @@ public class AiCodeGeneratorFacade {
                 yield codeStream.doOnNext(codeBuilder::append).doOnComplete(() -> {
                     try {
                         String completeMultiFileCode = codeBuilder.toString();
-                        MultiFileCodeResult multiFileResult = CodeParser.parseMultiFileCode(completeMultiFileCode);
-                        File savedDir = CodeFileSaver.saveMultiFileCodeResult(multiFileResult, appId);
+                        MultiFileCodeResult multiFileResult = (MultiFileCodeResult) CodeParserExecutor.executeParser(completeMultiFileCode, CodeGenTypeEnum.MULTI_FILE);
+                        File savedDir = CodeFileSaverExecutor.executeSaver(multiFileResult, CodeGenTypeEnum.MULTI_FILE, appId);
                         log.info("保存成功，路径为：" + savedDir.getAbsolutePath());
                     } catch (Exception e) {
                         log.error("保存失败: {}", e.getMessage(), e);
@@ -187,8 +169,8 @@ public class AiCodeGeneratorFacade {
                 yield codeStream.doOnNext(codeBuilder::append).doOnComplete(() -> {
                     try {
                         String completeHtmlCode = codeBuilder.toString();
-                        HtmlCodeResult htmlCodeResult = CodeParser.parseHtmlCode(completeHtmlCode);
-                        File savedDir = CodeFileSaver.saveHtmlCodeResult(htmlCodeResult, appId);
+                        HtmlCodeResult htmlCodeResult = (HtmlCodeResult) CodeParserExecutor.executeParser(completeHtmlCode, CodeGenTypeEnum.HTML);
+                        File savedDir = CodeFileSaverExecutor.executeSaver(htmlCodeResult, CodeGenTypeEnum.HTML, appId);
                         log.info("保存成功，路径为：" + savedDir.getAbsolutePath());
                     } catch (Exception e) {
                         log.error("保存失败: {}", e.getMessage());
@@ -201,8 +183,8 @@ public class AiCodeGeneratorFacade {
                 yield codeStream.doOnNext(codeBuilder::append).doOnComplete(() -> {
                     try {
                         String completeMultiFileCode = codeBuilder.toString();
-                        MultiFileCodeResult multiFileResult = CodeParser.parseMultiFileCode(completeMultiFileCode);
-                        File savedDir = CodeFileSaver.saveMultiFileCodeResult(multiFileResult, appId);
+                        MultiFileCodeResult multiFileResult = (MultiFileCodeResult) CodeParserExecutor.executeParser(completeMultiFileCode, CodeGenTypeEnum.MULTI_FILE);
+                        File savedDir = CodeFileSaverExecutor.executeSaver(multiFileResult, CodeGenTypeEnum.MULTI_FILE, appId);
                         log.info("保存成功，路径为：" + savedDir.getAbsolutePath());
                     } catch (Exception e) {
                         log.error("保存失败: {}", e.getMessage());
@@ -232,21 +214,16 @@ public class AiCodeGeneratorFacade {
      */
     private Flux<String> processTokenStream(TokenStream tokenStream, Long appId) {
         return Flux.create(sink -> {
-            log.info("processTokenStream called, appId: {}", appId);
             tokenStream.onPartialResponse((String partialResponse) -> {
-                        log.debug("onPartialResponse called, partialResponse: {}", partialResponse);
                         AiResponseMessage aiResponseMessage = new AiResponseMessage(partialResponse);
                         sink.next(JSONUtil.toJsonStr(aiResponseMessage));
                     })
                     .onPartialToolExecutionRequest((index, toolExecutionRequest) -> {
-                        log.info("onPartialToolExecutionRequest called, index: {}, toolName: {}, arguments: {}", index, toolExecutionRequest.name(), toolExecutionRequest.arguments());
                         ToolRequestMessage toolRequestMessage = new ToolRequestMessage(toolExecutionRequest);
                         String json = JSONUtil.toJsonStr(toolRequestMessage);
-                        log.info("Sending tool request message: {}", json);
                         sink.next(json);
                     })
                     .onToolExecuted((ToolExecution toolExecution) -> {
-                        log.info("onToolExecuted called, toolName: {}", toolExecution.request().name());
                         ToolExecutedMessage toolExecutedMessage = new ToolExecutedMessage(toolExecution);
                         sink.next(JSONUtil.toJsonStr(toolExecutedMessage));
                     })

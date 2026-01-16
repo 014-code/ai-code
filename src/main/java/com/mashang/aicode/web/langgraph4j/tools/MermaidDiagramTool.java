@@ -9,7 +9,7 @@ import com.mashang.aicode.web.exception.BusinessException;
 import com.mashang.aicode.web.exception.ErrorCode;
 import com.mashang.aicode.web.langgraph4j.state.ImageCategoryEnum;
 import com.mashang.aicode.web.langgraph4j.state.ImageResource;
-import com.mashang.aicode.web.manager.CosManager;
+import com.mashang.aicode.web.manager.cos.CosManager;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import jakarta.annotation.Resource;

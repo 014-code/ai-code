@@ -41,7 +41,10 @@ import java.time.Duration;
 public class AiCodeGeneratorServiceFactory {
 
     @Resource(name = "openAiChatModel")
-    private ChatModel chatModel;
+    private ChatModel openAiChatModel;
+
+    @Resource(name = "ollamaChatModel")
+    private ChatModel ollamaChatModel;
 
     @Resource
     private RedisChatMemoryStore redisChatMemoryStore;
@@ -112,7 +115,7 @@ public class AiCodeGeneratorServiceFactory {
             case HTML, MULTI_FILE -> {
                 StreamingChatModel openAiModel = SpringContextUtil.getBean("streamingChatModelPrototype", StreamingChatModel.class);
                 yield AiServices.builder(AiCodeGeneratorService.class)
-                        .chatModel(chatModel)
+                        .chatModel(ollamaChatModel)
                         .streamingChatModel(openAiModel)
                         .chatMemory(chatMemory)
 //                        .inputGuardrails(new PromptSafetyInputGuardrail())

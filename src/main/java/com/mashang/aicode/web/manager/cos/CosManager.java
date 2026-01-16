@@ -1,4 +1,4 @@
-package com.mashang.aicode.web.manager;
+package com.mashang.aicode.web.manager.cos;
 
 import com.mashang.aicode.web.config.CosClientConfig;
 import com.qcloud.cos.COSClient;

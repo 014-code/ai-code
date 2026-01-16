@@ -6,7 +6,7 @@ import com.mashang.aicode.web.common.ResultUtils;
 import com.mashang.aicode.web.constant.UserConstant;
 import com.mashang.aicode.web.exception.BusinessException;
 import com.mashang.aicode.web.exception.ErrorCode;
-import com.mashang.aicode.web.manager.CosManager;
+import com.mashang.aicode.web.manager.cos.CosManager;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.PostMapping;

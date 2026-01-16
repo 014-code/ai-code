@@ -151,4 +151,47 @@ public class ForumPostController {
         return ResultUtils.success(hotPosts);
     }
 
+    /**
+     * 获取用户发布的帖子列表
+     *
+     * @param queryRequest 查询请求
+     * @param request HTTP请求
+     * @return 帖子分页列表
+     */
+    @PostMapping("/user/list/page/vo")
+    public BaseResponse<Page<ForumPostVO>> getUserForumPostList(@RequestBody ForumPostQueryRequest queryRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(queryRequest == null, ErrorCode.PARAMS_ERROR);
+
+        // 获取当前登录用户
+        User loginUser = userService.getLoginUser(request);
+        // 设置用户ID为当前登录用户ID
+        queryRequest.setUserId(loginUser.getId());
+
+        Page<ForumPostVO> forumPostVOPage = forumPostService.listForumPostVOByPage(queryRequest);
+        return ResultUtils.success(forumPostVOPage);
+    }
+
+    /**
+     * 获取指定用户发布的帖子列表
+     *
+     * @param userId 用户ID
+     * @param pageNum 页码
+     * @param pageSize 每页大小
+     * @return 帖子分页列表
+     */
+    @GetMapping("/user/{userId}/list/page/vo")
+    public BaseResponse<Page<ForumPostVO>> getSpecificUserForumPostList(
+            @PathVariable Long userId,
+            @RequestParam(value = "pageNum", defaultValue = "1") Integer pageNum,
+            @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize) {
+        ThrowUtils.throwIf(userId == null || userId <= 0, ErrorCode.PARAMS_ERROR);
+
+        ForumPostQueryRequest queryRequest = new ForumPostQueryRequest();
+        queryRequest.setUserId(userId);
+        queryRequest.setPageNum(pageNum);
+        queryRequest.setPageSize(pageSize);
+
+        Page<ForumPostVO> forumPostVOPage = forumPostService.listForumPostVOByPage(queryRequest);
+        return ResultUtils.success(forumPostVOPage);
+    }
 }

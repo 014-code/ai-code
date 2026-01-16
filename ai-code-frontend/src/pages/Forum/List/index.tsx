@@ -3,9 +3,9 @@
  * 显示帖子列表，支持搜索、无限滚动加载和发布帖子功能
  */
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Card, message, List, Tag, Avatar, Space, Input, Empty, Spin, Button } from 'antd';
+import { Card, message, Tag, Avatar, Space, Input, Empty, Spin, Button, Row, Col } from 'antd';
 import { EyeOutlined, LikeOutlined, MessageOutlined, PlusOutlined, AppstoreOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import InteractiveBackground from '@/components/InteractiveBackground';
 import HotPosts from './components/HotPosts';
 import { listForumPostVOByPage } from '@/services/backend/forumPostController';
@@ -187,37 +187,21 @@ const ForumList: React.FC = () => {
 
           {/* 帖子列表卡片 */}
           <Card loading={loading} className={styles.postsCard}>
-            <List
-              dataSource={posts}
-              renderItem={(post) => (
-                <List.Item
-                  key={post.id}
-                  className={styles.postItem}
-                  onClick={() => handlePostClick(post.id!)}
-                >
-                  <div className={styles.postContent}>
+            <Row gutter={[16, 16]}>
+              {posts.map((post) => (
+                <Col xs={24} sm={12} md={12} lg={12} xl={12} key={post.id}>
+                  <Card
+                    className={styles.postCard}
+                    hoverable
+                    onClick={() => handlePostClick(post.id!)}
+                  >
                     {/* 帖子头部 */}
                     <div className={styles.postHeader}>
                       <div className={styles.postTitle}>
-                        {/* 置顶标签 */}
                         {post.isPinned === 1 && (
                           <Tag color="red" className={styles.pinnedTag}>置顶</Tag>
                         )}
                         <span className={styles.titleText}>{post.title}</span>
-                      </div>
-                      {/* 帖子元数据 */}
-                      <div className={styles.postMeta}>
-                        <Space size="large">
-                          <span className={styles.metaItem}>
-                            <EyeOutlined /> {post.viewCount || 0}
-                          </span>
-                          <span className={styles.metaItem}>
-                            <LikeOutlined /> {post.likeCount || 0}
-                          </span>
-                          <span className={styles.metaItem}>
-                            <MessageOutlined /> {post.commentCount || 0}
-                          </span>
-                        </Space>
                       </div>
                     </div>
                     
@@ -244,16 +228,33 @@ const ForumList: React.FC = () => {
                     
                     {/* 帖子底部信息 */}
                     <div className={styles.postFooter}>
+                      <Space size="middle">
+                        <span className={styles.metaItem}>
+                          <EyeOutlined /> {post.viewCount || 0}
+                        </span>
+                        <span className={styles.metaItem}>
+                          <LikeOutlined /> {post.likeCount || 0}
+                        </span>
+                        <span className={styles.metaItem}>
+                          <MessageOutlined /> {post.commentCount || 0}
+                        </span>
+                      </Space>
                       <Space>
-                        <Avatar size="small" src={post.user?.userAvatar} icon={post.user?.userAvatar ? undefined : 'user'} />
-                        <span className={styles.authorName}>{post.user?.userName}</span>
+                        <Link 
+                          to={`/user/profile/${post.user?.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ display: 'flex', alignItems: 'center' }}
+                        >
+                          <Avatar size="small" src={post.user?.userAvatar} icon={post.user?.userAvatar ? undefined : 'user'} />
+                          <span className={styles.authorName}>{post.user?.userName}</span>
+                        </Link>
                         <span className={styles.createTime}>{post.createTime}</span>
                       </Space>
                     </div>
-                  </div>
-                </List.Item>
-              )}
-            />
+                  </Card>
+                </Col>
+              ))}
+            </Row>
             
             {/* 空状态 */}
             {!posts.length && !loading && (

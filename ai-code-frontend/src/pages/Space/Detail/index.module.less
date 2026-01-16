@@ -1,0 +1,222 @@
+.spaceDetailContainer {
+  padding: 24px;
+  min-height: 100vh;
+  background: #f0f2f5;
+
+  .ant-card {
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e8e8e8;
+    margin-bottom: 16px;
+  }
+
+  .ant-card-head {
+    border-bottom: 1px solid #e8e8e8;
+    background: #fafafa;
+
+    .ant-card-head-title {
+      color: #262626;
+      font-size: 16px;
+      font-weight: 600;
+    }
+  }
+
+  .ant-card-body {
+    padding: 20px;
+  }
+
+  .spaceDesc {
+    color: #595959;
+    margin-bottom: 16px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .searchSection {
+    margin-bottom: 16px;
+  }
+
+  .appCardWrapper {
+    position: relative;
+
+    .removeButton {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      z-index: 10;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    &:hover .removeButton {
+      opacity: 1;
+    }
+  }
+
+  .emptyState {
+    text-align: center;
+    padding: 40px 0;
+    color: #8c8c8c;
+    font-size: 14px;
+  }
+
+  .memberCard {
+    position: sticky;
+    top: 24px;
+
+    .memberList {
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .memberItem {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid #f0f0f0;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      .memberInfo {
+        flex: 1;
+        min-width: 0;
+
+        .memberName {
+          font-size: 14px;
+          font-weight: 500;
+          margin-bottom: 4px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      }
+    }
+
+    .emptyMembers {
+      text-align: center;
+      padding: 32px 0;
+      color: #8c8c8c;
+
+      p {
+        margin-top: 8px;
+        font-size: 14px;
+      }
+    }
+  }
+
+  .addAppModalContent {
+    .modalHeader {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 0 12px 0;
+      border-bottom: 1px solid #f0f0f0;
+      margin-bottom: 12px;
+
+      .modalTitle {
+        font-size: 15px;
+        font-weight: 600;
+        color: #262626;
+      }
+    }
+  }
+
+  .appCardItem {
+    transition: all 0.2s ease;
+    border: 1px solid #e8e8e8;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      border-color: #1890ff;
+    }
+
+    .ant-card-cover {
+      border-radius: 8px 8px 0 0;
+    }
+
+    .ant-card-body {
+      padding: 12px;
+    }
+
+    .ant-card-meta-title {
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .ant-card-meta-description {
+      margin-bottom: 0;
+      font-size: 12px;
+    }
+  }
+
+  .selectedAppCard {
+    border: 2px solid #1890ff !important;
+    box-shadow: 0 4px 12px rgba(24, 144, 255, 0.2) !important;
+    transform: translateY(-2px);
+    background: #f0f9ff;
+
+    .ant-card-meta-title {
+      color: #1890ff;
+    }
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3) !important;
+    }
+  }
+}
+
+.container {
+  padding: 24px;
+}
+
+.spaceInfoCard {
+  background: #fff;
+  border: 1px solid #e8e8e8;
+
+  .ant-card-body {
+    color: #262626;
+  }
+
+  h3 {
+    color: #262626 !important;
+    margin-bottom: 8px !important;
+  }
+
+  p {
+    color: #595959 !important;
+    margin-bottom: 12px !important;
+  }
+
+  .ant-tag {
+    background: #f0f0f0;
+    border-color: #d9d9d9;
+    color: #595959;
+  }
+}
+
+.membersCard,
+.appsCard {
+  .ant-card-head {
+    background: #fafafa;
+    border-bottom: 1px solid #e8e8e8;
+
+    .ant-card-head-title {
+      color: #262626;
+    }
+  }
+}
+
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e8e8e8;
+}

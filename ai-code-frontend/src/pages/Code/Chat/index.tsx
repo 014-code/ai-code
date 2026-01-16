@@ -2,11 +2,12 @@
  * 应用对话页面
  * 提供AI代码生成、可视化编辑、应用部署和预览功能
  */
-import React, {useState, useEffect, useRef} from 'react';
+import {useState, useEffect, useRef} from 'react';
 import {useParams} from 'react-router-dom';
-import {Button, Card, Input, message, Space, Typography, Avatar, Spin, Tag} from 'antd';
-import {LoginOutlined, SendOutlined, ReloadOutlined} from '@ant-design/icons';
-import {deployApp, getAppVoById} from "@/services/backend/appController";
+import {Button, Card, Input, message, Space, Typography, Avatar, Spin, Tag, Modal} from 'antd';
+import {LoginOutlined, SendOutlined, ReloadOutlined, StopOutlined, TeamOutlined, WifiOutlined, DisconnectOutlined} from '@ant-design/icons';
+const { Group: AvatarGroup } = Avatar;
+import {deployApp, getAppVoById, cancelCodeGeneration} from "@/services/backend/appController";
 import {
   listAppChatHistory,
   listLatestChatHistoryVo,
@@ -20,6 +21,8 @@ import VisualEditorPanel from "@/components/VisualEditor";
 import Logo from "@/components/Logo";
 import CommentSection from "@/components/CommentSection";
 import InteractiveBackground from "@/components/InteractiveBackground";
+import AppEditWebSocket from '@/utils/websocket';
+import { NotificationTypeEnum, EditStatusEnum, InteractionActionEnum, DeployActionEnum } from '@/enums/actionEnum';
 import styles from './index.module.less';
 
 const {TextArea} = Input, {Title, Text} = Typography;
@@ -64,6 +67,12 @@ const ChatPage: React.FC = () => {
   const [isInitialLoad, setIsInitialLoad] = useState<boolean>(true);  // 是否首次加载
   const [hasSentUrlPrompt, setHasSentUrlPrompt] = useState<boolean>(false);  // 是否已发送URL中的提示词
   const [isInitialized, setIsInitialized] = useState<boolean>(false);  // 是否已初始化
+  const [websocket, setWebsocket] = useState<AppEditWebSocket | null>(null);  // WebSocket实例
+  const [onlineUsers, setOnlineUsers] = useState<any[]>([]);  // 在线用户列表
+  const [onlineUsersVisible, setOnlineUsersVisible] = useState<boolean>(false);  // 在线用户列表弹窗显示状态
+  const [currentEditingUser, setCurrentEditingUser] = useState<any>(null);  // 当前编辑用户
+  const [isOtherUserGenerating, setIsOtherUserGenerating] = useState<boolean>(false);  // 是否有其他用户正在生成
+  const [otherGeneratingUser, setOtherGeneratingUser] = useState<any>(null);  // 其他生成用户
 
   // 引用管理
   const messagesEndRef = useRef<HTMLDivElement>(null);  // 消息滚动到底部的引用
@@ -182,8 +191,9 @@ const ChatPage: React.FC = () => {
       }
 
       // 如果没有消息且是应用所有者，自动发送初始消息
+      // 只有在没有从 URL 发送过消息时才自动发送
       if (sortedMessages.length === 0 && appInfo && loginUser &&
-        appInfo.userId === loginUser.id && !appInfo.deployKey) {
+        appInfo.userId === loginUser.id && !appInfo.deployKey && !hasSentUrlPrompt) {
         autoSendInitMessage();
       }
     }).catch(error => {
@@ -350,7 +360,14 @@ const ChatPage: React.FC = () => {
         user: loginUser as any
       };
 
-      console.log("应用id！！！", userMessage.appId);
+      // 如果在协同编辑模式，发送WebSocket消息通知其他用户
+      if (websocket && websocket.isActive()) {
+        websocket.sendMessage({
+          type: InteractionActionEnum.SEND_MESSAGE,
+          message: finalMessageContent,
+          user: loginUser
+        });
+      }
 
       // 添加用户消息到列表
       setMessages(prev => [...prev, userMessage]);
@@ -422,6 +439,39 @@ const ChatPage: React.FC = () => {
       eventSource.onmessage = function (event) {
         if (streamCompleted) return;
 
+        // 检查是否是结束消息
+        if (event.data === '[DONE]') {
+          if (streamCompleted) return;
+
+          streamCompleted = true;
+          closeES();
+          setLoading(false);
+          setIsStreaming(false);
+
+          // 滚动到底部
+          setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({behavior: 'smooth'});
+          }, 100);
+
+          // 更新应用信息并检查网站状态
+          setTimeout(async () => {
+            await getAppVoById({id: appId}).then(res => {
+              setAppInfo(res.data);
+            });
+            checkAndShowWebsite();
+          }, 1000);
+
+          // 自动部署
+          handleDeploy().then(() => {
+            resolve();
+          }).catch((error) => {
+            console.error('自动部署失败：', error);
+            message.error('自动部署失败：' + (error.message || '未知错误'));
+            resolve();
+          });
+          return;
+        }
+
         try {
           const parsed = JSON.parse(event.data);
           const content = parsed.d;
@@ -438,38 +488,6 @@ const ChatPage: React.FC = () => {
           handleError(error);
         }
       };
-
-      // 完成事件
-      eventSource.addEventListener('done', function () {
-        if (streamCompleted) return;
-
-        streamCompleted = true;
-        closeES();
-        setLoading(false);
-        setIsStreaming(false);
-
-        // 滚动到底部
-        setTimeout(() => {
-          messagesEndRef.current?.scrollIntoView({behavior: 'smooth'});
-        }, 100);
-
-        // 更新应用信息并检查网站状态
-        setTimeout(async () => {
-          await getAppVoById({id: appId}).then(res => {
-            setAppInfo(res.data);
-          });
-          checkAndShowWebsite();
-        }, 1000);
-
-        // 自动部署
-        handleDeploy().then(() => {
-          resolve();
-        }).catch((error) => {
-          console.error('自动部署失败：', error);
-          message.error('自动部署失败：' + (error.message || '未知错误'));
-          resolve();
-        });
-      });
 
       // 业务错误事件
       eventSource.addEventListener('business-error', function (event: MessageEvent) {
@@ -536,6 +554,15 @@ const ChatPage: React.FC = () => {
           setDeployUrl(res.data);
           message.success('部署成功');
           setShowPreview(true);
+
+          // 如果在协同编辑模式，发送WebSocket消息通知其他用户
+          if (websocket && websocket.isActive()) {
+            websocket.sendMessage({
+              type: DeployActionEnum.DEPLOY_PROJECT,
+              user: loginUser
+            });
+          }
+
           resolve();
         }
       }).catch(err => {
@@ -548,6 +575,25 @@ const ChatPage: React.FC = () => {
   };
 
   /**
+   * 取消代码生成
+   */
+  const handleCancelGeneration = async () => {
+    if (!appId) {
+      message.error('应用不存在');
+      return;
+    }
+
+    try {
+      await cancelCodeGeneration({appId: Number(appId)});
+      message.success('已取消生成');
+      setLoading(false);
+      setIsStreaming(false);
+    } catch (error: any) {
+      message.error('取消失败：' + (error.message || '未知错误'));
+    }
+  };
+
+  /**
    * 切换编辑模式
    */
   const toggleEditMode = () => {
@@ -557,13 +603,263 @@ const ChatPage: React.FC = () => {
   };
 
   /**
+   * 进入协同编辑
+   */
+  const enterCollaborativeEdit = () => {
+    if (!appId) {
+      message.warning('应用不存在');
+      return;
+    }
+
+    if (!websocket) {
+      const ws = new AppEditWebSocket(appId);
+      setWebsocket(ws);
+
+      ws.on('open', () => {
+        message.success('WebSocket连接已建立');
+        // 连接成功后发送进入编辑消息
+        ws.sendMessage({
+          type: EditStatusEnum.ENTER_EDIT,
+        });
+        message.success('已进入协同编辑模式');
+      });
+
+      ws.on(NotificationTypeEnum.INFO, (data: any) => {
+        console.log('收到INFO消息:', data);
+        handleWebSocketMessage(data);
+      });
+
+      ws.on(EditStatusEnum.ENTER_EDIT, (data: any) => {
+        console.log('收到ENTER_EDIT消息:', data);
+        handleWebSocketMessage(data);
+      });
+
+      ws.on(EditStatusEnum.EXIT_EDIT, (data: any) => {
+        console.log('收到EXIT_EDIT消息:', data);
+        handleWebSocketMessage(data);
+      });
+
+      ws.on(EditStatusEnum.EDIT_ACTION, (data: any) => {
+        console.log('收到EDIT_ACTION消息:', data);
+        handleWebSocketMessage(data);
+      });
+
+      ws.on(InteractionActionEnum.SEND_MESSAGE, (data: any) => {
+        console.log('收到SEND_MESSAGE消息:', data);
+        handleWebSocketMessage(data);
+      });
+
+      ws.on(InteractionActionEnum.HOVER_ELEMENT, (data: any) => {
+        console.log('收到HOVER_ELEMENT消息:', data);
+        handleWebSocketMessage(data);
+      });
+
+      ws.on(InteractionActionEnum.SELECT_ELEMENT, (data: any) => {
+        console.log('收到SELECT_ELEMENT消息:', data);
+        handleWebSocketMessage(data);
+      });
+
+      ws.on(InteractionActionEnum.CLEAR_ELEMENT, (data: any) => {
+        console.log('收到CLEAR_ELEMENT消息:', data);
+        handleWebSocketMessage(data);
+      });
+
+      ws.on(DeployActionEnum.DEPLOY_PROJECT, (data: any) => {
+        console.log('收到DEPLOY_PROJECT消息:', data);
+        handleWebSocketMessage(data);
+      });
+
+      ws.on(DeployActionEnum.STOP_RESPONSE, (data: any) => {
+        console.log('收到STOP_RESPONSE消息:', data);
+        handleWebSocketMessage(data);
+      });
+
+      ws.on('close', () => {
+        message.info('WebSocket连接已关闭');
+        setOnlineUsers([]);
+        setCurrentEditingUser(null);
+        setIsOtherUserGenerating(false);
+      });
+
+      ws.on('error', (error: any) => {
+        message.error('WebSocket连接错误');
+        console.error('WebSocket错误:', error);
+      });
+
+      ws.connect();
+    }
+  };
+
+  /**
+   * 退出协同编辑
+   */
+  const exitCollaborativeEdit = () => {
+    if (websocket && websocket.isActive()) {
+      websocket.sendMessage({
+        type: EditStatusEnum.EXIT_EDIT,
+      });
+      // 延迟关闭连接，确保消息发送成功
+      setTimeout(() => {
+        websocket?.disconnect();
+        setWebsocket(null);
+        message.success('已退出协同编辑模式');
+      }, 300);
+    }
+  };
+
+  /**
+   * 处理WebSocket消息
+   */
+  const handleWebSocketMessage = (data: any) => {
+    if (!data) {
+      return;
+    }
+
+    const userName = data.user?.userName || '未知用户';
+
+    switch (data.type) {
+      case NotificationTypeEnum.INFO:
+        console.log('收到INFO消息:', data);
+        if (data.onlineUsers) {
+          console.log('设置在线用户列表:', data.onlineUsers);
+          setOnlineUsers(data.onlineUsers);
+        }
+        if (data.currentEditingUser) {
+          setCurrentEditingUser(data.currentEditingUser);
+        }
+        break;
+
+      case EditStatusEnum.ENTER_EDIT:
+        if (data.user) {
+          setCurrentEditingUser(data.user);
+          if (data.user.id !== loginUser?.id) {
+            setIsOtherUserGenerating(true);
+            setOtherGeneratingUser(data.user);
+            message.info(`${userName} ${EditStatusEnum.ENTER_EDIT}`);
+          }
+        }
+        break;
+
+      case EditStatusEnum.EXIT_EDIT:
+        if (data.user) {
+          if (data.user.id === loginUser?.id) {
+            setCurrentEditingUser(null);
+          }
+          setIsOtherUserGenerating(false);
+          setOtherGeneratingUser(null);
+          message.info(`${userName} ${EditStatusEnum.EXIT_EDIT}`);
+          // 关闭 websocket
+          if (data.user.id !== loginUser?.id) {
+            websocket?.disconnect();
+            setWebsocket(null);
+          }
+        }
+        break;
+
+      case InteractionActionEnum.SEND_MESSAGE:
+        if (data.user && data.user.id !== loginUser?.id) {
+          console.log('收到其他用户消息:', data.user);
+          // 添加其他用户的消息到消息列表
+          const otherUserMessage: API.ChatHistoryVO = {
+            id: Date.now(),
+            appId: appId,
+            messageType: 'user',
+            messageContent: data.message || '',
+            createTime: new Date().toISOString(),
+            user: data.user
+          };
+          console.log('添加的消息:', otherUserMessage);
+          setMessages(prev => [...prev, otherUserMessage]);
+        }
+        break;
+
+      case InteractionActionEnum.HOVER_ELEMENT:
+        if (data.user && data.user.id !== loginUser?.id) {
+          // 显示被触摸元素的边框和用户名称
+          if (visualEditorRef.current && data.element) {
+            visualEditorRef.current.highlightElement(data.element, userName);
+          }
+        }
+        break;
+
+      case InteractionActionEnum.SELECT_ELEMENT:
+        if (data.user && data.user.id !== loginUser?.id) {
+          // 处理其他用户选择的元素
+          if (data.element) {
+            const elementInfo: ElementInfo = data.element;
+            setSelectedElements(prev => [...prev, elementInfo]);
+          }
+        }
+        break;
+
+      case InteractionActionEnum.CLEAR_ELEMENT:
+        if (data.user && data.user.id !== loginUser?.id) {
+          // 清除其他用户清除的元素
+          setSelectedElements([]);
+          if (visualEditorRef.current) {
+            visualEditorRef.current.clearSelection();
+          }
+        }
+        break;
+
+      case DeployActionEnum.DEPLOY_PROJECT:
+        if (data.user && data.user.id !== loginUser?.id) {
+          message.info(`${userName} ${DeployActionEnum.DEPLOY_PROJECT}`);
+          // 调用部署项目方法
+          handleDeploy().catch(err => {
+            console.error('自动部署失败:', err);
+          });
+        }
+        break;
+
+      case DeployActionEnum.STOP_RESPONSE:
+        if (data.user && data.user.id !== loginUser?.id) {
+          message.info(`${userName} ${DeployActionEnum.STOP_RESPONSE}`);
+          // 停止回复（预留）
+          handleCancelGeneration();
+        }
+        break;
+
+      default:
+        break;
+    }
+  };
+
+  /**
    * 处理来自iframe的消息
    * @param event 消息事件
    */
   const handleMessage = (event: MessageEvent) => {
     if (visualEditorRef.current) {
-      visualEditorRef.current.handleIframeMessage(event);
+      visualEditorRef.current?.handleIframeMessage(event);
     }
+
+    const { type, data } = event.data;
+
+    // 如果在协同编辑模式，发送WebSocket消息通知其他用户
+    // if (websocket && websocket.isActive()) {
+      console.log("子页面发送type", type, data)
+      switch (type) {
+        case 'ELEMENT_HOVER':
+          if (data.elementInfo) {
+            websocket?.sendMessage({
+              type: InteractionActionEnum.HOVER_ELEMENT,
+              element: data.elementInfo,
+              user: loginUser
+            });
+          }
+          break;
+        case 'ELEMENT_SELECTED':
+          if (data.elementInfo) {
+            websocket?.sendMessage({
+              type: InteractionActionEnum.SELECT_ELEMENT,
+              element: data.elementInfo,
+              user: loginUser
+            });
+          }
+          break;
+      }
+    // }
   };
 
   /**
@@ -573,7 +869,7 @@ const ChatPage: React.FC = () => {
   const removeSelectedElement = (index: number) => {
     setSelectedElements(prev => prev.filter((_, i) => i !== index));
     if (visualEditorRef.current) {
-      visualEditorRef.current.clearSelection();
+      visualEditorRef.current?.clearSelection();
     }
   };
 
@@ -583,7 +879,15 @@ const ChatPage: React.FC = () => {
   const clearAllSelectedElements = () => {
     setSelectedElements([]);
     if (visualEditorRef.current) {
-      visualEditorRef.current.clearSelection();
+      visualEditorRef.current?.clearSelection();
+    }
+
+    // 如果在协同编辑模式，发送WebSocket消息通知其他用户
+    if (websocket && websocket.isActive()) {
+      websocket.sendMessage({
+        type: InteractionActionEnum.CLEAR_ELEMENT,
+        user: loginUser
+      });
     }
   };
 
@@ -623,11 +927,56 @@ const ChatPage: React.FC = () => {
                 <Text style={{fontSize: 14}}>{appInfo.user.userName}</Text>
               </Space>
             )}
+            {/* WebSocket连接状态 */}
+            <Tag 
+              color={websocket && websocket.isActive() ? "green" : "default"}
+              icon={websocket && websocket.isActive() ? <WifiOutlined /> : <DisconnectOutlined />}
+            >
+              {websocket && websocket.isActive() ? "已连接" : "未连接"}
+            </Tag>
+            {/* 在线用户列表 */}
+            <Space>
+              <Tag 
+                color="green" 
+                icon={<TeamOutlined/>}
+                onClick={() => setOnlineUsersVisible(true)}
+                style={{cursor: 'pointer'}}
+              >
+                在线: {onlineUsers.length}
+              </Tag>
+              <AvatarGroup size="small" maxCount={3}>
+                {onlineUsers.map((user: any) => (
+                  <Avatar key={user.id} src={user.userAvatar}>{user.userName?.[0]}</Avatar>
+                ))}
+              </AvatarGroup>
+            </Space>
           </Space>
           <Space>
             <Button type="primary" ghost loading={downloading} onClick={downloadCode}
                     style={{minWidth: 100}}>下载代码</Button>
             <Button type="primary" loading={deploying} onClick={handleDeploy} style={{minWidth: 100}}>部署应用</Button>
+            <>
+              {websocket ? (
+                <Button
+                  type="primary"
+                  danger
+                  icon={<TeamOutlined/>}
+                  onClick={exitCollaborativeEdit}
+                  style={{minWidth: 120}}
+                >
+                  退出协同
+                </Button>
+              ) : (
+                <Button
+                  type="primary"
+                  icon={<TeamOutlined/>}
+                  onClick={enterCollaborativeEdit}
+                  style={{minWidth: 120}}
+                >
+                  进入协同
+                </Button>
+              )}
+            </>
             <Button
               type="dashed"
               icon={<LoginOutlined/>}
@@ -663,44 +1012,73 @@ const ChatPage: React.FC = () => {
                 </div>
               )}
 
-              {/* 消息列表 */}
-              {messages.map(msg => (
-                <div key={msg.id}
-                     style={{
-                       display: 'flex',
-                       justifyContent: msg.messageType === 'user' ? 'flex-end' : 'flex-start',
-                       marginBottom: 16
-                     }}>
-                  <div style={{
-                    maxWidth: MAX_MESSAGE_WIDTH,
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: 8,
-                    flexDirection: msg.messageType === 'user' ? 'row-reverse' : 'row'
-                  }}>
-                    {/* 用户头像或Logo */}
-                    {msg.messageType === 'user' ? (
-                      <Avatar src={loginUser?.userAvatar}>{loginUser?.userName?.[0] || 'U'}</Avatar>
-                    ) : (
-                      <div
-                        style={{width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                        <Logo size={32}/>
-                      </div>
-                    )}
-                    {/* 消息卡片 */}
-                    <Card size="small" className={msg.messageType === 'user' ? styles.userMessageCard : styles.aiMessageCard}>
-                      <Text className={styles.messageContent}>
-                        <ReactMarkdown>
-                          {msg.messageContent}
-                        </ReactMarkdown>
+              {/* 其他用户正在生成提示 */}
+              {isOtherUserGenerating && otherGeneratingUser && (
+                <div style={{display: 'flex', marginBottom: 16}}>
+                  <Avatar src={otherGeneratingUser.userAvatar} size={32}>
+                    {otherGeneratingUser.userName?.[0]}
+                  </Avatar>
+                  <Card size="small" style={{marginLeft: 8, backgroundColor: '#f0f9ff'}}>
+                    <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
+                      <Spin size="small"/>
+                      <Text style={{fontSize: 14}}>
+                        {otherGeneratingUser.userName} 正在生成代码...
                       </Text>
-                      <div className={styles.messageTime}>
-                        {msg.createTime ? new Date(msg.createTime).toLocaleTimeString() : ''}
-                      </div>
-                    </Card>
-                  </div>
+                    </div>
+                  </Card>
                 </div>
-              ))}
+              )}
+
+              {/* 消息列表 */}
+              {messages.map(msg => {
+                console.log('渲染消息:', msg);
+                const isCurrentUserMessage = msg.messageType === 'user' && (!msg.user || msg.user.id === loginUser?.id);
+                const userAvatar = msg.user?.userAvatar || loginUser?.userAvatar;
+                const userName = msg.user?.userName || loginUser?.userName;
+                
+                return (
+                  <div key={msg.id}
+                       style={{
+                         display: 'flex',
+                         justifyContent: isCurrentUserMessage ? 'flex-end' : 'flex-start',
+                         marginBottom: 16
+                       }}>
+                    <div style={{
+                      maxWidth: MAX_MESSAGE_WIDTH,
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 8,
+                      flexDirection: isCurrentUserMessage ? 'row-reverse' : 'row'
+                    }}>
+                      {/* 用户头像或Logo */}
+                      {msg.messageType === 'user' ? (
+                        <Avatar src={userAvatar}>{userName?.[0] || 'U'}</Avatar>
+                      ) : (
+                        <div
+                          style={{width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                          <Logo size={32}/>
+                        </div>
+                      )}
+                      {/* 消息卡片 */}
+                      <Card size="small" className={msg.messageType === 'user' ? styles.userMessageCard : styles.aiMessageCard}>
+                        {msg.user && msg.user.id !== loginUser?.id && (
+                          <div style={{fontSize: 12, color: '#999', marginBottom: 4}}>
+                            {msg.user.userName}
+                          </div>
+                        )}
+                        <Text className={styles.messageContent}>
+                          <ReactMarkdown>
+                            {msg.messageContent}
+                          </ReactMarkdown>
+                        </Text>
+                        <div className={styles.messageTime}>
+                          {msg.createTime ? new Date(msg.createTime).toLocaleTimeString() : ''}
+                        </div>
+                      </Card>
+                    </div>
+                  </div>
+                );
+              })}
 
               {/* 加载中状态 */}
               {loading && (
@@ -734,8 +1112,11 @@ const ChatPage: React.FC = () => {
                           onPressEnter={e => {
                             if (e.ctrlKey || e.metaKey) handleSendMessage();
                           }}/>
-                <Button type="primary" icon={<SendOutlined/>} loading={loading}
-                        onClick={() => handleSendMessage()}>发送</Button>
+                {loading ? (
+                  <Button type="primary" icon={<StopOutlined/>} onClick={handleCancelGeneration}>取消</Button>
+                ) : (
+                  <Button type="primary" icon={<SendOutlined/>} onClick={() => handleSendMessage()}>发送</Button>
+                )}
               </Space.Compact>
               <div style={{fontSize: 12, color: '#999', marginTop: 8}}>提示：Ctrl+Enter 发送</div>
             </div>
@@ -801,6 +1182,40 @@ const ChatPage: React.FC = () => {
             <CommentSection appId={String(appInfo.id)}/>
           </div>
         )}
+
+        {/* 在线用户列表弹窗 */}
+        <Modal
+          title="在线用户"
+          open={onlineUsersVisible}
+          onCancel={() => setOnlineUsersVisible(false)}
+          footer={null}
+          width={400}
+        >
+          <div style={{maxHeight: 400, overflowY: 'auto'}}>
+            {onlineUsers.length === 0 ? (
+              <div style={{textAlign: 'center', padding: '40px 0', color: '#999'}}>
+                暂无在线用户
+              </div>
+            ) : (
+              <Space direction="vertical" style={{width: '100%'}} size="middle">
+                {onlineUsers.map((user: any) => (
+                  <div key={user.id} style={{display: 'flex', alignItems: 'center', padding: '8px 0'}}>
+                    <Avatar size={40} src={user.userAvatar}>{user.userName?.[0]}</Avatar>
+                    <div style={{marginLeft: 12, flex: 1}}>
+                      <div style={{fontSize: 14, fontWeight: 500}}>{user.userName}</div>
+                      <div style={{fontSize: 12, color: '#999'}}>
+                        {currentEditingUser?.id === user.id ? '正在编辑' : '在线'}
+                      </div>
+                    </div>
+                    {currentEditingUser?.id === user.id && (
+                      <Tag color="blue" size="small">编辑中</Tag>
+                    )}
+                  </div>
+                ))}
+              </Space>
+            )}
+          </div>
+        </Modal>
       </div>
     </>
   );

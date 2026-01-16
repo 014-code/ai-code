@@ -31,6 +31,8 @@ export const ROUTES = {
   FORUM_LIST: '/forum',       // 论坛列表页
   FORUM_DETAIL: '/forum/:id', // 论坛详情页
   FORUM_PUBLISH: '/forum/publish', // 论坛发布页
+  SPACE: '/space',            // 空间列表页
+  SPACE_DETAIL: '/space/:id', // 空间详情页
   ADMIN: '/admin',            // 管理后台首页
   ADMIN_USER: '/admin/user',  // 管理员用户管理
   ADMIN_APP: '/admin/app',    // 管理员应用管理

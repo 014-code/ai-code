@@ -263,5 +263,33 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
         return queryWrapper;
     }
 
+    @Override
+    public boolean updateChatHistoryStatus(Long appId, Long userId, Integer status) {
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID不能为空");
+        ThrowUtils.throwIf(userId == null || userId <= 0, ErrorCode.PARAMS_ERROR, "用户ID不能为空");
+        ThrowUtils.throwIf(status == null, ErrorCode.PARAMS_ERROR, "状态不能为空");
+
+        try {
+            // 构建更新条件：根据appId和userId更新最新的AI消息状态
+            QueryWrapper queryWrapper = QueryWrapper.create()
+                    .eq(ChatHistory::getAppId, appId)
+                    .eq(ChatHistory::getUserId, userId)
+                    .eq(ChatHistory::getMessageType, ChatHistoryMessageTypeEnum.AI.getValue())
+                    .orderBy(ChatHistory::getCreateTime, false)
+                    .limit(1);
+
+            // 更新状态
+            ChatHistory updateEntity = new ChatHistory();
+            updateEntity.setStatus(String.valueOf(status));
+
+            boolean result = this.update(updateEntity, queryWrapper);
+            log.info("更新聊天记录状态: appId={}, userId={}, status={}, result={}", appId, userId, status, result);
+            return result;
+        } catch (Exception e) {
+            log.error("更新聊天记录状态失败: appId={}, userId={}, status={}", appId, userId, status, e);
+            return false;
+        }
+    }
+
 
 }

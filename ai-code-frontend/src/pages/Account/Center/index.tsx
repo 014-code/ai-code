@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useGlobalContext } from '@/context/GlobalContext';
 import { getLoginUser, updateUserInfo, updateUserPassword, updateUserAvatar } from '@/services/backend/userController';
-import { LockOutlined, MailOutlined, UserOutlined } from '@ant-design/icons';
-import { Avatar, Button, Card, Col, Form, Input, message, Row } from 'antd';
+import { getFriendRequestList, acceptFriendRequest, rejectFriendRequest } from '@/services/backend/friendController';
+import { LockOutlined, MailOutlined, UserOutlined, UserAddOutlined, UserDeleteOutlined } from '@ant-design/icons';
+import { Avatar, Button, Card, Col, Form, Input, message, Row, List, Empty, Spin } from 'antd';
 import type { UploadChangeParam, UploadFile } from 'antd/es/upload';
 import { Upload, Tabs, Space } from 'antd';
 import { ProCard, ProDescriptions } from '@ant-design/pro-components';
+import type { FriendRequestVO } from '@/services/backend/types';
 import styles from './index.module.less';
 
 const { TabPane } = Tabs;
@@ -16,7 +18,7 @@ const { TabPane } = Tabs;
  */
 const AccountCenter: React.FC = () => {
   // 全局上下文，获取当前用户信息
-  const { currentUser, setCurrentUser } = useGlobalContext();
+  const { currentUser, setUserInfo } = useGlobalContext();
   // 表单实例
   const [form] = Form.useForm();
   const [passwordForm] = Form.useForm();
@@ -24,21 +26,87 @@ const AccountCenter: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
+  // 好友申请列表
+  const [friendRequests, setFriendRequests] = useState<FriendRequestVO[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(false);
 
   /**
    * 初始化时获取用户信息
+   * 组件挂载时自动调用，获取当前用户信息和待处理的好友申请列表
    */
   useEffect(() => {
     fetchUserInfo();
+    fetchFriendRequests();
   }, []);
 
   /**
+   * 获取好友申请列表
+   * 从服务器获取状态为待处理(PENDING)的好友申请
+   * 默认获取第一页，每页20条记录
+   */
+  const fetchFriendRequests = () => {
+    setRequestsLoading(true);
+    getFriendRequestList({ status: 'PENDING', pageNum: 1, pageSize: 20 })
+      .then((response) => {
+        setFriendRequests(response.data.records || []);
+      })
+      .catch((error) => {
+        console.error('获取好友申请失败:', error);
+        message.error('获取好友申请失败');
+      })
+      .finally(() => {
+        setRequestsLoading(false);
+      });
+  };
+
+  /**
+   * 处理接受好友申请
+   * @param requestId 好友申请的ID
+   * 接受后会从本地列表中移除该申请，并刷新列表
+   */
+  const handleAcceptRequest = (requestId: number) => {
+    acceptFriendRequest(requestId)
+      .then(() => {
+        message.success('已接受好友申请');
+        setFriendRequests(prev => prev.filter(req => req.id !== requestId));
+      })
+      .catch((error) => {
+        message.error('接受好友申请失败');
+        console.error('接受好友申请失败:', error);
+      })
+      .finally(() => {
+        fetchFriendRequests();
+      });
+  };
+
+  /**
+   * 处理拒绝好友申请
+   * @param requestId 好友申请的ID
+   * 拒绝后会从本地列表中移除该申请，并刷新列表
+   */
+  const handleRejectRequest = (requestId: number) => {
+    rejectFriendRequest(requestId)
+      .then(() => {
+        message.success('已拒绝好友申请');
+        setFriendRequests(prev => prev.filter(req => req.id !== requestId));
+      })
+      .catch((error) => {
+        message.error('拒绝好友申请失败');
+        console.error('拒绝好友申请失败:', error);
+      })
+      .finally(() => {
+        fetchFriendRequests();
+      });
+  };
+
+  /**
    * 获取用户信息
-   * 更新表单数据和全局用户信息
+   * 从服务器获取当前登录用户的详细信息
+   * 更新全局上下文中的用户信息，并同步更新表单数据
    */
   const fetchUserInfo = () => {
     getLoginUser().then((res) => {
-      setCurrentUser(res.data);
+      setUserInfo(res.data);
       form.setFieldsValue({
         userName: res.data.userName,
         userProfile: res.data.userProfile,
@@ -51,7 +119,8 @@ const AccountCenter: React.FC = () => {
 
   /**
    * 处理更新基本信息
-   * @param values 表单提交的值
+   * @param values 表单提交的值，包含userName和userProfile
+   * 更新成功后重新获取用户信息以同步最新数据
    */
   const handleUpdateInfo = (values: any) => {
     setLoading(true);
@@ -67,7 +136,8 @@ const AccountCenter: React.FC = () => {
 
   /**
    * 处理更新密码
-   * @param values 表单提交的值
+   * @param values 表单提交的值，包含oldPassword、newPassword和checkPassword
+   * 密码修改成功后需要用户重新登录，1.5秒后跳转到登录页面
    */
   const handleUpdatePassword = (values: any) => {
     setPasswordLoading(true);
@@ -86,7 +156,9 @@ const AccountCenter: React.FC = () => {
 
   /**
    * 处理头像上传变化
-   * @param info 上传组件的状态信息
+   * @param info 上传组件的状态信息，包含文件上传状态和服务器响应
+   * 上传状态包括：uploading(上传中)、done(上传完成)、error(上传失败)
+   * 上传成功后会将图片URL保存到用户信息中
    */
   const handleAvatarChange = (info: UploadChangeParam<UploadFile>) => {
     if (info.file.status === 'uploading') {
@@ -290,6 +362,60 @@ const AccountCenter: React.FC = () => {
                       <p>建议尺寸：200x200 像素</p>
                     </div>
                   </div>
+                </ProCard>
+              </TabPane>
+              {/* 好友申请 */}
+              <TabPane tab={`好友申请${friendRequests.length > 0 ? ` (${friendRequests.length})` : ''}`} key="4">
+                <ProCard bordered headerBordered>
+                  {requestsLoading ? (
+                    <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                      <Spin tip="加载中..." />
+                    </div>
+                  ) : friendRequests.length > 0 ? (
+                    <List
+                      dataSource={friendRequests}
+                      renderItem={(request) => (
+                        <List.Item
+                          actions={[
+                            <Button 
+                              type="primary" 
+                              size="small" 
+                              key="accept"
+                              icon={<UserAddOutlined />}
+                              onClick={() => handleAcceptRequest(request.id!)}
+                            >
+                              接受
+                            </Button>,
+                            <Button 
+                              danger 
+                              size="small" 
+                              key="reject"
+                              icon={<UserDeleteOutlined />}
+                              onClick={() => handleRejectRequest(request.id!)}
+                            >
+                              拒绝
+                            </Button>
+                          ]}
+                        >
+                          <List.Item.Meta
+                            avatar={<Avatar size={48} src={request.requester?.userAvatar} icon={<UserOutlined />} />}
+                            title={
+                              <Space>
+                                <span>{request.requester?.userName}</span>
+                                <span style={{ color: '#8c8c8c', fontSize: 12 }}>{request.createTime}</span>
+                              </Space>
+                            }
+                            description={request.message || '请求添加您为好友'}
+                          />
+                        </List.Item>
+                      )}
+                    />
+                  ) : (
+                    <Empty 
+                      description="暂无好友申请" 
+                      style={{ padding: '60px 0' }}
+                    />
+                  )}
                 </ProCard>
               </TabPane>
             </Tabs>
