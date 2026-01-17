@@ -176,7 +176,7 @@ export class VisualEditor {
       case 'ELEMENT_HOVER':
         // 处理元素悬停事件
         if (this.options.onElementHover && data.elementInfo) {
-          this.options.onElementHover(data.elementInfo);
+          this.options.onElementHover();
         }
         break;
     }

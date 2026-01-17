@@ -14,6 +14,7 @@ public enum DialogueMessageTypeEnum {
     EXIT_EDIT("退出编辑状态", "退出编辑状态"),
     EDIT_ACTION("执行编辑操作", "执行编辑操作"),
     SEND_MESSAGE("发送消息", "发送消息"),
+    AI_RESPONSE("AI回复", "AI回复"),
     HOVER_ELEMENT("触摸元素", "触摸元素"),
     SELECT_ELEMENT("选择元素", "选择元素"),
     CLEAR_ELEMENT("清除元素", "清除元素"),

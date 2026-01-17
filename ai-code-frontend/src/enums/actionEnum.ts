@@ -20,6 +20,7 @@ export enum EditStatusEnum {
  */
 export enum InteractionActionEnum {
   SEND_MESSAGE = "发送消息",
+  AI_RESPONSE = "AI回复",
   HOVER_ELEMENT = "触摸元素",
   SELECT_ELEMENT = "选择元素",
   CLEAR_ELEMENT = "清除元素"

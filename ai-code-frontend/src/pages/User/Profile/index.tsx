@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import {useParams, useNavigate} from 'react-router-dom';
 import {Button, Avatar, Card, List, Spin, message, Empty, Divider, Space as AntSpace, Row, Col, Tag} from 'antd';
 import {
@@ -20,6 +20,7 @@ import {
 } from '@/services/backend/friendController';
 import {getUserForumPostList} from '@/services/backend/forumPostController';
 import {getUserInfo} from '@/services/backend/userController';
+import {useScrollLoad} from '@/hooks/useScrollLoad';
 import type {UserVO, FriendRequestVO} from '@/services/backend/types';
 import styles from './index.module.less';
 
@@ -38,6 +39,7 @@ const UserProfilePage: React.FC = () => {
     const [postsLoading, setPostsLoading] = useState(false);
     const [hasMore, setHasMore] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
+    const postsListRef = useRef<HTMLDivElement>(null);
 
     /**
      * 获取用户信息
@@ -185,17 +187,6 @@ const UserProfilePage: React.FC = () => {
     };
 
     /**
-     * 处理帖子列表滚动到底部时加载更多
-     * @param e 滚动事件对象
-     */
-    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-        const {scrollTop, clientHeight, scrollHeight} = e.currentTarget;
-        if (scrollHeight - scrollTop - clientHeight < 100 && !postsLoading && hasMore) {
-            fetchUserPosts(currentPage + 1);
-        }
-    };
-
-    /**
      * 组件挂载时自动调用，获取用户信息、好友状态、好友申请列表和用户帖子列表
      */
     useEffect(() => {
@@ -204,6 +195,16 @@ const UserProfilePage: React.FC = () => {
         fetchFriendRequests();
         fetchUserPosts(1, true);
     }, [userId]);
+
+    useScrollLoad(() => {
+        if (!postsLoading && hasMore) {
+            fetchUserPosts(currentPage + 1);
+        }
+    }, {
+        threshold: 100,
+        disabled: !hasMore || postsLoading,
+        containerRef: postsListRef,
+    });
 
     if (isLoading) {
         return (
@@ -301,7 +302,7 @@ const UserProfilePage: React.FC = () => {
 
             {/* 用户发布的帖子列表 */}
             <Card className={styles.postsCard} title="发布的帖子">
-                <div className={styles.postsList} onScroll={handleScroll}>
+                <div ref={postsListRef} className={styles.postsList}>
                     {posts.length > 0 ? (
                         <Row gutter={[16, 16]}>
                             {posts.map((post) => (

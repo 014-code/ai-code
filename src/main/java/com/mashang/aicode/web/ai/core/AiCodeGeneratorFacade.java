@@ -13,14 +13,18 @@ import com.mashang.aicode.web.ai.model.message.AiResponseMessage;
 import com.mashang.aicode.web.ai.model.message.ToolExecutedMessage;
 import com.mashang.aicode.web.ai.model.message.ToolRequestMessage;
 import com.mashang.aicode.web.manager.task.GenerationTaskManager;
+import com.mashang.aicode.web.manager.websocket.AppEditHandler;
+import com.mashang.aicode.web.model.entity.User;
 import com.mashang.aicode.web.service.ChatHistoryService;
 import com.mashang.aicode.web.exception.BusinessException;
 import com.mashang.aicode.web.exception.ErrorCode;
+import com.mashang.aicode.web.service.UserService;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.tool.ToolExecution;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
@@ -45,6 +49,12 @@ public class AiCodeGeneratorFacade {
 
     @Resource
     private GenerationTaskManager generationTaskManager;
+
+    @Resource
+    private ApplicationContext applicationContext;
+
+    @Resource
+    private UserService userService;
 
     /**
      * 中断标志映射，用于控制不同应用的流式输出的中断
@@ -191,7 +201,7 @@ public class AiCodeGeneratorFacade {
      * 统一流式返回方法（带SSE回调）
      * @return
      */
-    public Flux<String> generateAndSaveCodeStream(String userMessage, CodeGenTypeEnum codeGenTypeEnum, Long appId, Consumer<String> sseCallback, Long userId) {
+    public Flux<String> generateAndSaveCodeStream(String userMessage, CodeGenTypeEnum codeGenTypeEnum, Long appId, Consumer<String> sseCallback, Long userId, User user) {
         if (codeGenTypeEnum == null) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "生成类型为空");
         }
@@ -227,11 +237,11 @@ public class AiCodeGeneratorFacade {
             }
             case VUE_PROJECT -> {
                 TokenStream tokenStream = aiCodeGeneratorService.generateVueProjectCodeStream(appId, userMessage);
-                yield processTokenStreamWithCallback(tokenStream, appId, sseCallback, userId);
+                yield processTokenStreamWithCallback(tokenStream, appId, sseCallback, userId, user);
             }
             case REACT_PROJECT -> {
                 TokenStream tokenStream = aiCodeGeneratorService.generateReactProjectCodeStream(appId, userMessage);
-                yield processTokenStreamWithCallback(tokenStream, appId, sseCallback, userId);
+                yield processTokenStreamWithCallback(tokenStream, appId, sseCallback, userId, user);
             }
             default -> {
                 String errorMessage = "不支持的生成类型：" + codeGenTypeEnum.getValue();
@@ -324,9 +334,10 @@ public class AiCodeGeneratorFacade {
      * @param appId       应用 ID
      * @param sseCallback SSE消息回调
      * @param userId      用户ID
+     * @param user        用户信息
      * @return Flux<String> 流式响应
      */
-    private Flux<String> processTokenStreamWithCallback(TokenStream tokenStream, Long appId, Consumer<String> sseCallback, Long userId) {
+    private Flux<String> processTokenStreamWithCallback(TokenStream tokenStream, Long appId, Consumer<String> sseCallback, Long userId, User user) {
         return Flux.create(sink -> {
             // 重置中断标志
             resetInterrupt(appId);
@@ -363,6 +374,14 @@ public class AiCodeGeneratorFacade {
                     sseCallback.accept(partialResponse);
                 }
                 sink.next(partialResponse);
+                
+                // 通过 WebSocket 广播 AI 回复给所有协同编辑的用户
+                try {
+                    AppEditHandler appEditHandler = applicationContext.getBean(AppEditHandler.class);
+                    appEditHandler.broadcastAiResponse(appId, user, partialResponse);
+                } catch (Exception e) {
+                    log.error("广播 AI 回复失败: {}", e.getMessage(), e);
+                }
             }).onPartialToolExecutionRequest((index, toolExecutionRequest) -> {
                 // 检查是否被中断
                 if (isInterrupted(appId)) {
