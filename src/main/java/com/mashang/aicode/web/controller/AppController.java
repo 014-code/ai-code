@@ -29,11 +29,9 @@ import com.mashang.aicode.web.model.vo.AppTypeVO;
 import com.mashang.aicode.web.model.vo.PresetPromptVO;
 import com.mashang.aicode.web.ratelimiter.annotation.RateLimit;
 import com.mashang.aicode.web.ratelimiter.enums.RateLimitType;
-import com.mashang.aicode.web.service.AppService;
-import com.mashang.aicode.web.service.ChatHistoryService;
-import com.mashang.aicode.web.service.ProjectDownloadService;
-import com.mashang.aicode.web.service.UserService;
+import com.mashang.aicode.web.service.*;
 import com.mybatisflex.core.paginate.Page;
+import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.core.update.UpdateWrapper;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
@@ -77,6 +75,8 @@ public class AppController {
     private AiCodeGenTypeRoutingService aiCodeGenTypeRoutingService;
     @Resource
     private AiCodeGenTypeRoutingServiceFactory aiCodeGenTypeRoutingServiceFactory;
+    @Resource
+    private SpaceUserService spaceUserService;
 
 
     /**
@@ -379,6 +379,10 @@ public class AppController {
         ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID无效");
         ThrowUtils.throwIf(StrUtil.isBlank(message), ErrorCode.PARAMS_ERROR, "用户消息不能为空");
         User loginUser = userService.getLoginUser(request);
+        
+        // 校验权限：应用所有者、精选应用、或空间成员可以访问
+        checkAppAccessPermission(appId, loginUser);
+        
         Flux<String> contentFlux = appService.chatToGenCode(appId, message, loginUser);
         return contentFlux
                 .map(chunk -> {
@@ -466,5 +470,40 @@ public class AppController {
         return ResultUtils.success(promptList);
     }
 
+    /**
+     * 检查应用访问权限
+     * 应用所有者、精选应用、或空间成员可以访问
+     *
+     * @param appId    应用ID
+     * @param loginUser 当前登录用户
+     */
+    private void checkAppAccessPermission(Long appId, User loginUser) {
+        App app = appService.getById(appId);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+
+        // 应用所有者可以访问
+        if (app.getUserId().equals(loginUser.getId())) {
+            return;
+        }
+
+        // 精选应用可以访问
+        if (app.getPriority() != null && app.getPriority() == 1) {
+            return;
+        }
+
+        // 空间成员可以访问
+        if (app.getSpaceId() != null) {
+            QueryWrapper queryWrapper = new QueryWrapper();
+            queryWrapper.eq("spaceId", app.getSpaceId());
+            queryWrapper.eq("userId", loginUser.getId());
+            boolean isSpaceMember = spaceUserService.count(queryWrapper) > 0;
+            if (isSpaceMember) {
+                return;
+            }
+        }
+
+        // 无权限访问
+        throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限访问该应用");
+    }
 
 }

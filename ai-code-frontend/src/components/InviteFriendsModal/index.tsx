@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Modal, List, Checkbox, Button, Input, Spin, message, Empty } from 'antd';
 import { SearchOutlined, LoadingOutlined } from '@ant-design/icons';
 import { getFriendList } from '@/services/backend/friendController';
 import { batchAddMembers } from '@/services/backend/spaceController';
+import { useScrollLoad } from '@/hooks/useScrollLoad';
 import type { UserVO } from '@/services/backend/types';
 
 interface InviteFriendsModalProps {
@@ -29,6 +30,7 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
   const [hasMore, setHasMore] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchText, setSearchText] = useState('');
+  const listRef = useRef<HTMLDivElement>(null);
 
   /**
    * 获取好友列表
@@ -76,23 +78,11 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
    * 处理全选
    * @param e 复选框事件对象
    */
-  const handleSelectAll = (e: any) => {
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      const allFriendIds = friends.map(friend => friend.id!.toString());
-      setSelectedFriends(allFriendIds);
+      setSelectedFriends(friends.map(friend => friend.id!));
     } else {
       setSelectedFriends([]);
-    }
-  };
-
-  /**
-   * 处理触底加载
-   * @param e 滚动事件对象
-   */
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const { scrollTop, clientHeight, scrollHeight } = e.currentTarget;
-    if (scrollHeight - scrollTop - clientHeight < 100 && !loading && hasMore) {
-      fetchFriends(currentPage + 1);
     }
   };
 
@@ -139,6 +129,16 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
     }
   }, [visible]);
 
+  useScrollLoad(() => {
+    if (!loading && hasMore) {
+      fetchFriends(currentPage + 1);
+    }
+  }, {
+    threshold: 100,
+    disabled: !hasMore || loading,
+    containerRef: listRef,
+  });
+
   return (
     <Modal
       title="邀请好友加入团队空间"
@@ -171,7 +171,7 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
       </div>
 
       {/* 好友列表 */}
-      <div style={{ maxHeight: 400, overflowY: 'auto' }} onScroll={handleScroll}>
+      <div ref={listRef} style={{ maxHeight: 400, overflowY: 'auto' }}>
         {friends.length > 0 ? (
           <List
             dataSource={friends}

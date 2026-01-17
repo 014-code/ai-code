@@ -285,7 +285,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         );
 
         // 6. 调用 AI 生成代码（流式）
-        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId, null, loginUser.getId());
+        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId, null, loginUser.getId(), loginUser);
 
         //流式响应完成后再清除上下文
         //7. 收集 AI 响应内容并在完成后记录到对话历史

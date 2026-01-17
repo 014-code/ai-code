@@ -17,7 +17,9 @@ import com.mashang.aicode.web.model.vo.ChatHistoryVO;
 import com.mashang.aicode.web.service.AppService;
 import com.mashang.aicode.web.service.ChatHistoryService;
 import com.mashang.aicode.web.service.UserService;
+import com.mashang.aicode.web.service.SpaceUserService;
 import com.mybatisflex.core.paginate.Page;
+import com.mybatisflex.core.query.QueryWrapper;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
@@ -40,6 +42,9 @@ public class ChatHistoryController {
 
     @Resource
     private AppService appService;
+
+    @Resource
+    private SpaceUserService spaceUserService;
 
     /**
      * 【用户】保存用户消息
@@ -133,10 +138,8 @@ public class ChatHistoryController {
         App app = appService.getById(appId);
         ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
 
-        // 校验权限（只能查看自己的应用或精选应用）
-        if (!app.getUserId().equals(loginUser.getId()) && app.getPriority() != 1) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
-        }
+        // 校验权限（应用所有者、精选应用、或空间成员可以访问）
+        checkAppAccessPermission(app, loginUser);
 
         Page<ChatHistoryVO> chatHistoryVOPage = chatHistoryService.listVOByAppId(appId,
                 (long) chatHistoryQueryRequest.getPageNum(), (long) chatHistoryQueryRequest.getPageSize());
@@ -157,13 +160,11 @@ public class ChatHistoryController {
         App app = appService.getById(appId);
         ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
 
-        // 校验权限（只能查看自己的应用或精选应用）
-        if (!app.getUserId().equals(loginUser.getId()) && app.getPriority() != 1) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
-        }
+        // 校验权限（应用所有者、精选应用、或空间成员可以访问）
+        checkAppAccessPermission(app, loginUser);
 
-        // 查询最新10条对话历史
-        List<ChatHistoryVO> chatHistoryVOList = chatHistoryService.listLatestVOByAppId(appId, 10);
+        // 查询最新30条对话历史
+        List<ChatHistoryVO> chatHistoryVOList = chatHistoryService.listLatestVOByAppId(appId, 30);
         return ResultUtils.success(chatHistoryVOList);
     }
 
@@ -228,5 +229,38 @@ public class ChatHistoryController {
         chatHistoryVOPage.setRecords(chatHistoryVOList);
         
         return ResultUtils.success(chatHistoryVOPage);
+    }
+
+    /**
+     * 检查应用访问权限
+     * 应用所有者、精选应用、或空间成员可以访问
+     *
+     * @param app      应用对象
+     * @param loginUser 当前登录用户
+     */
+    private void checkAppAccessPermission(App app, User loginUser) {
+        // 应用所有者可以访问
+        if (app.getUserId().equals(loginUser.getId())) {
+            return;
+        }
+
+        // 精选应用可以访问
+        if (app.getPriority() != null && app.getPriority() == 1) {
+            return;
+        }
+
+        // 空间成员可以访问
+        if (app.getSpaceId() != null) {
+            QueryWrapper queryWrapper = new QueryWrapper();
+            queryWrapper.eq("spaceId", app.getSpaceId());
+            queryWrapper.eq("userId", loginUser.getId());
+            boolean isSpaceMember = spaceUserService.count(queryWrapper) > 0;
+            if (isSpaceMember) {
+                return;
+            }
+        }
+
+        // 无权限访问
+        throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限访问该应用");
     }
 }

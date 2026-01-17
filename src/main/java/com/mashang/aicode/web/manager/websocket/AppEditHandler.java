@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.mashang.aicode.web.ai.core.AiCodeGeneratorFacade;
 import com.mashang.aicode.web.manager.disruptor.AppEditEventProducer;
 import com.mashang.aicode.web.manager.websocket.model.DialogueMessageTypeEnum;
 import com.mashang.aicode.web.manager.websocket.model.DialogueRequestMessage;
@@ -32,13 +33,13 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 应用编辑 WebSocket 处理器
- * 
+ * <p>
  * 功能说明：
  * 1. 管理应用的多用户实时协作编辑
  * 2. 同一应用只能有一个用户处于编辑状态
  * 3. 编辑操作会实时广播给所有连接的用户
  * 4. 新加入的用户可以看到之前的编辑记录
- * 
+ * <p>
  * 使用场景：
  * - 多个用户同时查看同一个应用
  * - 只有一个用户可以编辑，其他用户只能查看
@@ -52,7 +53,7 @@ public class AppEditHandler extends TextWebSocketHandler {
      * 记录每个应用的编辑状态
      * key: 应用ID (appId)
      * value: 当前正在编辑该应用的用户ID
-     * 
+     * <p>
      * 说明：同一时间只有一个用户可以编辑某个应用
      */
     private final Map<Long, Long> appEditingUsers = new ConcurrentHashMap<>();
@@ -61,7 +62,7 @@ public class AppEditHandler extends TextWebSocketHandler {
      * 保存所有连接的 WebSocket 会话
      * key: 应用ID (appId)
      * value: 连接到该应用的所有用户会话集合
-     * 
+     * <p>
      * 说明：用于向所有连接到该应用的用户广播消息
      */
     private final Map<Long, Set<WebSocketSession>> appSessions = new ConcurrentHashMap<>();
@@ -70,7 +71,7 @@ public class AppEditHandler extends TextWebSocketHandler {
      * 保存每个应用的编辑记录
      * key: 应用ID (appId)
      * value: 该应用的所有编辑操作记录（消息列表）
-     * 
+     * <p>
      * 说明：新加入的用户可以看到之前的编辑历史
      */
     private final Map<Long, List<TextMessage>> appEditRecodes = new ConcurrentHashMap<>();
@@ -87,15 +88,18 @@ public class AppEditHandler extends TextWebSocketHandler {
     @Resource
     private ObjectMapper objectMapper;
 
+    @Resource
+    private AiCodeGeneratorFacade aiCodeGeneratorFacade;
+
     /**
      * WebSocket 连接建立成功后的回调方法
-     * 
+     * <p>
      * 执行流程：
      * 1. 从会话中获取用户信息和应用ID
      * 2. 将该用户的会话添加到应用的会话集合中
      * 3. 向所有连接到该应用的用户广播"用户加入"消息
      * 4. 向新加入的用户发送该应用的历史编辑记录
-     * 
+     *
      * @param session WebSocket 会话对象
      * @throws Exception 异常
      */
@@ -116,13 +120,13 @@ public class AppEditHandler extends TextWebSocketHandler {
         String message = String.format("%s加入编辑", user.getUserName());
         appEditResponseMessage.setMessage(message);
         appEditResponseMessage.setUser(userService.getUserVO(user));
-        
+
         // 获取在线用户列表
         List<UserVO> onlineUsersList = getOnlineUsers(appId);
         appEditResponseMessage.setOnlineUsers(onlineUsersList);
-        
+
         log.info("用户 {} 加入应用 {}，当前在线用户数: {}", user.getUserName(), appId, onlineUsersList.size());
-        
+
         TextMessage textMessage = getTextMessage(appEditResponseMessage);
         log.info("发送消息内容: {}", textMessage.getPayload());
 
@@ -135,12 +139,12 @@ public class AppEditHandler extends TextWebSocketHandler {
 
     /**
      * 接收到客户端消息后的回调方法
-     * 
+     * <p>
      * 消息类型：
      * - ENTER_EDIT: 请求进入编辑状态
      * - EDIT_ACTION: 执行编辑操作
      * - EXIT_EDIT: 退出编辑状态
-     * 
+     *
      * @param session WebSocket 会话对象
      * @param message 客户端发送的消息
      * @throws Exception 异常
@@ -160,12 +164,12 @@ public class AppEditHandler extends TextWebSocketHandler {
 
     /**
      * 处理"进入编辑"请求
-     * 
+     * <p>
      * 业务逻辑：
      * 1. 检查该应用是否已有用户在编辑
      * 2. 如果没有，则将当前用户设置为编辑者
      * 3. 如果有其他用户在编辑，则返回错误消息
-     * 
+     *
      * @param appEditContext 编辑上下文对象
      * @throws Exception 异常
      */
@@ -198,13 +202,13 @@ public class AppEditHandler extends TextWebSocketHandler {
 
     /**
      * 处理编辑错误消息
-     * 
+     * <p>
      * 业务逻辑：
      * 1. 获取当前正在编辑的用户信息
      * 2. 向请求用户发送错误消息，告知谁正在编辑
-     * 
-     * @param user 请求编辑的用户
-     * @param appId 应用ID
+     *
+     * @param user        请求编辑的用户
+     * @param appId       应用ID
      * @param sendSession 请求用户的会话
      * @throws Exception 异常
      */
@@ -225,12 +229,12 @@ public class AppEditHandler extends TextWebSocketHandler {
 
     /**
      * 处理编辑操作
-     * 
+     * <p>
      * 业务逻辑：
      * 1. 验证当前用户是否是编辑者
      * 2. 如果是，则执行编辑操作并广播给其他用户
      * 3. 将编辑操作保存到历史记录中
-     * 
+     *
      * @param appEditContext 编辑上下文对象
      * @throws Exception 异常
      */
@@ -277,13 +281,13 @@ public class AppEditHandler extends TextWebSocketHandler {
 
     /**
      * 处理退出编辑
-     * 
+     * <p>
      * 业务逻辑：
      * 1. 如果当前用户是编辑者，则退出编辑状态
      * 2. 向所有用户广播"退出编辑"消息
      * 3. 移除该用户的会话
      * 4. 如果该应用没有用户连接了，则清理历史记录
-     * 
+     *
      * @param appEditContext 编辑上下文对象
      */
     public void handleExitEditMessage(AppEditContext appEditContext) {
@@ -326,9 +330,9 @@ public class AppEditHandler extends TextWebSocketHandler {
 
     /**
      * 向应用的所有用户广播消息
-     * 
-     * @param appId 应用ID
-     * @param textMessage 要广播的消息
+     *
+     * @param appId          应用ID
+     * @param textMessage    要广播的消息
      * @param excludeSession 要排除的会话（不向该会话发送消息）
      * @throws Exception 异常
      */
@@ -351,7 +355,7 @@ public class AppEditHandler extends TextWebSocketHandler {
 
     /**
      * 将响应消息转换为 WebSocket 文本消息
-     * 
+     *
      * @param appEditResponseMessage 响应消息对象
      * @return WebSocket 文本消息
      * @throws JsonProcessingException JSON 序列化异常
@@ -364,8 +368,8 @@ public class AppEditHandler extends TextWebSocketHandler {
 
     /**
      * 向应用的所有用户广播消息（不排除任何会话）
-     * 
-     * @param appId 应用ID
+     *
+     * @param appId       应用ID
      * @param textMessage 要广播的消息
      * @throws Exception 异常
      */
@@ -375,10 +379,10 @@ public class AppEditHandler extends TextWebSocketHandler {
 
     /**
      * 向指定用户发送消息
-     * 
-     * @param appId 应用ID
+     *
+     * @param appId        应用ID
      * @param textMessages 要发送的消息列表
-     * @param sendSession 目标用户的会话
+     * @param sendSession  目标用户的会话
      * @throws Exception 异常
      */
     private void broadcastToOneUser(Long appId, List<TextMessage> textMessages, WebSocketSession sendSession) throws Exception {
@@ -408,7 +412,7 @@ public class AppEditHandler extends TextWebSocketHandler {
 
     /**
      * 获取在线用户列表
-     * 
+     *
      * @param appId 应用ID
      * @return 在线用户列表
      */
@@ -432,7 +436,7 @@ public class AppEditHandler extends TextWebSocketHandler {
 
     /**
      * 处理发送消息
-     * 
+     *
      * @param appEditContext 编辑上下文对象
      * @throws Exception 异常
      */
@@ -456,7 +460,7 @@ public class AppEditHandler extends TextWebSocketHandler {
 
     /**
      * 处理触摸元素
-     * 
+     *
      * @param appEditContext 编辑上下文对象
      * @throws Exception 异常
      */
@@ -473,14 +477,14 @@ public class AppEditHandler extends TextWebSocketHandler {
         appEditResponseMessage.setUser(userService.getUserVO(user));
         appEditResponseMessage.setElement(requestMessage.getElement());
         TextMessage textMessage = getTextMessage(appEditResponseMessage);
-        log.info("触摸广播 = {}",  textMessage);
+        log.info("触摸广播 = {}", textMessage);
         // 向所有用户广播
         broadcastToApp(appId, textMessage);
     }
 
     /**
      * 处理选择元素
-     * 
+     *
      * @param appEditContext 编辑上下文对象
      * @throws Exception 异常
      */
@@ -504,7 +508,7 @@ public class AppEditHandler extends TextWebSocketHandler {
 
     /**
      * 处理清除元素
-     * 
+     *
      * @param appEditContext 编辑上下文对象
      * @throws Exception 异常
      */
@@ -528,7 +532,7 @@ public class AppEditHandler extends TextWebSocketHandler {
 
     /**
      * 处理部署项目
-     * 
+     *
      * @param appEditContext 编辑上下文对象
      * @throws Exception 异常
      */
@@ -550,13 +554,23 @@ public class AppEditHandler extends TextWebSocketHandler {
 
     /**
      * 处理停止回复
-     * 
+     *
      * @param appEditContext 编辑上下文对象
      * @throws Exception 异常
      */
     public void handleStopResponse(AppEditContext appEditContext) throws Exception {
         User user = appEditContext.getUser();
         Long appId = appEditContext.getAppId();
+        Long userId = user.getId();
+
+        // 调用 AiCodeGeneratorFacade 的中断方法，停止 AI 生成
+        boolean interrupted = aiCodeGeneratorFacade.interrupt(appId, userId);
+
+        if (interrupted) {
+            log.info("成功停止 AI 生成，appId: {}, userId: {}", appId, userId);
+        } else {
+            log.warn("停止 AI 生成失败，appId: {}, userId: {}", appId, userId);
+        }
 
         // 构造停止回复消息
         DialogueResponseMessage appEditResponseMessage = new DialogueResponseMessage();
@@ -568,6 +582,28 @@ public class AppEditHandler extends TextWebSocketHandler {
 
         // 向所有用户广播
         broadcastToApp(appId, textMessage);
+    }
+
+    /**
+     * 广播 AI 回复消息
+     *
+     * @param appId 应用ID
+     * @param user 用户信息
+     * @param message AI 回复内容
+     * @throws Exception 异常
+     */
+    public void broadcastAiResponse(Long appId, User user, String message) throws Exception {
+        log.info("开始广播 AI 回复，appId: {}, userId: {}, message: {}", appId, user.getId(), message);
+        // 构造 AI 回复消息
+        DialogueResponseMessage appEditResponseMessage = new DialogueResponseMessage();
+        appEditResponseMessage.setType(DialogueMessageTypeEnum.AI_RESPONSE.getValue());
+        appEditResponseMessage.setMessage(message);
+        appEditResponseMessage.setUser(userService.getUserVO(user));
+        TextMessage textMessage = getTextMessage(appEditResponseMessage);
+
+        // 向所有用户广播
+        broadcastToApp(appId, textMessage);
+        log.info("广播 AI 回复完成，appId: {}", appId);
     }
 
     /**

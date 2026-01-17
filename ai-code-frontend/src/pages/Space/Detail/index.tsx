@@ -14,6 +14,7 @@ import InviteFriendsModal from '@/components/InviteFriendsModal';
 import { SearchOutlined, PlusOutlined, UserOutlined, TeamOutlined, UserAddOutlined, CheckOutlined } from '@ant-design/icons';
 import { SpaceTypeEnum, getSpaceTypeLabel } from '@/constants/spaceTypeEnum';
 import { SpaceUserRoleEnum, getSpaceUserRoleLabel, getSpaceUserRoleColor } from '@/constants/spaceUserRoleEnum';
+import { useScrollLoad } from '@/hooks/useScrollLoad';
 import styles from './index.module.less';
 
 const { Title, Paragraph } = Typography;
@@ -194,16 +195,6 @@ const SpaceDetailPage: React.FC = () => {
     loadMyApps(1, 20);
   };
 
-  /**
-   * 处理我的应用列表滚动加载
-   */
-  const handleMyAppsScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const { scrollTop, clientHeight, scrollHeight } = e.currentTarget;
-    if (scrollHeight - scrollTop - clientHeight < 100 && !myAppsLoading && myAppsHasMore) {
-      loadMyApps(myAppsPageNum + 1, 20);
-    }
-  };
-
   useEffect(() => {
     if (spaceId) {
       loadSpaceDetail();
@@ -211,6 +202,16 @@ const SpaceDetailPage: React.FC = () => {
       loadSpaceApps();
     }
   }, [spaceId]);
+
+  useScrollLoad(() => {
+    if (!myAppsLoading && myAppsHasMore) {
+      loadMyApps(myAppsPageNum + 1, 20);
+    }
+  }, {
+    threshold: 100,
+    disabled: !myAppsHasMore || myAppsLoading,
+    containerRef: myAppsListRef,
+  });
 
   if (loading || !space) {
     return (
