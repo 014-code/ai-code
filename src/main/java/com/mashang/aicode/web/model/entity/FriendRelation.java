@@ -1,10 +1,10 @@
 package com.mashang.aicode.web.model.entity;
 
-import com.mybatisflex.annotation.Column;
-import com.mybatisflex.annotation.Id;
-import com.mybatisflex.annotation.KeyType;
-import com.mybatisflex.annotation.Table;
-import com.mybatisflex.core.keygen.KeyGenerators;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -20,49 +20,49 @@ import java.util.Date;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table("friend_relation")
+@TableName("friend_relation")
 public class FriendRelation implements Serializable {
 
     /**
      * 关系ID
      */
-    @Id(keyType = KeyType.Generator, value = KeyGenerators.snowFlakeId)
-    @Column("id")
+    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
     /**
      * 用户ID（发起方）
      */
-    @Column("userId")
+    @TableField("userId")
     private Long userId;
 
     /**
      * 好友ID（接收方）
      */
-    @Column("friendId")
+    @TableField("friendId")
     private Long friendId;
 
     /**
      * 关系状态：PENDING（待处理）、ACCEPTED（已接受）、REJECTED（已拒绝）
      */
-    @Column("status")
+    @TableField("status")
     private String status;
 
     /**
      * 创建时间
      */
-    @Column("createTime")
+    @TableField("createTime")
     private Date createTime;
 
     /**
      * 更新时间
      */
-    @Column("updateTime")
+    @TableField("updateTime")
     private Date updateTime;
 
     /**
      * 是否删除（逻辑删除）
      */
-    @Column(value = "isDelete", isLogicDelete = true)
+    @TableLogic
+    @TableField("isDelete")
     private Integer isDelete;
 }

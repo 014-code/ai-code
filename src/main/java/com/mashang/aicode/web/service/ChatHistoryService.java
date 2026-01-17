@@ -1,12 +1,12 @@
 package com.mashang.aicode.web.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.IService;
 import com.mashang.aicode.web.model.dto.chat.ChatHistoryQueryRequest;
 import com.mashang.aicode.web.model.entity.ChatHistory;
 import com.mashang.aicode.web.model.entity.User;
 import com.mashang.aicode.web.model.vo.ChatHistoryVO;
-import com.mybatisflex.core.paginate.Page;
-import com.mybatisflex.core.query.QueryWrapper;
-import com.mybatisflex.core.service.IService;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import org.springframework.stereotype.Service;
 

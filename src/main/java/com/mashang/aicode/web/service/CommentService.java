@@ -1,11 +1,11 @@
 package com.mashang.aicode.web.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.IService;
 import com.mashang.aicode.web.model.dto.comment.CommentQueryRequest;
 import com.mashang.aicode.web.model.entity.Comment;
 import com.mashang.aicode.web.model.vo.CommentVO;
-import com.mybatisflex.core.paginate.Page;
-import com.mybatisflex.core.query.QueryWrapper;
-import com.mybatisflex.core.service.IService;
 
 /**
  * 评论 服务层

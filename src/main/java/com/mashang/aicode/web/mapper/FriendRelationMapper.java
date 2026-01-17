@@ -1,7 +1,7 @@
 package com.mashang.aicode.web.mapper;
 
 import com.mashang.aicode.web.model.entity.FriendRelation;
-import com.mybatisflex.core.BaseMapper;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -59,5 +59,5 @@ public interface FriendRelationMapper extends BaseMapper<FriendRelation> {
      * @return 更新结果
      */
     @Update("UPDATE friend_relation SET status = #{status}, updateTime = NOW() WHERE id = #{id} AND isDelete = 0")
-    boolean updateById(FriendRelation friendRelation);
+    int updateById(FriendRelation friendRelation);
 }

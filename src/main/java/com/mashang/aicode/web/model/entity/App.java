@@ -2,11 +2,11 @@ package com.mashang.aicode.web.model.entity;
 
 import java.util.Date;
 
-import com.mybatisflex.annotation.Column;
-import com.mybatisflex.annotation.Id;
-import com.mybatisflex.annotation.KeyType;
-import com.mybatisflex.annotation.Table;
-import com.mybatisflex.core.keygen.KeyGenerators;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -19,59 +19,59 @@ import java.io.Serializable;
  * @author makejava
  * @since 2025-10-29 21:53:31
  */
-@Table("app")
+@TableName("app")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class App implements Serializable {
     //id
-    @Id(keyType = KeyType.Generator, value = KeyGenerators.snowFlakeId)
-    @Column("id")
+    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
     //应用名称
-    @Column("appName")
+    @TableField("appName")
     private String appName;
     //应用类型
-    @Column("appType")
+    @TableField("appType")
     private String appType;
     //浏览量
-    @Column("pageViews")
+    @TableField("pageViews")
     private Long pageViews;
     //应用封面
-    @Column("cover")
+    @TableField("cover")
     private String cover;
     //应用初始化的 prompt
-    @Column("initPrompt")
+    @TableField("initPrompt")
     private String initPrompt;
     //代码生成类型（枚举）
-    @Column("codeGenType")
+    @TableField("codeGenType")
     private String codeGenType;
     //部署标识
-    @Column("deployKey")
+    @TableField("deployKey")
     private String deployKey;
     //部署时间
-    @Column("deployedTime")
+    @TableField("deployedTime")
     private Date deployedTime;
     //优先级
-    @Column("priority")
+    @TableField("priority")
     private Integer priority;
     //创建用户id
-    @Column("userId")
+    @TableField("userId")
     private Long userId;
     //所属空间id
-    @Column("spaceId")
+    @TableField("spaceId")
     private Long spaceId;
     //编辑时间
-    @Column("editTime")
+    @TableField("editTime")
     private Date editTime;
     //创建时间
-    @Column("createTime")
+    @TableField("createTime")
     private Date createTime;
     //更新时间
-    @Column("updateTime")
+    @TableField("updateTime")
     private Date updateTime;
     //是否删除
-    @Column(value = "isDelete", isLogicDelete = true)
+    @TableLogic
+    @TableField("isDelete")
     private Integer isDelete;
 
 }

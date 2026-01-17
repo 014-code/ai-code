@@ -215,7 +215,7 @@ public class AppEditHandler extends TextWebSocketHandler {
     private void handleEditErrorMessage(User user, Long appId, WebSocketSession sendSession) throws Exception {
         // 获取当前正在编辑的用户ID
         Long editUserId = appEditingUsers.get(appId);
-        User editUser = userDAO.selectOneById(editUserId);
+        User editUser = userDAO.selectById(editUserId);
 
         // 构造错误消息
         DialogueResponseMessage appEditResponseMessage = new DialogueResponseMessage();

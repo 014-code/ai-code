@@ -1,6 +1,5 @@
 package com.mashang.aicode.web.model.vo;
 
-import com.mybatisflex.annotation.Column;
 import lombok.Data;
 
 import java.io.Serializable;

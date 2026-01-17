@@ -1,7 +1,7 @@
 package com.mashang.aicode.web.service;
 
+import com.baomidou.mybatisplus.extension.service.IService;
 import com.mashang.aicode.web.model.entity.SpaceUser;
-import com.mybatisflex.core.service.IService;
 
 /**
  * 空间成员服务接口

@@ -4,11 +4,11 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
-import com.mybatisflex.annotation.Column;
-import com.mybatisflex.annotation.Id;
-import com.mybatisflex.annotation.KeyType;
-import com.mybatisflex.annotation.Table;
-import com.mybatisflex.core.keygen.KeyGenerators;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
  *
  * @author makejava
  */
-@Table("comment")
+@TableName("comment")
 @Data
 @Builder
 @AllArgsConstructor
@@ -34,68 +34,69 @@ public class Comment implements Serializable {
      * id
      * 评论唯一标识
      */
-    @Id(keyType = KeyType.Generator, value = KeyGenerators.snowFlakeId)
-    @Column("id")
+    @TableId(value = "id", type = IdType.ASSIGN_ID)
     private Long id;
 
     /**
      * 应用ID
      * 评论所属的应用
      */
-    @Column("appId")
+    @TableField("appId")
     private Long appId;
 
-    @Column("commentType")
+    @TableField("commentType")
     private Integer commentType;
 
-    @Column("parentId")
+    @TableField("parentId")
     private Long parentId;
 
     /**
      * 用户ID
      * 评论创建者的用户ID
      */
-    @Column("userId")
+    @TableField("userId")
     private Long userId;
 
     /**
      * 评论内容
      * 评论的具体内容
      */
+    @TableField("content")
     private String content;
 
     /**
      * 点赞数
      * 评论被点赞的次数
      */
-    @Column("likeCount")
+    @TableField("likeCount")
     private Integer likeCount;
 
     /**
      * 回复数
      * 该评论收到的回复数量
      */
-    @Column("replyCount")
+    @TableField("replyCount")
     private Integer replyCount;
 
     /**
      * 创建时间
      * 评论创建的时间
      */
-    @Column("createTime")
+    @TableField("createTime")
     private LocalDateTime createTime;
 
     /**
      * 更新时间
      * 评论最后更新的时间
      */
-    @Column("updateTime")
+    @TableField("updateTime")
     private LocalDateTime updateTime;
 
     /**
      * 是否删除
      * 逻辑删除标识：0-未删除，1-已删除
      */
-    @Column(value = "isDelete", isLogicDelete = true)
+    @TableLogic
+    @TableField("isDelete")
     private Integer isDelete;
 }

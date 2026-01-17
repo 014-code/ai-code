@@ -2,46 +2,46 @@ package com.mashang.aicode.web.model.entity;
 
 import java.util.Date;
 
-import com.mybatisflex.annotation.Column;
-import com.mybatisflex.annotation.Id;
-import com.mybatisflex.annotation.KeyType;
-import com.mybatisflex.annotation.Table;
-import com.mybatisflex.core.keygen.KeyGenerators;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 
-@Table("forum_post")
+@TableName("forum_post")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class ForumPost implements Serializable {
-    @Id(keyType = KeyType.Generator, value = KeyGenerators.snowFlakeId)
-    @Column("id")
+    @TableId(value = "id", type = IdType.ASSIGN_ID)
     private Long id;
-    @Column("title")
+    @TableField("title")
     private String title;
-    @Column("content")
+    @TableField("content")
     private String content;
-    @Column("appId")
+    @TableField("appId")
     private Long appId;
-    @Column("userId")
+    @TableField("userId")
     private Long userId;
-    @Column("viewCount")
+    @TableField("viewCount")
     private Integer viewCount;
-    @Column("likeCount")
+    @TableField("likeCount")
     private Integer likeCount;
-    @Column("commentCount")
+    @TableField("commentCount")
     private Integer commentCount;
-    @Column("isPinned")
+    @TableField("isPinned")
     private Integer isPinned;
-    @Column("createTime")
+    @TableField("createTime")
     private Date createTime;
-    @Column("updateTime")
+    @TableField("updateTime")
     private Date updateTime;
-    @Column(value = "isDelete", isLogicDelete = true)
+    @TableLogic
+    @TableField("isDelete")
     private Integer isDelete;
 
 }

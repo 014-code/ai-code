@@ -30,9 +30,8 @@ import com.mashang.aicode.web.model.vo.PresetPromptVO;
 import com.mashang.aicode.web.ratelimiter.annotation.RateLimit;
 import com.mashang.aicode.web.ratelimiter.enums.RateLimitType;
 import com.mashang.aicode.web.service.*;
-import com.mybatisflex.core.paginate.Page;
-import com.mybatisflex.core.query.QueryWrapper;
-import com.mybatisflex.core.update.UpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -302,7 +301,7 @@ public class AppController {
         long pageNum = appQueryRequest.getPageNum();
         long pageSize = appQueryRequest.getPageSize();
 
-        Page<App> appPage = appService.page(Page.of(pageNum, pageSize), appService.getQueryWrapper(appQueryRequest));
+        Page<App> appPage = appService.page(new Page<>(pageNum, pageSize), appService.getQueryWrapper(appQueryRequest));
 
         return ResultUtils.success(appPage);
     }
@@ -357,10 +356,10 @@ public class AppController {
         long pageSize = appQueryRequest.getPageSize();
 
         // 创建查询条件，按创建时间倒序排列
-        com.mybatisflex.core.query.QueryWrapper queryWrapper = new com.mybatisflex.core.query.QueryWrapper();
-        queryWrapper.orderBy("createTime", false); // false表示倒序
+        QueryWrapper<App> queryWrapper = new QueryWrapper<>();
+        queryWrapper.orderByDesc("createTime");
 
-        Page<App> appPage = appService.page(Page.of(pageNum, pageSize), queryWrapper);
+        Page<App> appPage = appService.page(new Page<>(pageNum, pageSize), queryWrapper);
         return ResultUtils.success(appPage);
     }
 
