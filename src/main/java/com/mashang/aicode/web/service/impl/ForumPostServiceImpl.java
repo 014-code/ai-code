@@ -3,6 +3,10 @@ package com.mashang.aicode.web.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.mashang.aicode.web.exception.BusinessException;
 import com.mashang.aicode.web.exception.ErrorCode;
 import com.mashang.aicode.web.exception.ThrowUtils;
@@ -13,9 +17,6 @@ import com.mashang.aicode.web.model.dto.forum.ForumPostQueryRequest;
 import com.mashang.aicode.web.model.entity.App;
 import com.mashang.aicode.web.model.entity.ForumPost;
 import com.mashang.aicode.web.model.entity.User;
-import com.mashang.aicode.web.model.entity.table.AppTableDef;
-import com.mashang.aicode.web.model.entity.table.ForumPostTableDef;
-import com.mashang.aicode.web.model.entity.table.UserTableDef;
 import com.mashang.aicode.web.model.vo.AppVO;
 import com.mashang.aicode.web.model.vo.ForumPostSimpleVO;
 import com.mashang.aicode.web.model.vo.ForumPostVO;
@@ -23,9 +24,6 @@ import com.mashang.aicode.web.model.vo.UserVO;
 import com.mashang.aicode.web.service.AppService;
 import com.mashang.aicode.web.service.ForumPostService;
 import com.mashang.aicode.web.service.UserService;
-import com.mybatisflex.core.paginate.Page;
-import com.mybatisflex.core.query.QueryWrapper;
-import com.mybatisflex.spring.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,10 +32,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static com.mashang.aicode.web.model.entity.table.AppTableDef.APP;
-import static com.mashang.aicode.web.model.entity.table.ForumPostTableDef.FORUM_POST;
-import static com.mashang.aicode.web.model.entity.table.UserTableDef.USER;
 
 @Service
 @Slf4j
@@ -64,7 +58,7 @@ public class ForumPostServiceImpl extends ServiceImpl<ForumPostMapper, ForumPost
         BeanUtil.copyProperties(forumPost, forumPostVO);
 
         if (forumPost.getUserId() != null) {
-            User user = userMapper.selectOneById(forumPost.getUserId());
+            User user = userMapper.selectById(forumPost.getUserId());
             if (user != null) {
                 UserVO userVO = userService.getUserVO(user);
                 forumPostVO.setUser(userVO);
@@ -72,7 +66,7 @@ public class ForumPostServiceImpl extends ServiceImpl<ForumPostMapper, ForumPost
         }
 
         if (forumPost.getAppId() != null) {
-            App app = appMapper.selectOneById(forumPost.getAppId());
+            App app = appMapper.selectById(forumPost.getAppId());
             if (app != null) {
                 AppVO appVO = appService.getAppVO(app);
                 forumPostVO.setApp(appVO);
@@ -91,11 +85,11 @@ public class ForumPostServiceImpl extends ServiceImpl<ForumPostMapper, ForumPost
         List<Long> userIds = forumPostList.stream().map(ForumPost::getUserId).distinct().collect(Collectors.toList());
         List<Long> appIds = forumPostList.stream().filter(post -> post.getAppId() != null).map(ForumPost::getAppId).distinct().collect(Collectors.toList());
 
-        Map<Long, UserVO> userVOMap = userMapper.selectListByQuery(QueryWrapper.create().select(USER.ID, USER.USER_NAME, USER.USER_AVATAR).where(USER.ID.in(userIds))).stream().map(userService::getUserVO).collect(Collectors.toMap(UserVO::getId, userVO -> userVO));
+        Map<Long, UserVO> userVOMap = userMapper.selectList(new LambdaQueryWrapper<User>().select(User::getId, User::getUserName, User::getUserAvatar).in(User::getId, userIds)).stream().map(userService::getUserVO).collect(Collectors.toMap(UserVO::getId, userVO -> userVO));
 
         Map<Long, AppVO> appVOMap = new java.util.HashMap<>();
         if (CollUtil.isNotEmpty(appIds)) {
-            appVOMap = appMapper.selectListByQuery(QueryWrapper.create().select(APP.ID, APP.APP_NAME, APP.COVER).where(APP.ID.in(appIds))).stream().map(appService::getAppVO).collect(Collectors.toMap(AppVO::getId, appVO -> appVO));
+            appVOMap = appMapper.selectList(new LambdaQueryWrapper<App>().select(App::getId, App::getAppName, App::getCover).in(App::getId, appIds)).stream().map(appService::getAppVO).collect(Collectors.toMap(AppVO::getId, appVO -> appVO));
         }
 
         Map<Long, AppVO> finalAppVOMap = appVOMap;
@@ -119,7 +113,7 @@ public class ForumPostServiceImpl extends ServiceImpl<ForumPostMapper, ForumPost
         BeanUtil.copyProperties(forumPost, forumPostSimpleVO);
 
         if (forumPost.getUserId() != null) {
-            User user = userMapper.selectOneById(forumPost.getUserId());
+            User user = userMapper.selectById(forumPost.getUserId());
             if (user != null) {
                 UserVO userVO = userService.getUserVO(user);
                 forumPostSimpleVO.setUser(userVO);
@@ -127,7 +121,7 @@ public class ForumPostServiceImpl extends ServiceImpl<ForumPostMapper, ForumPost
         }
 
         if (forumPost.getAppId() != null) {
-            App app = appMapper.selectOneById(forumPost.getAppId());
+            App app = appMapper.selectById(forumPost.getAppId());
             if (app != null) {
                 AppVO appVO = appService.getAppVO(app);
                 forumPostSimpleVO.setApp(appVO);
@@ -146,11 +140,11 @@ public class ForumPostServiceImpl extends ServiceImpl<ForumPostMapper, ForumPost
         List<Long> userIds = forumPostList.stream().map(ForumPost::getUserId).distinct().collect(Collectors.toList());
         List<Long> appIds = forumPostList.stream().filter(post -> post.getAppId() != null).map(ForumPost::getAppId).distinct().collect(Collectors.toList());
 
-        Map<Long, UserVO> userVOMap = userMapper.selectListByQuery(QueryWrapper.create().select(USER.ID, USER.USER_NAME, USER.USER_AVATAR).where(USER.ID.in(userIds))).stream().map(userService::getUserVO).collect(Collectors.toMap(UserVO::getId, userVO -> userVO));
+        Map<Long, UserVO> userVOMap = userMapper.selectList(new LambdaQueryWrapper<User>().select(User::getId, User::getUserName, User::getUserAvatar).in(User::getId, userIds)).stream().map(userService::getUserVO).collect(Collectors.toMap(UserVO::getId, userVO -> userVO));
 
         Map<Long, AppVO> appVOMap = new java.util.HashMap<>();
         if (CollUtil.isNotEmpty(appIds)) {
-            appVOMap = appMapper.selectListByQuery(QueryWrapper.create().select(APP.ID, APP.APP_NAME, APP.COVER).where(APP.ID.in(appIds))).stream().map(appService::getAppVO).collect(Collectors.toMap(AppVO::getId, appVO -> appVO));
+            appVOMap = appMapper.selectList(new LambdaQueryWrapper<App>().select(App::getId, App::getAppName, App::getCover).in(App::getId, appIds)).stream().map(appService::getAppVO).collect(Collectors.toMap(AppVO::getId, appVO -> appVO));
         }
 
         Map<Long, AppVO> finalAppVOMap = appVOMap;
@@ -178,27 +172,27 @@ public class ForumPostServiceImpl extends ServiceImpl<ForumPostMapper, ForumPost
         Long userId = forumPostQueryRequest.getUserId();
         Integer isPinned = forumPostQueryRequest.getIsPinned();
 
-        QueryWrapper queryWrapper = QueryWrapper.create();
+        QueryWrapper<ForumPost> queryWrapper = new QueryWrapper<>();
 
         if (id != null) {
-            queryWrapper.and(FORUM_POST.ID.eq(id));
+            queryWrapper.eq("id", id);
         }
         if (StrUtil.isNotBlank(searchKey)) {
-            queryWrapper.and(FORUM_POST.TITLE.like("%" + searchKey + "%").or(FORUM_POST.CONTENT.like("%" + searchKey + "%")));
+            queryWrapper.and(wrapper -> wrapper.like("title", "%" + searchKey + "%").or().like("content", "%" + searchKey + "%"));
         } else if (StrUtil.isNotBlank(title)) {
-            queryWrapper.and(FORUM_POST.TITLE.like("%" + title + "%"));
+            queryWrapper.like("title", "%" + title + "%");
         }
         if (appId != null) {
-            queryWrapper.and(FORUM_POST.APP_ID.eq(appId));
+            queryWrapper.eq("appId", appId);
         }
         if (userId != null) {
-            queryWrapper.and(FORUM_POST.USER_ID.eq(userId));
+            queryWrapper.eq("userId", userId);
         }
         if (isPinned != null) {
-            queryWrapper.and(FORUM_POST.IS_PINNED.eq(isPinned));
+            queryWrapper.eq("isPinned", isPinned);
         }
 
-        queryWrapper.orderBy(FORUM_POST.IS_PINNED, false).orderBy(FORUM_POST.CREATE_TIME, false);
+        queryWrapper.orderByDesc("isPinned").orderByDesc("createTime");
 
         return queryWrapper;
     }
@@ -216,9 +210,10 @@ public class ForumPostServiceImpl extends ServiceImpl<ForumPostMapper, ForumPost
 
         QueryWrapper queryWrapper = getQueryWrapper(forumPostQueryRequest);
 
-        Page<ForumPost> forumPostPage = this.page(Page.of(pageNum, pageSize), queryWrapper);
+        Page<ForumPost> forumPostPage = this.page(new Page<>(pageNum, pageSize), queryWrapper);
 
-        Page<ForumPostVO> forumPostVOPage = new Page<>(pageNum, pageSize, forumPostPage.getTotalRow());
+        // 数据转换
+        Page<ForumPostVO> forumPostVOPage = new Page<>(pageNum, pageSize, forumPostPage.getTotal());
         List<ForumPostVO> forumPostVOList = getForumPostVOList(forumPostPage.getRecords());
         forumPostVOPage.setRecords(forumPostVOList);
 
@@ -238,9 +233,10 @@ public class ForumPostServiceImpl extends ServiceImpl<ForumPostMapper, ForumPost
 
         QueryWrapper queryWrapper = getQueryWrapper(forumPostQueryRequest);
 
-        Page<ForumPost> forumPostPage = this.page(Page.of(pageNum, pageSize), queryWrapper);
+        Page<ForumPost> forumPostPage = this.page(new Page<>(pageNum, pageSize), queryWrapper);
 
-        Page<ForumPostSimpleVO> forumPostSimpleVOPage = new Page<>(pageNum, pageSize, forumPostPage.getTotalRow());
+        // 数据转换
+        Page<ForumPostSimpleVO> forumPostSimpleVOPage = new Page<>(pageNum, pageSize, forumPostPage.getTotal());
         List<ForumPostSimpleVO> forumPostSimpleVOList = getForumPostSimpleVOList(forumPostPage.getRecords());
         forumPostSimpleVOPage.setRecords(forumPostSimpleVOList);
 
@@ -354,13 +350,13 @@ public class ForumPostServiceImpl extends ServiceImpl<ForumPostMapper, ForumPost
     public List<ForumPostVO> listHotPosts(int limit) {
         ThrowUtils.throwIf(limit <= 0, ErrorCode.PARAMS_ERROR);
 
-        QueryWrapper queryWrapper = QueryWrapper.create();
-        queryWrapper.orderBy(FORUM_POST.IS_PINNED, false)
-                .orderBy(FORUM_POST.LIKE_COUNT.desc())
-                .orderBy(FORUM_POST.VIEW_COUNT.desc())
-                .orderBy(FORUM_POST.COMMENT_COUNT.desc())
-                .orderBy(FORUM_POST.CREATE_TIME.desc())
-                .limit(limit);
+        QueryWrapper<ForumPost> queryWrapper = new QueryWrapper<>();
+        queryWrapper.orderByDesc("isPinned")
+                .orderByDesc("likeCount")
+                .orderByDesc("viewCount")
+                .orderByDesc("commentCount")
+                .orderByDesc("createTime")
+                .last("LIMIT " + limit);
 
         List<ForumPost> forumPostList = this.list(queryWrapper);
         return getForumPostVOList(forumPostList);

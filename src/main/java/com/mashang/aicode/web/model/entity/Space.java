@@ -1,10 +1,10 @@
 package com.mashang.aicode.web.model.entity;
 
-import com.mybatisflex.annotation.Column;
-import com.mybatisflex.annotation.Id;
-import com.mybatisflex.annotation.KeyType;
-import com.mybatisflex.annotation.Table;
-import com.mybatisflex.core.keygen.KeyGenerators;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,30 +16,30 @@ import java.util.Date;
  * 空间实体类
  * 用于存储个人空间和团队空间的信息
  */
-@Table("space")
+@TableName("space")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class Space implements Serializable {
-    @Id(keyType = KeyType.Generator, value = KeyGenerators.snowFlakeId)
-    @Column("id")
+    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
-    @Column("spaceName")
+    @TableField("spaceName")
     private String spaceName;
-    @Column("spaceType")
+    @TableField("spaceType")
     private Integer spaceType;
-    @Column("ownerId")
+    @TableField("ownerId")
     private Long ownerId;
-    @Column("description")
+    @TableField("description")
     private String description;
-    @Column("memberCount")
+    @TableField("memberCount")
     private Integer memberCount;
-    @Column("appCount")
+    @TableField("appCount")
     private Integer appCount;
-    @Column("createTime")
+    @TableField("createTime")
     private Date createTime;
-    @Column("updateTime")
+    @TableField("updateTime")
     private Date updateTime;
-    @Column(value = "isDelete", isLogicDelete = true)
+    @TableLogic
+    @TableField("isDelete")
     private Integer isDelete;
 }

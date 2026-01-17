@@ -1,10 +1,10 @@
 package com.mashang.aicode.web.model.entity;
 
-import com.mybatisflex.annotation.Column;
-import com.mybatisflex.annotation.Id;
-import com.mybatisflex.annotation.KeyType;
-import com.mybatisflex.annotation.Table;
-import com.mybatisflex.core.keygen.KeyGenerators;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -23,7 +23,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table("user")
+@TableName("user")
 public class User implements Serializable {
 
     @Serial
@@ -32,67 +32,68 @@ public class User implements Serializable {
     /**
      * id
      */
-    @Id(keyType = KeyType.Generator, value = KeyGenerators.snowFlakeId)
+    @TableId(value = "id", type = IdType.ASSIGN_ID)
     private Long id;
 
     /**
      * 账号
      */
-    @Column("userAccount")
+    @TableField("userAccount")
     private String userAccount;
 
     /**
      * 密码
      */
-    @Column("userPassword")
+    @TableField("userPassword")
     private String userPassword;
 
     /**
      * 用户昵称
      */
-    @Column("userName")
+    @TableField("userName")
     private String userName;
 
     /**
      * 用户头像
      */
-    @Column("userAvatar")
+    @TableField("userAvatar")
     private String userAvatar;
 
     /**
      * 用户简介
      */
-    @Column("userProfile")
+    @TableField("userProfile")
     private String userProfile;
 
     /**
      * 用户角色：user/admin
      */
-    @Column("userRole")
+    @TableField("userRole")
     private String userRole;
 
     /**
      * 编辑时间
      */
-    @Column("editTime")
+    @TableField("editTime")
     private LocalDateTime editTime;
 
     /**
      * 创建时间
      */
-    @Column("createTime")
+    @TableField("createTime")
     private LocalDateTime createTime;
 
     /**
      * 更新时间
      */
-    @Column("updateTime")
+    @TableField("updateTime")
     private LocalDateTime updateTime;
 
     /**
      * 是否删除
      */
-    @Column(value = "isDelete", isLogicDelete = true)
+    @TableLogic
+    @TableField("isDelete")
     private Integer isDelete;
 
 }

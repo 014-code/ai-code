@@ -2,6 +2,7 @@ package com.mashang.aicode.web.controller;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mashang.aicode.web.annotation.AuthCheck;
 import com.mashang.aicode.web.common.BaseResponse;
 import com.mashang.aicode.web.common.DeleteRequest;
@@ -15,7 +16,6 @@ import com.mashang.aicode.web.model.entity.User;
 import com.mashang.aicode.web.model.vo.LoginUserVO;
 import com.mashang.aicode.web.model.vo.UserVO;
 import com.mashang.aicode.web.service.UserService;
-import com.mybatisflex.core.paginate.Page;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
@@ -168,10 +168,10 @@ public class UserController {
         ThrowUtils.throwIf(userQueryRequest == null, ErrorCode.PARAMS_ERROR);
         long pageNum = userQueryRequest.getPageNum();
         long pageSize = userQueryRequest.getPageSize();
-        Page<User> userPage = userService.page(Page.of(pageNum, pageSize),
+        Page<User> userPage = userService.page(new Page<>(pageNum, pageSize),
                 userService.getQueryWrapper(userQueryRequest));
         // 数据脱敏
-        Page<UserVO> userVOPage = new Page<>(pageNum, pageSize, userPage.getTotalRow());
+        Page<UserVO> userVOPage = new Page<>(pageNum, pageSize, userPage.getTotal());
         List<UserVO> userVOList = userService.getUserVOList(userPage.getRecords());
         userVOPage.setRecords(userVOList);
         return ResultUtils.success(userVOPage);

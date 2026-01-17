@@ -1,6 +1,7 @@
 package com.mashang.aicode.web.controller;
 
 import cn.hutool.core.bean.BeanUtil;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mashang.aicode.web.annotation.AuthCheck;
 import com.mashang.aicode.web.common.BaseResponse;
 import com.mashang.aicode.web.common.DeleteRequest;
@@ -17,7 +18,6 @@ import com.mashang.aicode.web.model.vo.ForumPostSimpleVO;
 import com.mashang.aicode.web.model.vo.ForumPostVO;
 import com.mashang.aicode.web.service.ForumPostService;
 import com.mashang.aicode.web.service.UserService;
-import com.mybatisflex.core.paginate.Page;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;

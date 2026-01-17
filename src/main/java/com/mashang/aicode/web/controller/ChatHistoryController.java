@@ -18,8 +18,8 @@ import com.mashang.aicode.web.service.AppService;
 import com.mashang.aicode.web.service.ChatHistoryService;
 import com.mashang.aicode.web.service.UserService;
 import com.mashang.aicode.web.service.SpaceUserService;
-import com.mybatisflex.core.paginate.Page;
-import com.mybatisflex.core.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
@@ -204,7 +204,7 @@ public class ChatHistoryController {
         long pageNum = chatHistoryQueryRequest.getPageNum();
         long pageSize = chatHistoryQueryRequest.getPageSize();
 
-        Page<ChatHistory> chatHistoryPage = chatHistoryService.page(Page.of(pageNum, pageSize), 
+        Page<ChatHistory> chatHistoryPage = chatHistoryService.page(new Page<>(pageNum, pageSize), 
                 chatHistoryService.getQueryWrapper(chatHistoryQueryRequest));
         return ResultUtils.success(chatHistoryPage);
     }
@@ -220,11 +220,11 @@ public class ChatHistoryController {
         long pageNum = chatHistoryQueryRequest.getPageNum();
         long pageSize = chatHistoryQueryRequest.getPageSize();
 
-        Page<ChatHistory> chatHistoryPage = chatHistoryService.page(Page.of(pageNum, pageSize), 
+        Page<ChatHistory> chatHistoryPage = chatHistoryService.page(new Page<>(pageNum, pageSize), 
                 chatHistoryService.getQueryWrapper(chatHistoryQueryRequest));
         
         // 转换为VO
-        Page<ChatHistoryVO> chatHistoryVOPage = new Page<>(pageNum, pageSize, chatHistoryPage.getTotalRow());
+        Page<ChatHistoryVO> chatHistoryVOPage = new Page<>(pageNum, pageSize, chatHistoryPage.getTotal());
         List<ChatHistoryVO> chatHistoryVOList = chatHistoryService.getChatHistoryVOList(chatHistoryPage.getRecords());
         chatHistoryVOPage.setRecords(chatHistoryVOList);
         

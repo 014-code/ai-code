@@ -1,10 +1,9 @@
 package com.mashang.aicode.web.model.entity;
 
-import com.mybatisflex.annotation.Column;
-import com.mybatisflex.annotation.Id;
-import com.mybatisflex.annotation.KeyType;
-import com.mybatisflex.annotation.Table;
-import com.mybatisflex.core.keygen.KeyGenerators;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,26 +15,25 @@ import java.util.Date;
  * 空间成员实体类
  * 用于存储空间与用户的关联关系，包括用户角色和权限
  */
-@Table("space_user")
+@TableName("space_user")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class SpaceUser implements Serializable {
-    @Id(keyType = KeyType.Generator, value = KeyGenerators.snowFlakeId)
-    @Column("id")
+    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
-    @Column("spaceId")
+    @TableField("spaceId")
     private Long spaceId;
-    @Column("userId")
+    @TableField("userId")
     private Long userId;
-    @Column("role")
+    @TableField("role")
     private String role;
-    @Column("permissions")
+    @TableField("permissions")
     private String permissions;
-    @Column("joinTime")
+    @TableField("joinTime")
     private Date joinTime;
-    @Column("createTime")
+    @TableField("createTime")
     private Date createTime;
-    @Column("updateTime")
+    @TableField("updateTime")
     private Date updateTime;
 }

@@ -1,9 +1,9 @@
 package com.mashang.aicode.web.service.impl;
 
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.mashang.aicode.web.mapper.SpaceUserMapper;
 import com.mashang.aicode.web.model.entity.SpaceUser;
 import com.mashang.aicode.web.service.SpaceUserService;
-import com.mybatisflex.spring.service.impl.ServiceImpl;
 import org.springframework.stereotype.Service;
 
 /**

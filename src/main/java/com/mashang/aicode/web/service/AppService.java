@@ -1,12 +1,12 @@
 package com.mashang.aicode.web.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.IService;
 import com.mashang.aicode.web.model.dto.app.AppQueryRequest;
 import com.mashang.aicode.web.model.entity.App;
 import com.mashang.aicode.web.model.entity.User;
 import com.mashang.aicode.web.model.vo.AppVO;
-import com.mybatisflex.core.paginate.Page;
-import com.mybatisflex.core.query.QueryWrapper;
-import com.mybatisflex.core.service.IService;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 

@@ -2,6 +2,10 @@ package com.mashang.aicode.web.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.mashang.aicode.web.exception.BusinessException;
 import com.mashang.aicode.web.exception.ErrorCode;
 import com.mashang.aicode.web.exception.ThrowUtils;
@@ -12,9 +16,6 @@ import com.mashang.aicode.web.model.dto.comment.CommentQueryRequest;
 import com.mashang.aicode.web.model.entity.App;
 import com.mashang.aicode.web.model.entity.Comment;
 import com.mashang.aicode.web.model.entity.User;
-import com.mashang.aicode.web.model.entity.table.AppTableDef;
-import com.mashang.aicode.web.model.entity.table.CommentTableDef;
-import com.mashang.aicode.web.model.entity.table.UserTableDef;
 import com.mashang.aicode.web.model.vo.AppVO;
 import com.mashang.aicode.web.model.vo.CommentVO;
 import com.mashang.aicode.web.model.vo.UserVO;
@@ -22,9 +23,6 @@ import com.mashang.aicode.web.service.AppService;
 import com.mashang.aicode.web.service.CommentService;
 import com.mashang.aicode.web.service.ForumPostService;
 import com.mashang.aicode.web.service.UserService;
-import com.mybatisflex.core.paginate.Page;
-import com.mybatisflex.core.query.QueryWrapper;
-import com.mybatisflex.spring.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,10 +31,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static com.mashang.aicode.web.model.entity.table.AppTableDef.APP;
-import static com.mashang.aicode.web.model.entity.table.CommentTableDef.COMMENT;
-import static com.mashang.aicode.web.model.entity.table.UserTableDef.USER;
 
 /**
  * 评论 服务层实现
@@ -72,7 +66,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 
         // 设置用户信息
         if (comment.getUserId() != null) {
-            User user = userMapper.selectOneById(comment.getUserId());
+            User user = userMapper.selectById(comment.getUserId());
             if (user != null) {
                 UserVO userVO = userService.getUserVO(user);
                 commentVO.setUser(userVO);
@@ -81,7 +75,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 
         // 设置应用信息
         if (comment.getAppId() != null) {
-            App app = appMapper.selectOneById(comment.getAppId());
+            App app = appMapper.selectById(comment.getAppId());
             if (app != null) {
                 AppVO appVO = appService.getAppVO(app);
                 commentVO.setApp(appVO);
@@ -101,13 +95,13 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         List<Long> userIds = commentList.stream().map(Comment::getUserId).distinct().collect(Collectors.toList());
 
         // 批量查询用户信息
-        Map<Long, UserVO> userVOMap = userMapper.selectListByQuery(QueryWrapper.create().select(USER.ID, USER.USER_NAME, USER.USER_AVATAR).where(USER.ID.in(userIds))).stream().map(userService::getUserVO).collect(Collectors.toMap(UserVO::getId, userVO -> userVO));
+        Map<Long, UserVO> userVOMap = userMapper.selectList(new LambdaQueryWrapper<User>().select(User::getId, User::getUserName, User::getUserAvatar).in(User::getId, userIds)).stream().map(userService::getUserVO).collect(Collectors.toMap(UserVO::getId, userVO -> userVO));
 
         // 获取所有应用ID
         List<Long> appIds = commentList.stream().map(Comment::getAppId).distinct().collect(Collectors.toList());
 
         // 批量查询应用信息
-        Map<Long, AppVO> appVOMap = appMapper.selectListByQuery(QueryWrapper.create().select(APP.ID, APP.APP_NAME, APP.COVER).where(APP.ID.in(appIds))).stream().map(appService::getAppVO).collect(Collectors.toMap(AppVO::getId, appVO -> appVO));
+        Map<Long, AppVO> appVOMap = appMapper.selectList(new LambdaQueryWrapper<App>().select(App::getId, App::getAppName, App::getCover).in(App::getId, appIds)).stream().map(appService::getAppVO).collect(Collectors.toMap(AppVO::getId, appVO -> appVO));
 
         // 转换为VO列表
         return commentList.stream().map(comment -> {
@@ -131,22 +125,22 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         Long userId = commentQueryRequest.getUserId();
         String content = commentQueryRequest.getContent();
 
-        QueryWrapper queryWrapper = QueryWrapper.create();
+        QueryWrapper<Comment> queryWrapper = new QueryWrapper<>();
 
         if (id != null) {
-            queryWrapper.and(COMMENT.ID.eq(id));
+            queryWrapper.eq("id", id);
         }
         if (appId != null) {
-            queryWrapper.and(COMMENT.APP_ID.eq(appId));
+            queryWrapper.eq("appId", appId);
         }
         if (parentId != null) {
-            queryWrapper.and(COMMENT.PARENT_ID.eq(parentId));
+            queryWrapper.eq("parentId", parentId);
         }
         if (userId != null) {
-            queryWrapper.and(COMMENT.USER_ID.eq(userId));
+            queryWrapper.eq("userId", userId);
         }
         if (content != null && !content.trim().isEmpty()) {
-            queryWrapper.and(COMMENT.CONTENT.like("%" + content + "%"));
+            queryWrapper.like("content", content);
         }
 
         return queryWrapper;
@@ -167,21 +161,21 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         if (sortField != null && !sortField.trim().isEmpty()) {
             boolean isAsc = "asc".equalsIgnoreCase(sortOrder);
             if ("createTime".equalsIgnoreCase(sortField)) {
-                queryWrapper.orderBy(COMMENT.CREATE_TIME, isAsc);
+                queryWrapper.orderBy(true, isAsc, "createTime");
             } else if ("likeCount".equalsIgnoreCase(sortField)) {
-                queryWrapper.orderBy(COMMENT.LIKE_COUNT, isAsc);
+                queryWrapper.orderBy(true, isAsc, "likeCount");
             } else if ("replyCount".equalsIgnoreCase(sortField)) {
-                queryWrapper.orderBy(COMMENT.REPLY_COUNT, isAsc);
+                queryWrapper.orderBy(true, isAsc, "replyCount");
             }
         } else {
             // 默认按创建时间降序
-            queryWrapper.orderBy(COMMENT.CREATE_TIME, false);
+            queryWrapper.orderByDesc("createTime");
         }
 
-        Page<Comment> commentPage = this.page(Page.of(pageNum, pageSize), queryWrapper);
+        Page<Comment> commentPage = this.page(new Page<>(pageNum, pageSize), queryWrapper);
 
         // 数据转换
-        Page<CommentVO> commentVOPage = new Page<>(pageNum, pageSize, commentPage.getTotalRow());
+        Page<CommentVO> commentVOPage = new Page<>(pageNum, pageSize, commentPage.getTotal());
         List<CommentVO> commentVOList = getCommentVOList(commentPage.getRecords());
         commentVOPage.setRecords(commentVOList);
 
@@ -203,21 +197,21 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         if (sortField != null && !sortField.trim().isEmpty()) {
             boolean isAsc = "asc".equalsIgnoreCase(sortOrder);
             if ("createTime".equalsIgnoreCase(sortField)) {
-                queryWrapper.orderBy(COMMENT.CREATE_TIME, isAsc);
+                queryWrapper.orderBy(true, isAsc, "createTime");
             } else if ("likeCount".equalsIgnoreCase(sortField)) {
-                queryWrapper.orderBy(COMMENT.LIKE_COUNT, isAsc);
+                queryWrapper.orderBy(true, isAsc, "likeCount");
             } else if ("replyCount".equalsIgnoreCase(sortField)) {
-                queryWrapper.orderBy(COMMENT.REPLY_COUNT, isAsc);
+                queryWrapper.orderBy(true, isAsc, "replyCount");
             }
         } else {
             // 默认按创建时间降序
-            queryWrapper.orderBy(COMMENT.CREATE_TIME, false);
+            queryWrapper.orderByDesc("createTime");
         }
 
-        Page<Comment> commentPage = this.page(Page.of(pageNum, pageSize), queryWrapper);
+        Page<Comment> commentPage = this.page(new Page<>(pageNum, pageSize), queryWrapper);
 
         // 数据转换
-        Page<CommentVO> commentVOPage = new Page<>(pageNum, pageSize, commentPage.getTotalRow());
+        Page<CommentVO> commentVOPage = new Page<>(pageNum, pageSize, commentPage.getTotal());
         List<CommentVO> commentVOList = getCommentVOList(commentPage.getRecords());
         commentVOPage.setRecords(commentVOList);
 
@@ -278,27 +272,27 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         long pageNum = commentQueryRequest.getPageNum();
         long pageSize = commentQueryRequest.getPageSize();
 
-        QueryWrapper queryWrapper = getQueryWrapper(commentQueryRequest);
-        queryWrapper.and(COMMENT.COMMENT_TYPE.eq(2));
+        QueryWrapper<Comment> queryWrapper = getQueryWrapper(commentQueryRequest);
+        queryWrapper.eq("commentType", 2);
 
         String sortField = commentQueryRequest.getSortField();
         String sortOrder = commentQueryRequest.getSortOrder();
         if (sortField != null && !sortField.trim().isEmpty()) {
             boolean isAsc = "asc".equalsIgnoreCase(sortOrder);
             if ("createTime".equalsIgnoreCase(sortField)) {
-                queryWrapper.orderBy(COMMENT.CREATE_TIME, isAsc);
+                queryWrapper.orderBy(true, isAsc, "createTime");
             } else if ("likeCount".equalsIgnoreCase(sortField)) {
-                queryWrapper.orderBy(COMMENT.LIKE_COUNT, isAsc);
+                queryWrapper.orderBy(true, isAsc, "likeCount");
             } else if ("replyCount".equalsIgnoreCase(sortField)) {
-                queryWrapper.orderBy(COMMENT.REPLY_COUNT, isAsc);
+                queryWrapper.orderBy(true, isAsc, "replyCount");
             }
         } else {
-            queryWrapper.orderBy(COMMENT.CREATE_TIME, false);
+            queryWrapper.orderByDesc("createTime");
         }
 
-        Page<Comment> commentPage = this.page(Page.of(pageNum, pageSize), queryWrapper);
+        Page<Comment> commentPage = this.page(new Page<>(pageNum, pageSize), queryWrapper);
 
-        Page<CommentVO> commentVOPage = new Page<>(pageNum, pageSize, commentPage.getTotalRow());
+        Page<CommentVO> commentVOPage = new Page<>(pageNum, pageSize, commentPage.getTotal());
         List<CommentVO> commentVOList = getCommentVOList(commentPage.getRecords());
         commentVOPage.setRecords(commentVOList);
 

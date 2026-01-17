@@ -1,12 +1,16 @@
 package com.mashang.aicode.web.service.impl;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.mashang.aicode.web.exception.BusinessException;
 import com.mashang.aicode.web.exception.ErrorCode;
+import com.mashang.aicode.web.mapper.ForumPostMapper;
 import com.mashang.aicode.web.mapper.FriendRelationMapper;
 import com.mashang.aicode.web.mapper.FriendRequestMapper;
 import com.mashang.aicode.web.mapper.UserMapper;
 import com.mashang.aicode.web.model.dto.friend.FriendListQueryDTO;
 import com.mashang.aicode.web.model.dto.friend.FriendRequestSendDTO;
+import com.mashang.aicode.web.model.entity.ForumPost;
 import com.mashang.aicode.web.model.entity.FriendRelation;
 import com.mashang.aicode.web.model.entity.FriendRequest;
 import com.mashang.aicode.web.model.entity.User;
@@ -14,7 +18,6 @@ import com.mashang.aicode.web.model.vo.FriendRequestVO;
 import com.mashang.aicode.web.model.vo.UserVO;
 import com.mashang.aicode.web.service.FriendService;
 import com.mashang.aicode.web.service.UserService;
-import com.mybatisflex.core.paginate.Page;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,7 +32,7 @@ import java.util.List;
  */
 @Service
 @Slf4j
-public class FriendServiceImpl implements FriendService {
+public class FriendServiceImpl extends ServiceImpl<FriendRelationMapper, FriendRelation> implements FriendService {
 
     @Resource
     private FriendRequestMapper friendRequestMapper;
@@ -56,7 +59,7 @@ public class FriendServiceImpl implements FriendService {
         }
 
         // 检查接收方是否存在
-        User addressee = userMapper.selectOneById(addresseeId);
+        User addressee = userMapper.selectById(addresseeId);
         if (addressee == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户不存在");
         }
@@ -98,7 +101,7 @@ public class FriendServiceImpl implements FriendService {
     @Transactional(rollbackFor = Exception.class)
     public boolean acceptFriendRequest(Long requestId, Long userId) {
         // 查询好友请求
-        FriendRequest friendRequest = friendRequestMapper.selectOneById(requestId);
+        FriendRequest friendRequest = friendRequestMapper.selectById(requestId);
         if (friendRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "好友请求不存在");
         }
@@ -116,7 +119,7 @@ public class FriendServiceImpl implements FriendService {
         // 更新请求状态
         friendRequest.setStatus("ACCEPTED");
         friendRequest.setUpdateTime(new Date());
-        if (!friendRequestMapper.updateById(friendRequest)) {
+        if (friendRequestMapper.updateById(friendRequest) < 1) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "更新请求状态失败");
         }
 
@@ -135,7 +138,7 @@ public class FriendServiceImpl implements FriendService {
     @Override
     public boolean rejectFriendRequest(Long requestId, Long userId) {
         // 查询好友请求
-        FriendRequest friendRequest = friendRequestMapper.selectOneById(requestId);
+        FriendRequest friendRequest = friendRequestMapper.selectById(requestId);
         if (friendRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "好友请求不存在");
         }
@@ -153,7 +156,7 @@ public class FriendServiceImpl implements FriendService {
         // 更新请求状态
         friendRequest.setStatus("REJECTED");
         friendRequest.setUpdateTime(new Date());
-        if (!friendRequestMapper.updateById(friendRequest)) {
+        if (friendRequestMapper.updateById(friendRequest) < 1) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "更新请求状态失败");
         }
 
@@ -182,7 +185,7 @@ public class FriendServiceImpl implements FriendService {
             requestVO.setCreateTime(request.getCreateTime());
 
             // 查询请求方用户信息
-            User requester = userMapper.selectOneById(request.getRequesterId());
+            User requester = userMapper.selectById(request.getRequesterId());
             if (requester != null) {
                 UserVO userVO = userService.getUserVO(requester);
                 requestVO.setRequester(userVO);
@@ -216,7 +219,7 @@ public class FriendServiceImpl implements FriendService {
         // 构建用户VO列表
         List<UserVO> userVOs = new ArrayList<>();
         for (FriendRelation relation : relations) {
-            User friend = userMapper.selectOneById(relation.getFriendId());
+            User friend = userMapper.selectById(relation.getFriendId());
             if (friend != null) {
                 UserVO userVO = userService.getUserVO(friend);
                 userVOs.add(userVO);

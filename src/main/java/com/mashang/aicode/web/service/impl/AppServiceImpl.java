@@ -5,6 +5,11 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mashang.aicode.web.ai.core.AiCodeGeneratorFacade;
 import com.mashang.aicode.web.ai.core.StreamHandlerExecutor;
 import com.mashang.aicode.web.ai.core.builder.ProjectBuilder;
@@ -19,7 +24,6 @@ import com.mashang.aicode.web.mapper.UserMapper;
 import com.mashang.aicode.web.model.dto.app.AppQueryRequest;
 import com.mashang.aicode.web.model.entity.App;
 import com.mashang.aicode.web.model.entity.User;
-import com.mashang.aicode.web.model.entity.table.AppTableDef;
 import com.mashang.aicode.web.model.enums.ChatHistoryMessageTypeEnum;
 import com.mashang.aicode.web.model.vo.AppVO;
 import com.mashang.aicode.web.model.vo.UserVO;
@@ -29,12 +33,6 @@ import com.mashang.aicode.web.service.AppService;
 import com.mashang.aicode.web.service.ChatHistoryService;
 import com.mashang.aicode.web.service.ScreenshotService;
 import com.mashang.aicode.web.service.UserService;
-import com.mybatisflex.core.update.UpdateChain;
-import com.mybatisflex.core.update.UpdateWrapper;
-import com.mybatisflex.core.paginate.Page;
-import com.mybatisflex.core.query.QueryWrapper;
-import com.mybatisflex.core.update.UpdateChain;
-import com.mybatisflex.spring.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,9 +48,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static com.mashang.aicode.web.model.entity.table.AppTableDef.APP;
-import static com.mashang.aicode.web.model.entity.table.UserTableDef.USER;
 
 /**
  * 应用 服务层实现。
@@ -91,7 +86,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
         // 设置用户信息
         if (app.getUserId() != null) {
-            User user = userMapper.selectOneById(app.getUserId());
+            User user = userMapper.selectById(app.getUserId());
             if (user != null) {
                 UserVO userVO = userService.getUserVO(user);
                 appVO.setUser(userVO);
@@ -111,7 +106,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         List<Long> userIds = appList.stream().map(App::getUserId).distinct().collect(Collectors.toList());
 
         // 批量查询用户信息
-        Map<Long, UserVO> userVOMap = userMapper.selectListByQuery(QueryWrapper.create().select(USER.ID, USER.USER_NAME, USER.USER_AVATAR).where(USER.ID.in(userIds))).stream().map(userService::getUserVO).collect(Collectors.toMap(UserVO::getId, userVO -> userVO));
+        Map<Long, UserVO> userVOMap = userMapper.selectList(new LambdaQueryWrapper<User>().select(User::getId, User::getUserName, User::getUserAvatar).in(User::getId, userIds)).stream().map(userService::getUserVO).collect(Collectors.toMap(UserVO::getId, userVO -> userVO));
 
         // 转换为VO列表
         return appList.stream().map(app -> {
@@ -123,7 +118,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     }
 
     @Override
-    public QueryWrapper getQueryWrapper(AppQueryRequest appQueryRequest) {
+    public QueryWrapper<App> getQueryWrapper(AppQueryRequest appQueryRequest) {
         if (appQueryRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
         }
@@ -137,32 +132,32 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         String searchKey = appQueryRequest.getSearchKey();
         String appType = appQueryRequest.getAppType();
 
-        // 正确的写法
-        QueryWrapper queryWrapper = QueryWrapper.create();
+        // 使用 MyBatis-Plus 的 QueryWrapper
+        QueryWrapper<App> queryWrapper = new QueryWrapper<>();
 
         // 使用正确的条件构建方式
         if (id != null) {
-            queryWrapper.and(APP.ID.eq(id));
+            queryWrapper.eq("id", id);
         }
         if (userId != null) {
-            queryWrapper.and(APP.USER_ID.eq(userId));
+            queryWrapper.eq("userId", userId);
         }
         if (StrUtil.isNotBlank(codeGenType)) {
-            queryWrapper.and(APP.CODE_GEN_TYPE.eq(codeGenType));
+            queryWrapper.eq("codeGenType", codeGenType);
         }
         if (isFeatured != null) {
-            queryWrapper.and(APP.PRIORITY.eq(isFeatured));
+            queryWrapper.eq("priority", isFeatured);
         }
         if (StrUtil.isNotBlank(appType)) {
-            queryWrapper.and(APP.APP_TYPE.eq(appType));
+            queryWrapper.eq("appType", appType);
         }
         if (StrUtil.isNotBlank(appName)) {
-            queryWrapper.and(APP.APP_NAME.like("%" + appName + "%"));
+            queryWrapper.like("appName", appName);
         }
 
         // 搜索关键词（应用名称模糊搜索）
         if (StrUtil.isNotBlank(searchKey)) {
-            queryWrapper.and(APP.APP_NAME.like("%" + searchKey + "%"));
+            queryWrapper.like("appName", searchKey);
         }
 
         return queryWrapper;
@@ -183,7 +178,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             pageSize = 20;
         }
 
-        QueryWrapper queryWrapper = getQueryWrapper(appQueryRequest);
+        QueryWrapper<App> queryWrapper = getQueryWrapper(appQueryRequest);
 
         // 添加排序逻辑
         String sortField = appQueryRequest.getSortField();
@@ -191,20 +186,20 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         if (StrUtil.isNotBlank(sortField)) {
             boolean isAsc = "asc".equalsIgnoreCase(sortOrder);
             if ("pageViews".equalsIgnoreCase(sortField)) {
-                queryWrapper.orderBy(APP.PAGE_VIEWS, isAsc);
+                queryWrapper.orderBy(true, isAsc, "pageViews");
             } else if ("createTime".equalsIgnoreCase(sortField)) {
-                queryWrapper.orderBy(APP.CREATE_TIME, isAsc);
+                queryWrapper.orderBy(true, isAsc, "createTime");
             }
         } else {
             // 默认按创建时间降序
-            queryWrapper.orderBy(APP.CREATE_TIME, false);
+            queryWrapper.orderByDesc("createTime");
         }
 
 
-        Page<App> appPage = this.page(Page.of(pageNum, pageSize), queryWrapper);
+        Page<App> appPage = this.page(new Page<>(pageNum, pageSize), queryWrapper);
 
         // 数据转换
-        Page<AppVO> appVOPage = new Page<>(pageNum, pageSize, appPage.getTotalRow());
+        Page<AppVO> appVOPage = new Page<>(pageNum, pageSize, appPage.getTotal());
         List<AppVO> appVOList = getAppVOList(appPage.getRecords());
         appVOPage.setRecords(appVOList);
 
@@ -226,7 +221,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             pageSize = 20;
         }
 
-        QueryWrapper queryWrapper = getQueryWrapper(appQueryRequest);
+        QueryWrapper<App> queryWrapper = getQueryWrapper(appQueryRequest);
 
         // 添加排序逻辑
         String sortField = appQueryRequest.getSortField();
@@ -234,19 +229,19 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         if (StrUtil.isNotBlank(sortField)) {
             boolean isAsc = "asc".equalsIgnoreCase(sortOrder);
             if ("pageViews".equalsIgnoreCase(sortField)) {
-                queryWrapper.orderBy(APP.PAGE_VIEWS, isAsc);
+                queryWrapper.orderBy(true, isAsc, "pageViews");
             } else if ("createTime".equalsIgnoreCase(sortField)) {
-                queryWrapper.orderBy(APP.CREATE_TIME, isAsc);
+                queryWrapper.orderBy(true, isAsc, "createTime");
             }
         } else {
             // 默认按创建时间降序
-            queryWrapper.orderBy(APP.CREATE_TIME, false);
+            queryWrapper.orderByDesc("createTime");
         }
 
-        Page<App> appPage = this.page(Page.of(pageNum, pageSize), queryWrapper);
+        Page<App> appPage = this.page(new Page<>(pageNum, pageSize), queryWrapper);
 
         // 数据转换
-        Page<AppVO> appVOPage = new Page<>(pageNum, pageSize, appPage.getTotalRow());
+        Page<AppVO> appVOPage = new Page<>(pageNum, pageSize, appPage.getTotal());
         List<AppVO> appVOList = getAppVOList(appPage.getRecords());
         appVOPage.setRecords(appVOList);
 
@@ -441,17 +436,17 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             pageSize = 20;
         }
 
-        QueryWrapper queryWrapper = QueryWrapper.create();
-        queryWrapper.and(APP.SPACE_ID.eq(spaceId));
-        queryWrapper.orderBy(APP.CREATE_TIME, false);
+        QueryWrapper<App> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("spaceId", spaceId);
+        queryWrapper.orderByDesc("createTime");
 
-        Page<App> appPage = this.page(Page.of(current, pageSize), queryWrapper);
+        Page<App> appPage = this.page(new Page<>(current, pageSize), queryWrapper);
 
         Page<AppVO> appVOPage = new Page<>();
-        appVOPage.setPageNumber(appPage.getPageNumber());
-        appVOPage.setPageSize(appPage.getPageSize());
-        appVOPage.setTotalRow(appPage.getTotalRow());
-        appVOPage.setTotalPage(appPage.getTotalPage());
+        appVOPage.setCurrent(appPage.getCurrent());
+        appVOPage.setSize(appPage.getSize());
+        appVOPage.setTotal(appPage.getTotal());
+        appVOPage.setPages(appPage.getPages());
 
         List<AppVO> appVOList = appPage.getRecords().stream()
                 .map(this::getAppVO)
@@ -479,10 +474,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "应用已属于某个空间");
         }
 
-        boolean result = UpdateChain.of(App.class)
+        boolean result = this.update(new LambdaUpdateWrapper<App>()
                 .set(App::getSpaceId, spaceId)
-                .where(App::getId).eq(appId)
-                .update();
+                .eq(App::getId, appId));
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "添加应用到空间失败");
 
         return true;
@@ -505,10 +499,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "应用不属于该空间");
         }
 
-        boolean result = UpdateChain.of(App.class)
+        boolean result = this.update(new LambdaUpdateWrapper<App>()
                 .set(App::getSpaceId, null)
-                .where(App::getId).eq(appId)
-                .update();
+                .eq(App::getId, appId));
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "从空间移除应用失败");
 
         return true;

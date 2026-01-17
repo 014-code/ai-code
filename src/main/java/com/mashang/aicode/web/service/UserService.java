@@ -1,11 +1,11 @@
 package com.mashang.aicode.web.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.service.IService;
 import com.mashang.aicode.web.model.dto.user.UserQueryRequest;
 import com.mashang.aicode.web.model.entity.User;
 import com.mashang.aicode.web.model.vo.LoginUserVO;
 import com.mashang.aicode.web.model.vo.UserVO;
-import com.mybatisflex.core.query.QueryWrapper;
-import com.mybatisflex.core.service.IService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Service;
 

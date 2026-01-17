@@ -1,6 +1,7 @@
 package com.mashang.aicode.web.controller;
 
 import cn.hutool.core.bean.BeanUtil;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mashang.aicode.web.annotation.AuthCheck;
 import com.mashang.aicode.web.common.BaseResponse;
 import com.mashang.aicode.web.common.ResultUtils;
@@ -16,7 +17,6 @@ import com.mashang.aicode.web.model.entity.User;
 import com.mashang.aicode.web.model.vo.CommentVO;
 import com.mashang.aicode.web.service.CommentService;
 import com.mashang.aicode.web.service.UserService;
-import com.mybatisflex.core.paginate.Page;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -217,7 +217,7 @@ public class CommentController {
         long pageNum = commentQueryRequest.getPageNum();
         long pageSize = commentQueryRequest.getPageSize();
 
-        Page<Comment> commentPage = commentService.page(Page.of(pageNum, pageSize), commentService.getQueryWrapper(commentQueryRequest));
+        Page<Comment> commentPage = commentService.page(new Page<>(pageNum, pageSize), commentService.getQueryWrapper(commentQueryRequest));
 
         return ResultUtils.success(commentPage);
     }

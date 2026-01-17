@@ -1,5 +1,6 @@
 package com.mashang.aicode.web.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mashang.aicode.web.annotation.AuthCheck;
 import com.mashang.aicode.web.common.BaseResponse;
 import com.mashang.aicode.web.common.PageRequest;
@@ -14,7 +15,6 @@ import com.mashang.aicode.web.model.vo.FriendRequestVO;
 import com.mashang.aicode.web.model.vo.UserVO;
 import com.mashang.aicode.web.service.FriendService;
 import com.mashang.aicode.web.service.UserService;
-import com.mybatisflex.core.paginate.Page;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;

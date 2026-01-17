@@ -3,6 +3,10 @@ package com.mashang.aicode.web.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mashang.aicode.web.constant.UserConstant;
 import com.mashang.aicode.web.model.entity.App;
 import com.mashang.aicode.web.model.entity.User;
@@ -16,9 +20,6 @@ import com.mashang.aicode.web.model.vo.ChatHistoryVO;
 import com.mashang.aicode.web.service.AppService;
 import com.mashang.aicode.web.service.ChatHistoryService;
 import com.mashang.aicode.web.service.UserService;
-import com.mybatisflex.core.paginate.Page;
-import com.mybatisflex.core.query.QueryWrapper;
-import com.mybatisflex.spring.service.impl.ServiceImpl;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -30,8 +31,6 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import static com.mashang.aicode.web.model.entity.table.ChatHistoryTableDef.CHAT_HISTORY;
 
 /**
  * 对话历史 服务实现层
@@ -63,10 +62,10 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
     @Override
     public int loadChatHistoryToMemory(Long appId, MessageWindowChatMemory chatMemory, int maxCount) {
         try {
-            QueryWrapper queryWrapper = QueryWrapper.create()
-                    .eq(ChatHistory::getAppId, appId)
-                    .orderBy(ChatHistory::getCreateTime, false)
-                    .limit(1, maxCount);
+            QueryWrapper<ChatHistory> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("appId", appId)
+                    .orderByDesc("createTime")
+                    .last("LIMIT " + maxCount);
             List<ChatHistory> historyList = this.list(queryWrapper);
             if (CollUtil.isEmpty(historyList)) {
                 return 0;
@@ -112,11 +111,11 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
         ThrowUtils.throwIf(pageNum == null || pageNum <= 0, ErrorCode.PARAMS_ERROR, "页码不能为空");
         ThrowUtils.throwIf(pageSize == null || pageSize <= 0, ErrorCode.PARAMS_ERROR, "页面大小不能为空");
         
-        QueryWrapper queryWrapper = QueryWrapper.create()
-                .eq("appId", appId)
-                .orderBy("createTime", false);
+        QueryWrapper<ChatHistory> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("appId", appId)
+                .orderByDesc("createTime");
         
-        return this.page(Page.of(pageNum, pageSize), queryWrapper);
+        return this.page(new Page<>(pageNum, pageSize), queryWrapper);
     }
 
     @Override
@@ -137,15 +136,15 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
         ChatHistoryQueryRequest queryRequest = new ChatHistoryQueryRequest();
         queryRequest.setAppId(appId);
         queryRequest.setLastCreateTime(lastCreateTime);
-        QueryWrapper queryWrapper = this.getQueryWrapper(queryRequest);
+        QueryWrapper<ChatHistory> queryWrapper = this.getQueryWrapper(queryRequest);
 
-        return this.page(Page.of(1, pageSize), queryWrapper);
+        return this.page(new Page<>(1, pageSize), queryWrapper);
     }
 
     @Override
     public Page<ChatHistoryVO> listVOByAppId(Long appId, Long pageNum, Long pageSize) {
         Page<ChatHistory> chatHistoryPage = listByAppId(appId, pageNum, pageSize);
-        Page<ChatHistoryVO> chatHistoryVOPage = new Page<>(pageNum, pageSize, chatHistoryPage.getTotalRow());
+        Page<ChatHistoryVO> chatHistoryVOPage = new Page<>(pageNum, pageSize, chatHistoryPage.getTotal());
         List<ChatHistoryVO> chatHistoryVOList = getChatHistoryVOList(chatHistoryPage.getRecords());
         chatHistoryVOPage.setRecords(chatHistoryVOList);
         return chatHistoryVOPage;
@@ -153,11 +152,11 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
 
     @Override
     public List<ChatHistory> listLatestByAppId(Long appId, int limit) {
-        QueryWrapper queryWrapper = new QueryWrapper();
-        queryWrapper.where(CHAT_HISTORY.APP_ID.eq(appId))
-                .and(CHAT_HISTORY.IS_DELETE.eq(0))
-                .orderBy(CHAT_HISTORY.CREATE_TIME.desc())
-                .limit(limit);
+        QueryWrapper<ChatHistory> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("appId", appId)
+                .eq("isDelete", 0)
+                .orderByDesc("createTime")
+                .last("LIMIT " + limit);
         return list(queryWrapper);
     }
 
@@ -170,8 +169,8 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
     @Override
     public boolean deleteByAppId(Long appId) {
         ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID不能为空");
-        QueryWrapper queryWrapper = QueryWrapper.create()
-                .eq("appId", appId);
+        QueryWrapper<ChatHistory> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("appId", appId);
         return this.remove(queryWrapper);
     }
 
@@ -230,8 +229,8 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
     }
 
     @Override
-    public QueryWrapper getQueryWrapper(ChatHistoryQueryRequest chatHistoryQueryRequest) {
-        QueryWrapper queryWrapper = QueryWrapper.create();
+    public QueryWrapper<ChatHistory> getQueryWrapper(ChatHistoryQueryRequest chatHistoryQueryRequest) {
+        QueryWrapper<ChatHistory> queryWrapper = new QueryWrapper<>();
         if (chatHistoryQueryRequest == null) {
             return queryWrapper;
         }
@@ -244,21 +243,31 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
         String sortField = chatHistoryQueryRequest.getSortField();
         String sortOrder = chatHistoryQueryRequest.getSortOrder();
 
-        queryWrapper.eq("id", id)
-                .like("message", message)
-                .eq("messageType", messageType)
-                .eq("appId", appId)
-                .eq("userId", userId);
+        if (id != null) {
+            queryWrapper.eq("id", id);
+        }
+        if (StrUtil.isNotBlank(message)) {
+            queryWrapper.like("message", message);
+        }
+        if (StrUtil.isNotBlank(messageType)) {
+            queryWrapper.eq("messageType", messageType);
+        }
+        if (appId != null) {
+            queryWrapper.eq("appId", appId);
+        }
+        if (userId != null) {
+            queryWrapper.eq("userId", userId);
+        }
 
         if (lastCreateTime != null) {
             queryWrapper.lt("createTime", lastCreateTime);
         }
 
         if (StrUtil.isNotBlank(sortField)) {
-            queryWrapper.orderBy(sortField, "ascend".equals(sortOrder));
+            boolean isAsc = "ascend".equals(sortOrder);
+            queryWrapper.orderBy(true, isAsc, sortField);
         } else {
-
-            queryWrapper.orderBy("createTime", false);
+            queryWrapper.orderByDesc("createTime");
         }
         return queryWrapper;
     }
@@ -271,12 +280,12 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
 
         try {
             // 构建更新条件：根据appId和userId更新最新的AI消息状态
-            QueryWrapper queryWrapper = QueryWrapper.create()
-                    .eq(ChatHistory::getAppId, appId)
-                    .eq(ChatHistory::getUserId, userId)
-                    .eq(ChatHistory::getMessageType, ChatHistoryMessageTypeEnum.AI.getValue())
-                    .orderBy(ChatHistory::getCreateTime, false)
-                    .limit(1);
+            QueryWrapper<ChatHistory> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("appId", appId)
+                    .eq("userId", userId)
+                    .eq("messageType", ChatHistoryMessageTypeEnum.AI.getValue())
+                    .orderByDesc("createTime")
+                    .last("LIMIT 1");
 
             // 更新状态
             ChatHistory updateEntity = new ChatHistory();

@@ -1,13 +1,13 @@
 package com.mashang.aicode.web.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.IService;
 import com.mashang.aicode.web.model.dto.forum.ForumPostQueryRequest;
 import com.mashang.aicode.web.model.entity.ForumPost;
 import com.mashang.aicode.web.model.entity.User;
 import com.mashang.aicode.web.model.vo.ForumPostSimpleVO;
 import com.mashang.aicode.web.model.vo.ForumPostVO;
-import com.mybatisflex.core.paginate.Page;
-import com.mybatisflex.core.query.QueryWrapper;
-import com.mybatisflex.core.service.IService;
 
 import java.util.List;
 

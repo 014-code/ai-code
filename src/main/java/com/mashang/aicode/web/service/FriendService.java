@@ -1,17 +1,19 @@
 package com.mashang.aicode.web.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.IService;
 import com.mashang.aicode.web.model.dto.friend.FriendListQueryDTO;
 import com.mashang.aicode.web.model.dto.friend.FriendRequestSendDTO;
+import com.mashang.aicode.web.model.entity.ForumPost;
 import com.mashang.aicode.web.model.entity.FriendRelation;
 import com.mashang.aicode.web.model.entity.FriendRequest;
 import com.mashang.aicode.web.model.vo.FriendRequestVO;
 import com.mashang.aicode.web.model.vo.UserVO;
-import com.mybatisflex.core.paginate.Page;
 
 /**
  * 好友服务接口
  */
-public interface FriendService {
+public interface FriendService extends IService<FriendRelation> {
 
     /**
      * 发送好友请求

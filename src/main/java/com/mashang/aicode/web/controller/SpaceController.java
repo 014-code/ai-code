@@ -30,8 +30,8 @@ import com.mashang.aicode.web.service.AppService;
 import com.mashang.aicode.web.service.SpaceService;
 import com.mashang.aicode.web.service.SpaceUserService;
 import com.mashang.aicode.web.service.UserService;
-import com.mybatisflex.core.paginate.Page;
-import com.mybatisflex.core.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -172,14 +172,14 @@ public class SpaceController {
         User loginUser = userService.getLoginUser(request);
 
         List<Long> joinedSpaceIds = spaceUserService.list(
-                QueryWrapper.create().eq("userId", loginUser.getId())
+                new QueryWrapper<SpaceUser>().eq("userId", loginUser.getId())
         ).stream().map(SpaceUser::getSpaceId).toList();
 
-        QueryWrapper queryWrapper = new QueryWrapper();
-        queryWrapper.and((Consumer<QueryWrapper>) wrapper -> {
+        QueryWrapper<Space> queryWrapper = new QueryWrapper<>();
+        queryWrapper.and(wrapper -> {
             wrapper.eq("ownerId", loginUser.getId());
             if (!joinedSpaceIds.isEmpty()) {
-                wrapper.or((Consumer<QueryWrapper>) w -> w.in("id", joinedSpaceIds));
+                wrapper.or(w -> w.in("id", joinedSpaceIds));
             }
         });
         if (StrUtil.isNotBlank(spaceQueryRequest.getSpaceName())) {
@@ -188,7 +188,7 @@ public class SpaceController {
         if (spaceQueryRequest.getSpaceType() != null) {
             queryWrapper.eq("spaceType", spaceQueryRequest.getSpaceType());
         }
-        queryWrapper.orderBy("createTime", false);
+        queryWrapper.orderByDesc("createTime");
 
         Integer current = spaceQueryRequest.getCurrent();
         Integer pageSize = spaceQueryRequest.getPageSize();
@@ -200,15 +200,15 @@ public class SpaceController {
         }
 
         Page<Space> spacePage = spaceService.page(
-                Page.of(current, pageSize),
+                new Page<>(current, pageSize),
                 queryWrapper
         );
 
         Page<SpaceVO> spaceVOPage = new Page<>();
-        spaceVOPage.setPageNumber(spacePage.getPageNumber());
-        spaceVOPage.setPageSize(spacePage.getPageSize());
-        spaceVOPage.setTotalRow(spacePage.getTotalRow());
-        spaceVOPage.setTotalPage(spacePage.getTotalPage());
+        spaceVOPage.setCurrent(spacePage.getCurrent());
+        spaceVOPage.setSize(spacePage.getSize());
+        spaceVOPage.setTotal(spacePage.getTotal());
+        spaceVOPage.setPages(spacePage.getPages());
 
         List<SpaceVO> spaceVOList = spacePage.getRecords().stream().map(space -> {
             SpaceVO spaceVO = new SpaceVO();

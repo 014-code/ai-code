@@ -4,6 +4,8 @@ import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.mashang.aicode.web.exception.BusinessException;
 import com.mashang.aicode.web.exception.ErrorCode;
 import com.mashang.aicode.web.mapper.UserMapper;
@@ -13,8 +15,6 @@ import com.mashang.aicode.web.model.enums.UserRoleEnum;
 import com.mashang.aicode.web.model.vo.LoginUserVO;
 import com.mashang.aicode.web.model.vo.UserVO;
 import com.mashang.aicode.web.service.UserService;
-import com.mybatisflex.core.query.QueryWrapper;
-import com.mybatisflex.spring.service.impl.ServiceImpl;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
@@ -52,7 +52,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 2. 查询用户是否已存在
         QueryWrapper queryWrapper = new QueryWrapper();
         queryWrapper.eq("userAccount", userAccount);
-        long count = this.mapper.selectCountByQuery(queryWrapper);
+        long count = this.baseMapper.selectCount(queryWrapper);
         if (count > 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "账号重复");
         }
@@ -99,7 +99,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         QueryWrapper queryWrapper = new QueryWrapper();
         queryWrapper.eq("userAccount", userAccount);
         queryWrapper.eq("userPassword", encryptPassword);
-        User user = this.mapper.selectOneByQuery(queryWrapper);
+        User user = this.baseMapper.selectOne(queryWrapper);
         if (user == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户不存在或密码错误");
         }
@@ -156,7 +156,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public QueryWrapper getQueryWrapper(UserQueryRequest userQueryRequest) {
+    public QueryWrapper<User> getQueryWrapper(UserQueryRequest userQueryRequest) {
         if (userQueryRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
         }
@@ -167,9 +167,28 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         String userRole = userQueryRequest.getUserRole();
         String sortField = userQueryRequest.getSortField();
         String sortOrder = userQueryRequest.getSortOrder();
-        return QueryWrapper.create().eq("id", id) // where id = ${id}
-                .eq("userRole", userRole) // and userRole = ${userRole}
-                .like("userAccount", userAccount).like("userName", userName).like("userProfile", userProfile).orderBy(sortField, "ascend".equals(sortOrder));
+
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        if (id != null) {
+            queryWrapper.eq("id", id);
+        }
+        if (StrUtil.isNotBlank(userRole)) {
+            queryWrapper.eq("userRole", userRole);
+        }
+        if (StrUtil.isNotBlank(userAccount)) {
+            queryWrapper.like("userAccount", userAccount);
+        }
+        if (StrUtil.isNotBlank(userName)) {
+            queryWrapper.like("userName", userName);
+        }
+        if (StrUtil.isNotBlank(userProfile)) {
+            queryWrapper.like("userProfile", userProfile);
+        }
+        if (StrUtil.isNotBlank(sortField)) {
+            boolean isAsc = "ascend".equals(sortOrder);
+            queryWrapper.orderBy(true, isAsc, sortField);
+        }
+        return queryWrapper;
     }
 
     @Override
