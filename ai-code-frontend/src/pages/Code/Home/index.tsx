@@ -92,7 +92,7 @@ const HomePage: React.FC = () => {
     try {
       const { data } = await listMyAppVoByPage({ pageNum, pageSize });
       setMyApps(data?.records || []);
-      setMyAppsTotal(data?.totalRow || 0);
+      setMyAppsTotal(data?.total || 0);
     } catch (error: any) {
       message.error('加载我的应用失败');
     }

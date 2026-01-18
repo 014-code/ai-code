@@ -1,14 +1,13 @@
 package com.mashang.aicode.web.ai.core.handler;
 
-import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.mashang.aicode.web.ai.core.builder.ProjectBuilder;
 import com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum;
 import com.mashang.aicode.web.ai.model.message.*;
-import com.mashang.aicode.web.ai.tool.base.BaseTool;
-import com.mashang.aicode.web.ai.tool.base.ToolManager;
+import com.mashang.aicode.web.ai.tool.BaseTool;
+import com.mashang.aicode.web.ai.tool.ToolManager;
 import com.mashang.aicode.web.constant.AppConstant;
 import com.mashang.aicode.web.model.entity.App;
 import com.mashang.aicode.web.model.entity.User;

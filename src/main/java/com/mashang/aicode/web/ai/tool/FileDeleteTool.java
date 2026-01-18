@@ -1,5 +1,6 @@
 package com.mashang.aicode.web.ai.tool;
 
+import cn.hutool.json.JSONObject;
 import com.mashang.aicode.web.constant.AppConstant;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -14,7 +15,7 @@ import java.nio.file.Paths;
 
 @Slf4j
 @Component
-public class FileDeleteTool {
+public class FileDeleteTool extends BaseTool {
 
     @Tool("删除指定路径的文件")
     public String deleteFile(
@@ -64,6 +65,22 @@ public class FileDeleteTool {
             }
         }
         return false;
+    }
+
+    @Override
+    public String getToolName() {
+        return "deleteFile";
+    }
+
+    @Override
+    public String getDisplayName() {
+        return "删除文件";
+    }
+
+    @Override
+    public String generateToolExecutedResult(JSONObject arguments) {
+        String relativeFilePath = arguments.getStr("relativeFilePath");
+        return String.format("[工具调用] %s %s", getDisplayName(), relativeFilePath);
     }
 }
 

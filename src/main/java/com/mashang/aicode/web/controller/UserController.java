@@ -1,6 +1,7 @@
 package com.mashang.aicode.web.controller;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.ReUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mashang.aicode.web.annotation.AuthCheck;
@@ -15,6 +16,7 @@ import com.mashang.aicode.web.model.dto.user.*;
 import com.mashang.aicode.web.model.entity.User;
 import com.mashang.aicode.web.model.vo.LoginUserVO;
 import com.mashang.aicode.web.model.vo.UserVO;
+import com.mashang.aicode.web.service.EmailService;
 import com.mashang.aicode.web.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,6 +34,35 @@ public class UserController {
     @Resource
     private UserService userService;
 
+    @Resource
+    private EmailService emailService;
+
+    /**
+     * 发送邮箱验证码
+     *
+     * @param sendEmailCodeRequest 发送验证码请求
+     * @return 发送结果
+     */
+    @PostMapping("/email/send")
+    public BaseResponse<Boolean> sendEmailCode(@RequestBody SendEmailCodeRequest sendEmailCodeRequest) {
+        ThrowUtils.throwIf(sendEmailCodeRequest == null, ErrorCode.PARAMS_ERROR);
+        String email = sendEmailCodeRequest.getEmail();
+        String type = sendEmailCodeRequest.getType();
+
+        // 校验邮箱格式
+        if (!ReUtil.isMatch("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$", email)) {
+            throw new BusinessException(ErrorCode.EMAIL_FORMAT_ERROR);
+        }
+
+        // 校验类型
+        if (!"REGISTER".equals(type) && !"RESET_PASSWORD".equals(type)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "验证码类型错误");
+        }
+
+        boolean result = emailService.sendVerificationCode(email, type);
+        return ResultUtils.success(result);
+    }
+
     /**
      * 用户注册
      *
@@ -45,6 +76,24 @@ public class UserController {
         String userPassword = userRegisterRequest.getUserPassword();
         String checkPassword = userRegisterRequest.getCheckPassword();
         long result = userService.userRegister(userAccount, userPassword, checkPassword);
+        return ResultUtils.success(result);
+    }
+
+    /**
+     * 邮箱注册
+     *
+     * @param userRegisterRequest 用户注册请求
+     * @return 注册结果
+     */
+    @PostMapping("/register/email")
+    public BaseResponse<Long> userRegisterByEmail(@RequestBody UserRegisterRequest userRegisterRequest) {
+        ThrowUtils.throwIf(userRegisterRequest == null, ErrorCode.PARAMS_ERROR);
+        String userEmail = userRegisterRequest.getUserEmail();
+        String emailCode = userRegisterRequest.getEmailCode();
+        String userPassword = userRegisterRequest.getUserPassword();
+        String checkPassword = userRegisterRequest.getCheckPassword();
+        String inviteCode = userRegisterRequest.getInviteCode();
+        long result = userService.userRegisterByEmail(userEmail, emailCode, userPassword, checkPassword, inviteCode);
         return ResultUtils.success(result);
     }
 

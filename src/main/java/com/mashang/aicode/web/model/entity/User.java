@@ -66,6 +66,18 @@ public class User implements Serializable {
     private String userProfile;
 
     /**
+     * 用户邮箱
+     */
+    @TableField("userEmail")
+    private String userEmail;
+
+    /**
+     * 邮箱是否已验证：0-未验证，1-已验证
+     */
+    @TableField("emailVerified")
+    private Integer emailVerified;
+
+    /**
      * 用户角色：user/admin
      */
     @TableField("userRole")

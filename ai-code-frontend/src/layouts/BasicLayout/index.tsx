@@ -8,6 +8,7 @@ import {
   CrownOutlined,
   TableOutlined,
   TeamOutlined,
+  RobotOutlined,
 } from '@ant-design/icons';
 import Logo from '@/components/Logo';
 import Footer from '@/components/Footer';
@@ -77,6 +78,21 @@ const BasicLayout = () => {
                 path: '/admin/chatHistory',
                 name: '对话管理',
                 icon: <TableOutlined />,
+              },
+              {
+                path: '/admin/codeSnippet',
+                name: '代码模板管理',
+                icon: <TableOutlined />,
+              },
+              {
+                path: '/admin/pointsRecord',
+                name: '积分记录管理',
+                icon: <TableOutlined />,
+              },
+              {
+                path: '/admin/aiModelConfig',
+                name: 'AI模型配置',
+                icon: <RobotOutlined />,
               },
             ],
           },

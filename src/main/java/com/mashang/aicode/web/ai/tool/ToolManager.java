@@ -1,4 +1,4 @@
-package com.mashang.aicode.web.ai.tool.base;
+package com.mashang.aicode.web.ai.tool;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;

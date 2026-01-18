@@ -10,7 +10,6 @@ import lombok.Getter;
 @Getter
 public enum SpacePermissionEnum {
 
-    PICTURE_EDIT("图片编辑", "PICTURE_EDIT"),
     APP_MANAGE("应用管理", "APP_MANAGE"),
     MEMBER_MANAGE("成员管理", "MEMBER_MANAGE"),
     SPACE_MANAGE("空间管理", "SPACE_MANAGE"),

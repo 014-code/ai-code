@@ -1,5 +1,6 @@
 package com.mashang.aicode.web.ai.tool;
 
+import cn.hutool.json.JSONObject;
 import com.mashang.aicode.web.constant.AppConstant;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -14,7 +15,7 @@ import java.nio.file.Paths;
 
 @Slf4j
 @Component
-public class FileReadTool {
+public class FileReadTool extends BaseTool {
 
     @Tool("读取指定路径的文件内容")
     public String readFile(
@@ -38,6 +39,22 @@ public class FileReadTool {
             log.error(errorMessage, e);
             return errorMessage;
         }
+    }
+
+    @Override
+    public String getToolName() {
+        return "readFile";
+    }
+
+    @Override
+    public String getDisplayName() {
+        return "读取文件";
+    }
+
+    @Override
+    public String generateToolExecutedResult(JSONObject arguments) {
+        String relativeFilePath = arguments.getStr("relativeFilePath");
+        return String.format("[工具调用] %s %s", getDisplayName(), relativeFilePath);
     }
 }
 

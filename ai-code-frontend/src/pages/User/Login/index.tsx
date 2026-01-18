@@ -1,10 +1,10 @@
 /**
  * 登录页面
- * 提供用户登录功能，支持账户密码登录方式
+ * 提供用户登录功能，支持账户密码和邮箱密码登录方式
  */
 import Footer from '@/components/Footer';
 import { userLogin } from '@/services/backend/userController';
-import { LockOutlined, UserOutlined } from '@ant-design/icons';
+import { LockOutlined, MailOutlined, UserOutlined } from '@ant-design/icons';
 import { LoginForm, ProFormText } from '@ant-design/pro-components';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { message, Tabs } from 'antd';
@@ -16,15 +16,11 @@ import { useGlobal } from '@/context/GlobalContext';
  * 登录组件
  */
 const Login: React.FC = () => {
-  // 状态管理
-  const [type, setType] = useState<string>('account');  // 登录方式
-  const { setUserInfo, currentUser } = useGlobal();  // 全局上下文
-  const navigate = useNavigate();  // 导航
-  const [searchParams] = useSearchParams();  // URL参数
+  const [type, setType] = useState<string>('account');
+  const { setUserInfo, currentUser } = useGlobal();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  /**
-   * 容器样式
-   */
   const containerClassName = {
     display: 'flex',
     flexDirection: 'column' as const,
@@ -35,23 +31,15 @@ const Login: React.FC = () => {
     backgroundSize: '100% 100%',
   };
 
-  /**
-   * 处理登录提交
-   * @param values 登录表单值
-   */
   const handleSubmit = async (values: API.UserLoginRequest) => {
     try {
-      // 调用登录API
       const res = await userLogin({
         ...values,
       });
 
-      // 登录成功处理
       const defaultLoginSuccessMessage = '登录成功！';
       message.success(defaultLoginSuccessMessage);
       
-      // 保存 Sa-Token 到 localStorage
-      // 优先从响应数据中获取 token
       const token = res.data?.token || document.cookie
         .split('; ')
         .find(row => row.startsWith('satoken='))
@@ -62,15 +50,12 @@ const Login: React.FC = () => {
         console.log('Token 已保存:', token);
       }
       
-      // 更新全局状态
       setUserInfo(res.data);
       
-      // 跳转到指定页面或首页
       const redirect = searchParams.get('redirect') || '/';
       navigate(redirect);
       return;
     } catch (error: any) {
-      // 登录失败处理
       const defaultLoginFailureMessage = `登录失败，${error.message}`;
       message.error(defaultLoginFailureMessage);
     }
@@ -89,8 +74,8 @@ const Login: React.FC = () => {
             minWidth: 280,
             maxWidth: '75vw',
           }}
-          logo={<img alt="014" style={{ height: '100%' }} src="/logo.png" />}
-          title="014-ai零代码生成平台"
+          logo={<img alt="logo" style={{ height: '100%' }} src="/logo.png" />}
+          title="ai零代码生成平台"
           subTitle={'快速开发属于自己的前端项目'}
           initialValues={{
             autoLogin: true,
@@ -99,7 +84,6 @@ const Login: React.FC = () => {
             handleSubmit(values as API.UserLoginRequest);
           }}
         >
-          {/* 登录方式选项卡 */}
           <Tabs
             activeKey={type}
             onChange={setType}
@@ -109,13 +93,15 @@ const Login: React.FC = () => {
                 key: 'account',
                 label: '账户密码登录',
               },
+              {
+                key: 'email',
+                label: '邮箱密码登录',
+              },
             ]}
           />
           
-          {/* 账户密码登录表单 */}
           {type === 'account' && (
             <>
-              {/* 账号输入 */}
               <ProFormText
                 name="userAccount"
                 fieldProps={{
@@ -130,7 +116,6 @@ const Login: React.FC = () => {
                   },
                 ]}
               />
-              {/* 密码输入 */}
               <ProFormText.Password
                 name="userPassword"
                 fieldProps={{
@@ -148,7 +133,43 @@ const Login: React.FC = () => {
             </>
           )}
 
-          {/* 注册链接 */}
+          {type === 'email' && (
+            <>
+              <ProFormText
+                name="userAccount"
+                fieldProps={{
+                  size: 'large',
+                  prefix: <MailOutlined />,
+                }}
+                placeholder={'请输入邮箱'}
+                rules={[
+                  {
+                    required: true,
+                    message: '邮箱是必填项！',
+                  },
+                  {
+                    pattern: /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/,
+                    message: '邮箱格式不正确！',
+                  },
+                ]}
+              />
+              <ProFormText.Password
+                name="userPassword"
+                fieldProps={{
+                  size: 'large',
+                  prefix: <LockOutlined />,
+                }}
+                placeholder={'请输入密码'}
+                rules={[
+                  {
+                    required: true,
+                    message: '密码是必填项！',
+                  },
+                ]}
+              />
+            </>
+          )}
+
           <div
             style={{
               marginBottom: 24,

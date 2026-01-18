@@ -55,3 +55,11 @@ export async function updateUserPassword(body: API.UserUpdatePasswordRequest) {
 export async function updateUserAvatar(body: API.UserUpdateAvatarRequest) {
   return request.post<any, API.BaseResponseBoolean>('/user/update/avatar', body);
 }
+
+export async function sendEmailCode(body: API.SendEmailCodeRequest) {
+  return request.post<any, API.BaseResponseBoolean>('/user/email/send', body);
+}
+
+export async function userRegisterByEmail(body: API.UserRegisterRequest) {
+  return request.post<any, API.BaseResponseLong>('/user/register/email', body);
+}

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Modal, List, Checkbox, Button, Input, Spin, message, Empty } from 'antd';
 import { SearchOutlined, LoadingOutlined } from '@ant-design/icons';
 import { getFriendList } from '@/services/backend/friendController';
-import { batchAddMembers } from '@/services/backend/spaceController';
+import {batchAddMembers, listSpaceMembers} from '@/services/backend/spaceController';
 import { useScrollLoad } from '@/hooks/useScrollLoad';
 import type { UserVO } from '@/services/backend/types';
 
@@ -31,6 +31,7 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [searchText, setSearchText] = useState('');
   const listRef = useRef<HTMLDivElement>(null);
+  const [members, setMembers] = useState();
 
   /**
    * 获取好友列表
@@ -48,13 +49,11 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
         } else {
           setFriends(prev => [...prev, ...newFriends]);
         }
-        
         setHasMore(newFriends.length === 20);
         setCurrentPage(pageNum);
       })
       .catch((error) => {
         message.error('获取好友列表失败');
-        console.error('获取好友列表失败:', error);
       })
       .finally(() => {
         setLoading(false);
@@ -71,18 +70,6 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
       setSelectedFriends(prev => [...prev, friendId]);
     } else {
       setSelectedFriends(prev => prev.filter(id => id !== friendId));
-    }
-  };
-
-  /**
-   * 处理全选
-   * @param e 复选框事件对象
-   */
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      setSelectedFriends(friends.map(friend => friend.id!));
-    } else {
-      setSelectedFriends([]);
     }
   };
 
@@ -120,11 +107,25 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
   };
 
   /**
-   * 弹窗显示时自动加载好友列表
+   * 加载空间成员列表
+   */
+  const loadSpaceMembers = () => {
+    listSpaceMembers(spaceId)
+        .then((res) => {
+          setMembers(res.data || []);
+        })
+        .catch(() => {
+          message.error('加载空间成员失败');
+        });
+  };
+
+  /**
+   * 弹窗显示时自动加载好友列表和该空间的用户列表
    */
   useEffect(() => {
     if (visible) {
       fetchFriends(1, true);
+      loadSpaceMembers();
       setSelectedFriends([]);
     }
   }, [visible]);
@@ -173,47 +174,52 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
       {/* 好友列表 */}
       <div ref={listRef} style={{ maxHeight: 400, overflowY: 'auto' }}>
         {friends.length > 0 ? (
-          <List
-            dataSource={friends}
-            renderItem={(friend) => (
-              <List.Item
-                actions={[
-                  <Checkbox
-                    key="checkbox"
-                    checked={selectedFriends.includes(friend.id!)}
-                    onChange={(e) => handleFriendSelect(friend.id!, e.target.checked)}
-                  />
-                ]}
-              >
-                <List.Item.Meta
-                  avatar={friend.userAvatar ? (
-                    <img
-                      src={friend.userAvatar}
-                      alt={friend.userName}
-                      style={{ width: 40, height: 40, borderRadius: 20 }}
-                    />
-                  ) : (
-                    <div style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 20,
-                      backgroundColor: '#f0f0f0',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#999'
-                    }}>
-                      {friend.userName?.[0] || '?'}
-                    </div>
-                  )}
-                  title={friend.userName}
-                  description={friend.userProfile || '无简介'}
-                />
-              </List.Item>
-            )}
-          />
+            <List
+                dataSource={friends}
+                renderItem={(friend) => {
+                  // 检查当前好友是否在 members 数组中
+                  const isSelected = members.some(item => item.userId === friend.id);
+
+                  return (
+                      <List.Item
+                          actions={[
+                            <Checkbox
+                                key="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => handleFriendSelect(friend.id!, e.target.checked)}
+                            />
+                          ]}
+                      >
+                        <List.Item.Meta
+                            avatar={friend.userAvatar ? (
+                                <img
+                                    src={friend.userAvatar}
+                                    alt={friend.userName}
+                                    style={{ width: 40, height: 40, borderRadius: 20 }}
+                                />
+                            ) : (
+                                <div style={{
+                                  width: 40,
+                                  height: 40,
+                                  borderRadius: 20,
+                                  backgroundColor: '#f0f0f0',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: '#999'
+                                }}>
+                                  {friend.userName?.[0] || '?'}
+                                </div>
+                            )}
+                            title={friend.userName}
+                            description={friend.userProfile || '无简介'}
+                        />
+                      </List.Item>
+                  );
+                }}
+            />
         ) : (
-          <Empty description="暂无好友" />
+            <Empty description="暂无好友" />
         )}
 
         {/* 加载更多 */}
