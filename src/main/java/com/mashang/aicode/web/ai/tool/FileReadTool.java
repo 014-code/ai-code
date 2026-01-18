@@ -6,6 +6,7 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -17,6 +18,13 @@ import java.nio.file.Paths;
 @Component
 public class FileReadTool extends BaseTool {
 
+    //加入文件最后修改时间以防止读取到的不是最新内容
+    @Cacheable(
+            value = "tool-results",
+            key = "'fileRead:' + #relativeFilePath + ':' + #appId + ':' + T(java.nio.file.Files).getLastModifiedTime(T(java.nio.file.Paths).get(#relativeFilePath)).toEpochMilli()",
+            //有错误信息则不缓存
+            unless = "#result.contains('错误' || 'error')"
+    )
     @Tool("读取指定路径的文件内容")
     public String readFile(
             @P("文件的相对路径")
