@@ -1,5 +1,7 @@
 package com.mashang.aicode.web.ai.tool;
 
+import cn.hutool.core.io.FileUtil;
+import cn.hutool.json.JSONObject;
 import com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum;
 import com.mashang.aicode.web.constant.AppConstant;
 import com.mashang.aicode.web.model.entity.App;
@@ -22,7 +24,7 @@ import java.nio.file.StandardOpenOption;
  */
 @Slf4j
 @Component
-public class FileWriteTool {
+public class FileWriteTool extends BaseTool {
 
     private final AppService appService;
 
@@ -105,6 +107,29 @@ public class FileWriteTool {
             // 发生异常时使用默认目录名
             return "project_" + appId;
         }
+    }
+
+    @Override
+    public String getToolName() {
+        return "writeFile";
+    }
+
+    @Override
+    public String getDisplayName() {
+        return "写入文件";
+    }
+
+    @Override
+    public String generateToolExecutedResult(JSONObject arguments) {
+        String relativeFilePath = arguments.getStr("relativeFilePath");
+        String suffix = FileUtil.getSuffix(relativeFilePath);
+        String content = arguments.getStr("content");
+        return String.format("""
+                [工具调用] %s %s
+                ```%s
+                %s
+                ```
+                """, getDisplayName(), relativeFilePath, suffix, content);
     }
 
 }

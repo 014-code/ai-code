@@ -139,7 +139,6 @@ const UserAdminPage: React.FC = () => {
           labelWidth: 120,
         }}
         toolBarRender={() => [
-          {/* 新建用户按钮 */}
           <Button
             type="primary"
             key="primary"

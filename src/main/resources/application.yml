@@ -16,9 +16,27 @@ spring:
       password:
       ttl: 3600
       database: 0
+  # 邮件配置
+  mail:
+    host: smtp.qq.com
+    port: 587
+    username: xx.com
+    # qq邮箱获取的验证密钥
+    password: xx
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
   session:
     store-type: redis
     timeout: 2592000
+  # 全局时间格式配置
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
 
 server:
   port: 8123

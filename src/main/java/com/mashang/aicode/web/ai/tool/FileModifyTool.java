@@ -1,5 +1,6 @@
 package com.mashang.aicode.web.ai.tool;
 
+import cn.hutool.json.JSONObject;
 import com.mashang.aicode.web.constant.AppConstant;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -15,7 +16,7 @@ import java.nio.file.StandardOpenOption;
 
 @Slf4j
 @Component
-public class FileModifyTool {
+public class FileModifyTool extends BaseTool {
 
     @Tool("修改文件内容，用新内容替换指定的旧内容")
     public String modifyFile(
@@ -53,6 +54,37 @@ public class FileModifyTool {
             log.error(errorMessage, e);
             return errorMessage;
         }
+    }
+
+    @Override
+    public String getToolName() {
+        return "modifyFile";
+    }
+
+    @Override
+    public String getDisplayName() {
+        return "修改文件";
+    }
+
+    @Override
+    public String generateToolExecutedResult(JSONObject arguments) {
+        String relativeFilePath = arguments.getStr("relativeFilePath");
+        String oldContent = arguments.getStr("oldContent");
+        String newContent = arguments.getStr("newContent");
+
+        return String.format("""
+                [工具调用] %s %s
+                
+                替换前：
+                ```
+                %s
+                ```
+                
+                替换后：
+                ```
+                %s
+                ```
+                """, getDisplayName(), relativeFilePath, oldContent, newContent);
     }
 }
 

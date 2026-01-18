@@ -1,6 +1,8 @@
 package com.mashang.aicode.web.ai.tool;
 
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONObject;
 import com.mashang.aicode.web.constant.AppConstant;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -16,7 +18,7 @@ import java.util.Set;
 
 @Slf4j
 @Component
-public class FileDirReadTool {
+public class FileDirReadTool extends BaseTool {
 
 
     private static final Set<String> IGNORED_NAMES = Set.of(
@@ -90,6 +92,25 @@ public class FileDirReadTool {
 
 
         return IGNORED_EXTENSIONS.stream().anyMatch(fileName::endsWith);
+    }
+
+    @Override
+    public String getToolName() {
+        return "readDir";
+    }
+
+    @Override
+    public String getDisplayName() {
+        return "读取目录";
+    }
+
+    @Override
+    public String generateToolExecutedResult(JSONObject arguments) {
+        String relativeDirPath = arguments.getStr("relativeDirPath");
+        if (StrUtil.isEmpty(relativeDirPath)) {
+            relativeDirPath = "根目录";
+        }
+        return String.format("[工具调用] %s %s", getDisplayName(), relativeDirPath);
     }
 }
 

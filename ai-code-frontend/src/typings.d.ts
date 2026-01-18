@@ -373,10 +373,10 @@ declare namespace API {
 
   interface PageAppVO {
     records?: AppVO[];
-    pageNumber?: number;
-    pageSize?: number;
+    current?: number;
+    pages?: number;
     totalPage?: number;
-    totalRow?: number;
+    total?: number;
     optimizeCountQuery?: boolean;
   }
 
@@ -458,6 +458,14 @@ declare namespace API {
     userAccount?: string;
     userPassword?: string;
     checkPassword?: string;
+    userEmail?: string;
+    emailCode?: string;
+    inviteCode?: string;
+  }
+
+  interface SendEmailCodeRequest {
+    email?: string;
+    type?: string;
   }
 
   interface UserUpdateRequest {
@@ -775,5 +783,115 @@ declare namespace API {
     totalPage?: number;
     totalRow?: number;
     optimizeCountQuery?: boolean;
+  }
+
+  interface CodeSnippet {
+    id?: string;
+    snippetName?: string;
+    snippetType?: string;
+    snippetCategory?: string;
+    snippetDesc?: string;
+    snippetCode?: string;
+    usageScenario?: string;
+    tags?: string;
+    isActive?: number;
+    priority?: number;
+    creatorId?: string;
+    createTime?: string;
+    updateTime?: string;
+  }
+
+  interface BaseResponseCodeSnippet {
+    code?: number;
+    data?: CodeSnippet;
+    message?: string;
+  }
+
+  interface BaseResponseListCodeSnippet {
+    code?: number;
+    data?: CodeSnippet[];
+    message?: string;
+  }
+
+  interface PointsRecord {
+    id?: string;
+    userId?: string;
+    points?: number;
+    balance?: number;
+    type?: string;
+    reason?: string;
+    relatedId?: string;
+    expireTime?: string;
+    createTime?: string;
+  }
+
+  interface BaseResponsePointsRecord {
+    code?: number;
+    data?: PointsRecord;
+    message?: string;
+  }
+
+  interface BaseResponsePagePointsRecord {
+    code?: number;
+    data?: PagePointsRecord;
+    message?: string;
+  }
+
+  interface PagePointsRecord {
+    records?: PointsRecord[];
+    current?: number;
+    size?: number;
+    total?: number;
+  }
+
+  interface MapStringObject {
+    [key: string]: any;
+  }
+
+  interface BaseResponseMapStringObject {
+    code?: number;
+    data?: MapStringObject;
+    message?: string;
+  }
+
+  interface AiModelConfig {
+    id?: number;
+    modelKey?: string;
+    modelName?: string;
+    provider?: string;
+    baseUrl?: string;
+    tier?: string;
+    pointsPerKToken?: number;
+    description?: string;
+    isEnabled?: number;
+    sortOrder?: number;
+    createTime?: string;
+    updateTime?: string;
+    isDelete?: number;
+  }
+
+  interface BaseResponseAiModelConfig {
+    code?: number;
+    data?: AiModelConfig;
+    message?: string;
+  }
+
+  interface BaseResponseListAiModelConfig {
+    code?: number;
+    data?: AiModelConfig[];
+    message?: string;
+  }
+
+  interface PageAiModelConfig {
+    records?: AiModelConfig[];
+    current?: number;
+    size?: number;
+    total?: number;
+  }
+
+  interface BaseResponsePageAiModelConfig {
+    code?: number;
+    data?: PageAiModelConfig;
+    message?: string;
   }
 }

@@ -226,7 +226,6 @@ const AppAdminPage: React.FC = () => {
           showQuickJumper: true,
         }}
         toolBarRender={() => [
-          {/* 新建应用按钮 */}
           <Button
             type="primary"
             key="primary"

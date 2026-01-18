@@ -11,14 +11,12 @@ import com.mashang.aicode.web.ai.tool.FileDirReadTool;
 import com.mashang.aicode.web.ai.tool.FileModifyTool;
 import com.mashang.aicode.web.ai.tool.FileReadTool;
 import com.mashang.aicode.web.ai.tool.FileWriteTool;
-import com.mashang.aicode.web.ai.tool.base.ToolManager;
+import com.mashang.aicode.web.ai.tool.ToolManager;
 
 import com.mashang.aicode.web.exception.BusinessException;
 import com.mashang.aicode.web.exception.ErrorCode;
-import com.mashang.aicode.web.service.AppService;
 import com.mashang.aicode.web.service.ChatHistoryService;
 import com.mashang.aicode.web.utils.SpringContextUtil;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.community.store.memory.chat.redis.RedisChatMemoryStore;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;

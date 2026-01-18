@@ -1,4 +1,4 @@
-package com.mashang.aicode.web.ai.tool.base;
+package com.mashang.aicode.web.ai.tool;
 
 import cn.hutool.json.JSONObject;
 

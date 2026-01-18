@@ -4,7 +4,9 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.mashang.aicode.web.ai.factory.AiCodeGenTypeRoutingServiceFactory;
+import com.mashang.aicode.web.ai.factory.AppNameServiceFactory;
 import com.mashang.aicode.web.ai.service.AiCodeGenTypeRoutingService;
+import com.mashang.aicode.web.ai.service.AppNameService;
 import com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum;
 import com.mashang.aicode.web.model.enums.AppTypeEnum;
 import com.mashang.aicode.web.annotation.AuthCheck;
@@ -75,6 +77,8 @@ public class AppController {
     @Resource
     private AiCodeGenTypeRoutingServiceFactory aiCodeGenTypeRoutingServiceFactory;
     @Resource
+    private AppNameServiceFactory appNameServiceFactory;
+    @Resource
     private SpaceUserService spaceUserService;
 
 
@@ -115,24 +119,24 @@ public class AppController {
         // 获取当前登录用户
         User loginUser = userService.getLoginUser(request);
 
-        // 校验参数
-        String appName = appAddRequest.getAppName();
         String initPrompt = appAddRequest.getInitPrompt();
-//        ThrowUtils.throwIf(StrUtil.isBlank(appName), ErrorCode.PARAMS_ERROR, "应用名称不能为空");
-        if (appName == null || appName.equals("")) {
-            appName = initPrompt;
-        }
         ThrowUtils.throwIf(StrUtil.isBlank(initPrompt), ErrorCode.PARAMS_ERROR, "初始化提示词不能为空");
+
+        // 名称，使用 AI 自动生成
+        AppNameService appNameService = appNameServiceFactory.createAppNameService();
+        String appName = appNameService.generateAppName(initPrompt);
+        log.info("AI 自动生成应用名称: {}", appName);
 
         // 创建应用
         App app = new App();
         BeanUtil.copyProperties(appAddRequest, app);
         app.setUserId(loginUser.getId());
+        app.setAppName(appName);
         app.setSpaceId(appAddRequest.getSpaceId());
 //        app.setPriority(0); // 默认非精选
         app.setPriority(0); // 默认优先级
         //ai自动选择应用类型
-        AppTypeEnum appTypeEnum = aiCodeGenTypeRoutingService.routeAppType(appName, initPrompt);
+        AppTypeEnum appTypeEnum = aiCodeGenTypeRoutingService.routeAppType(appAddRequest.getAppName(), initPrompt);
         app.setAppType(appTypeEnum.getText());
         //ai自动选择生成模式
         AiCodeGenTypeRoutingService routingService = aiCodeGenTypeRoutingServiceFactory.createAiCodeGenTypeRoutingService();
@@ -378,10 +382,10 @@ public class AppController {
         ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID无效");
         ThrowUtils.throwIf(StrUtil.isBlank(message), ErrorCode.PARAMS_ERROR, "用户消息不能为空");
         User loginUser = userService.getLoginUser(request);
-        
+
         // 校验权限：应用所有者、精选应用、或空间成员可以访问
         checkAppAccessPermission(appId, loginUser);
-        
+
         Flux<String> contentFlux = appService.chatToGenCode(appId, message, loginUser);
         return contentFlux
                 .map(chunk -> {
@@ -473,7 +477,7 @@ public class AppController {
      * 检查应用访问权限
      * 应用所有者、精选应用、或空间成员可以访问
      *
-     * @param appId    应用ID
+     * @param appId     应用ID
      * @param loginUser 当前登录用户
      */
     private void checkAppAccessPermission(Long appId, User loginUser) {

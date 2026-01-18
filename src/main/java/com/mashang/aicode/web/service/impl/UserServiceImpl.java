@@ -3,6 +3,7 @@ package com.mashang.aicode.web.service.impl;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.ReUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -14,7 +15,9 @@ import com.mashang.aicode.web.model.entity.User;
 import com.mashang.aicode.web.model.enums.UserRoleEnum;
 import com.mashang.aicode.web.model.vo.LoginUserVO;
 import com.mashang.aicode.web.model.vo.UserVO;
+import com.mashang.aicode.web.service.EmailService;
 import com.mashang.aicode.web.service.UserService;
+import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
@@ -28,11 +31,12 @@ import static com.mashang.aicode.web.constant.UserConstant.USER_LOGIN_STATE;
 
 /**
  * 用户 服务层实现。
- *
- * @author <a href="https://github.com/liyupi">程序员鱼皮</a>
  */
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
+
+    @Resource
+    private EmailService emailService;
 
     @Override
     public long userRegister(String userAccount, String userPassword, String checkPassword) {
@@ -254,17 +258,70 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public boolean updateUserAvatar(String userAvatar, Long userId) {
-        // 1. 查询用户是否存在
         User user = this.getById(userId);
         if (user == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "用户不存在");
         }
-        // 2. 更新用户头像
         user.setUserAvatar(userAvatar);
         boolean result = this.updateById(user);
         if (!result) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "修改用户头像失败");
         }
         return true;
+    }
+
+    @Override
+    public long userRegisterByEmail(String userEmail, String emailCode, String userPassword, String checkPassword, String inviteCode) {
+        // 1. 校验参数
+        if (StrUtil.hasBlank(userEmail, emailCode, userPassword, checkPassword)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数错误");
+        }
+
+        // 2. 校验邮箱格式
+        if (!cn.hutool.core.util.ReUtil.isMatch("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$", userEmail)) {
+            throw new BusinessException(ErrorCode.EMAIL_FORMAT_ERROR);
+        }
+
+        // 3. 校验密码长度
+        if (userPassword.length() < 8 || checkPassword.length() < 8) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "密码长度不能少于8位");
+        }
+        if (!userPassword.equals(checkPassword)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "两次输入的密码不一致");
+        }
+
+        // 4. 验证邮箱验证码
+        boolean codeValid = emailService.verifyCode(userEmail, emailCode, "REGISTER");
+        if (!codeValid) {
+            throw new BusinessException(ErrorCode.EMAIL_CODE_INVALID);
+        }
+
+        // 5. 数据库是否已存在该邮箱
+        QueryWrapper queryWrapper = new QueryWrapper();
+        queryWrapper.eq("userEmail", userEmail);
+        long count = this.baseMapper.selectCount(queryWrapper);
+        if (count > 0) {
+            throw new BusinessException(ErrorCode.EMAIL_EXISTS);
+        }
+
+        // 6. 加密
+        String encryptPassword = getEncryptPassword(userPassword);
+
+        // 7. 插入数据库
+        User user = new User();
+        user.setUserAccount(userEmail);
+        user.setUserEmail(userEmail);
+        user.setEmailVerified(1);
+        user.setUserPassword(encryptPassword);
+        user.setUserName(userEmail.substring(0, userEmail.indexOf('@')));
+        user.setUserRole(UserRoleEnum.USER.getValue());
+        boolean result = this.save(user);
+        if (!result) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "注册失败，数据库错误");
+        }
+
+        Long userId = user.getId();
+
+        return userId;
     }
 }

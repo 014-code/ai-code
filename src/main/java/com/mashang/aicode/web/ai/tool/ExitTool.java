@@ -1,7 +1,6 @@
 package com.mashang.aicode.web.ai.tool;
 
 import cn.hutool.json.JSONObject;
-import com.mashang.aicode.web.ai.tool.base.BaseTool;
 import dev.langchain4j.agent.tool.Tool;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

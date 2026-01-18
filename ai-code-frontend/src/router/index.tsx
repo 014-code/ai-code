@@ -19,6 +19,9 @@ const NotFound = lazy(() => import('@/pages/404/index'));
 const AdminUser = lazy(() => import('@/pages/Admin/User'));
 const AdminApp = lazy(() => import('@/pages/Admin/App'));
 const AdminChatHistory = lazy(() => import('@/pages/Admin/ChatHistory'));
+const AdminCodeSnippet = lazy(() => import('@/pages/Admin/CodeSnippet'));
+const AdminPointsRecord = lazy(() => import('@/pages/Admin/PointsRecord'));
+const AdminAiModelConfig = lazy(() => import('@/pages/Admin/AiModelConfig'));
 
 const SpaceList = lazy(() => import('@/pages/Space/List'));
 const SpaceDetail = lazy(() => import('@/pages/Space/Detail'));
@@ -53,6 +56,9 @@ const router = createBrowserRouter([
           { path: 'user', element: <Suspense fallback={<LoadingFallback />}><AdminUser /></Suspense> },
           { path: 'app', element: <Suspense fallback={<LoadingFallback />}><AdminApp /></Suspense> },
           { path: 'chatHistory', element: <Suspense fallback={<LoadingFallback />}><AdminChatHistory /></Suspense> },
+          { path: 'codeSnippet', element: <Suspense fallback={<LoadingFallback />}><AdminCodeSnippet /></Suspense> },
+          { path: 'pointsRecord', element: <Suspense fallback={<LoadingFallback />}><AdminPointsRecord /></Suspense> },
+          { path: 'aiModelConfig', element: <Suspense fallback={<LoadingFallback />}><AdminAiModelConfig /></Suspense> },
         ],
       },
     ],
