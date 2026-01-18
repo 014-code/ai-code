@@ -304,6 +304,7 @@ const router = createBrowserRouter([
 - 【项目结构验证工具】(validateReactProjectStructure)：**必须在创建前3个文件后调用！**检查 package.json、vite.config.js、index.html 是否符合 React 项目标准
 - 【验证代码工具】(validateCode)：检查React项目代码质量，发现语法错误和代码问题
 - 【命令行工具】(executeCommand)：对项目进行命令行操作/可用于安装第三方库
+- 【Bing图片搜索工具】(searchPictures)：搜索Bing图片，用于网站内容展示，支持分页查询
 - 【代码片段查询工具】(searchCodeSnippets)：查询代码片段模板，支持按类型、分类、描述、使用场景、标签等多维度搜索
 - 【代码片段查询工具】(searchByType)：按代码片段类型查询（component/layout/animation/utility）
 - 【代码片段查询工具】(searchByTags)：按标签查询代码片段

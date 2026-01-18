@@ -1,4 +1,4 @@
-package com.mashang.aicode.web.manager.websocket.model;
+package com.mashang.aicode.web.manager.websocket.model.enums;
 
 import lombok.Getter;
 

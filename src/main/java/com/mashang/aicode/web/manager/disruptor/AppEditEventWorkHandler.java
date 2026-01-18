@@ -3,7 +3,7 @@ package com.mashang.aicode.web.manager.disruptor;
 import cn.hutool.json.JSONUtil;
 import com.lmax.disruptor.WorkHandler;
 import com.mashang.aicode.web.manager.websocket.AppEditHandler;
-import com.mashang.aicode.web.manager.websocket.model.DialogueMessageTypeEnum;
+import com.mashang.aicode.web.manager.websocket.model.enums.DialogueMessageTypeEnum;
 import com.mashang.aicode.web.manager.websocket.model.DialogueRequestMessage;
 import com.mashang.aicode.web.manager.websocket.model.DialogueResponseMessage;
 import com.mashang.aicode.web.model.entity.User;
