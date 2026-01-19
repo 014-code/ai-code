@@ -1,5 +1,10 @@
 package com.mashang.aicode.web.service;
 
+import com.mashang.aicode.web.model.entity.PointsRecord;
+import com.mashang.aicode.web.model.entity.User;
+
+import java.util.List;
+
 /**
  * 邮件服务接口
  *
@@ -32,4 +37,26 @@ public interface EmailService {
      * @return 清理的记录数
      */
     int cleanExpiredCodes();
+
+    /**
+     * 发送积分异常告警邮件
+     *
+     * @param toEmail           收件人邮箱
+     * @param inconsistentUsers 异常用户列表
+     * @param totalCount        异常总数
+     */
+    void sendPointsAlertEmail(String toEmail, List<InconsistentUserInfo> inconsistentUsers, int totalCount);
+
+    /**
+     * 异常用户信息
+     */
+    record InconsistentUserInfo(
+            Long userId,
+            String userAccount,
+            String userName,
+            Integer accountBalance,
+            Integer calculatedBalance,
+            Integer difference,
+            List<PointsRecord> recentChanges
+    ) {}
 }
