@@ -22,6 +22,7 @@ const AdminChatHistory = lazy(() => import('@/pages/Admin/ChatHistory'));
 const AdminCodeSnippet = lazy(() => import('@/pages/Admin/CodeSnippet'));
 const AdminPointsRecord = lazy(() => import('@/pages/Admin/PointsRecord'));
 const AdminAiModelConfig = lazy(() => import('@/pages/Admin/AiModelConfig'));
+const AdminDataRepair = lazy(() => import('@/pages/Admin/DataRepair'));
 
 const SpaceList = lazy(() => import('@/pages/Space/List'));
 const SpaceDetail = lazy(() => import('@/pages/Space/Detail'));
@@ -59,6 +60,7 @@ const router = createBrowserRouter([
           { path: 'codeSnippet', element: <Suspense fallback={<LoadingFallback />}><AdminCodeSnippet /></Suspense> },
           { path: 'pointsRecord', element: <Suspense fallback={<LoadingFallback />}><AdminPointsRecord /></Suspense> },
           { path: 'aiModelConfig', element: <Suspense fallback={<LoadingFallback />}><AdminAiModelConfig /></Suspense> },
+          { path: 'dataRepair', element: <Suspense fallback={<LoadingFallback />}><AdminDataRepair /></Suspense> },
         ],
       },
     ],

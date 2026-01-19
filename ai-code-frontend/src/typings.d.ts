@@ -61,6 +61,24 @@ declare namespace API {
     userProfile?: string;
     userRole?: string;
     createTime?: string;
+    totalPoints?: number;
+    availablePoints?: number;
+  }
+
+  interface UserPoint {
+    id?: number;
+    userId?: number;
+    totalPoints?: number;
+    availablePoints?: number;
+    frozenPoints?: number;
+    createTime?: string;
+    updateTime?: string;
+  }
+
+  interface BaseResponseUserPoint {
+    code?: number;
+    data?: UserPoint;
+    message?: string;
   }
 
   interface App {
@@ -88,6 +106,7 @@ declare namespace API {
     appCover?: string;
     initPrompt?: string;
     codeGenType?: string;
+    modelKey?: string;
   }
 
   interface AppDeployRequest {

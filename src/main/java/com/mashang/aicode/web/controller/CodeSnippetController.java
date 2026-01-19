@@ -65,10 +65,10 @@ public class CodeSnippetController {
             @RequestParam(required = false) String tags) {
         QueryWrapper<CodeSnippet> queryWrapper = new QueryWrapper<>();
         if (snippetType != null) {
-            queryWrapper.eq("snippet_type", snippetType);
+            queryWrapper.eq("snippetType", snippetType);
         }
         if (category != null) {
-            queryWrapper.eq("snippet_category", category);
+            queryWrapper.eq("snippetCategory", category);
         }
         if (tags != null && !tags.isEmpty()) {
             String[] tagArray = tags.split(",");
@@ -78,8 +78,8 @@ public class CodeSnippetController {
                 }
             });
         }
-        queryWrapper.eq("is_active", 1);
-        queryWrapper.eq("is_delete", 0);
+        queryWrapper.eq("isActive", 1);
+        queryWrapper.eq("isDelete", 0);
         queryWrapper.orderByDesc("priority");
         queryWrapper.last("LIMIT 20");
         List<CodeSnippet> snippets = codeSnippetService.list(queryWrapper);
@@ -91,19 +91,19 @@ public class CodeSnippetController {
         QueryWrapper<CodeSnippet> queryWrapper = new QueryWrapper<>();
         
         if (StringUtils.isNotBlank(request.getSnippetType())) {
-            queryWrapper.eq("snippet_type", request.getSnippetType());
+            queryWrapper.eq("snippetType", request.getSnippetType());
         }
         
         if (StringUtils.isNotBlank(request.getSnippetCategory())) {
-            queryWrapper.eq("snippet_category", request.getSnippetCategory());
+            queryWrapper.eq("snippetCategory", request.getSnippetCategory());
         }
         
         if (StringUtils.isNotBlank(request.getSnippetDesc())) {
-            queryWrapper.like("snippet_desc", request.getSnippetDesc());
+            queryWrapper.like("snippetDesc", request.getSnippetDesc());
         }
         
         if (StringUtils.isNotBlank(request.getUsageScenario())) {
-            queryWrapper.like("usage_scenario", request.getUsageScenario());
+            queryWrapper.like("usageScenario", request.getUsageScenario());
         }
         
         if (StringUtils.isNotBlank(request.getTags())) {
@@ -115,10 +115,10 @@ public class CodeSnippetController {
             });
         }
         
-        queryWrapper.eq("is_active", 1);
-        queryWrapper.eq("is_delete", 0);
+        queryWrapper.eq("isActive", 1);
+        queryWrapper.eq("isDelete", 0);
         queryWrapper.orderByDesc("priority");
-        queryWrapper.orderByDesc("create_time");
+        queryWrapper.orderByDesc("createTime");
         
         Integer limit = request.getLimit();
         if (limit == null || limit <= 0) {

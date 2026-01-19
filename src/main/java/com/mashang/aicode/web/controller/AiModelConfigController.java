@@ -79,8 +79,8 @@ public class AiModelConfigController {
         if (tier != null) {
             queryWrapper.eq("tier", tier);
         }
-        queryWrapper.eq("is_delete", 0);
-        queryWrapper.orderByAsc("sort_order");
+        queryWrapper.eq("isDelete", 0);
+        queryWrapper.orderByAsc("sortOrder");
 
         if (current == null || current < 1) {
             current = 1;
@@ -95,7 +95,7 @@ public class AiModelConfigController {
 
     @GetMapping("/enabled")
     public BaseResponse<List<AiModelConfig>> getEnabledModels() {
-        List<AiModelConfig> models = aiModelConfigService.getEnabledModels();
+        List<AiModelConfig> models = aiModelConfigService.listEnabledModels();
         return ResultUtils.success(models);
     }
 }

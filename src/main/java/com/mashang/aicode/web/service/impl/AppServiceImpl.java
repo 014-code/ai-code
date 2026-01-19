@@ -15,6 +15,8 @@ import com.mashang.aicode.web.ai.core.StreamHandlerExecutor;
 import com.mashang.aicode.web.ai.core.builder.ProjectBuilder;
 import com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum;
 import com.mashang.aicode.web.constant.AppConstant;
+import com.mashang.aicode.web.constant.PointsConstants;
+import com.mashang.aicode.web.constant.UserConstant;
 import com.mashang.aicode.web.exception.BusinessException;
 import com.mashang.aicode.web.exception.ErrorCode;
 import com.mashang.aicode.web.exception.ThrowUtils;
@@ -22,6 +24,7 @@ import com.mashang.aicode.web.exception.ThrowUtils;
 import com.mashang.aicode.web.mapper.AppMapper;
 import com.mashang.aicode.web.mapper.UserMapper;
 import com.mashang.aicode.web.model.dto.app.AppQueryRequest;
+import com.mashang.aicode.web.model.entity.AiModelConfig;
 import com.mashang.aicode.web.model.entity.App;
 import com.mashang.aicode.web.model.entity.User;
 import com.mashang.aicode.web.model.enums.ChatHistoryMessageTypeEnum;
@@ -29,10 +32,7 @@ import com.mashang.aicode.web.model.vo.AppVO;
 import com.mashang.aicode.web.model.vo.UserVO;
 import com.mashang.aicode.web.monitor.MonitorContext;
 import com.mashang.aicode.web.monitor.MonitorContextHolder;
-import com.mashang.aicode.web.service.AppService;
-import com.mashang.aicode.web.service.ChatHistoryService;
-import com.mashang.aicode.web.service.ScreenshotService;
-import com.mashang.aicode.web.service.UserService;
+import com.mashang.aicode.web.service.*;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -75,6 +75,12 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Resource
     private ScreenshotService screenshotService;
+    @Autowired
+    private AiModelConfigService aiModelConfigService;
+    @Autowired
+    private GenerationValidationService generationValidationService;
+    @Autowired
+    private UserPointService userPointService;
 
     @Override
     public AppVO getAppVO(App app) {
@@ -257,7 +263,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
      * @return
      */
     @Override
-    public Flux<String> chatToGenCode(Long appId, String message, User loginUser) {
+    public Flux<String> chatToGenCode(Long appId, String message, User loginUser, String modelKey) {
 
         if (message == null || message.length() > 1000) {
             return Flux.error(new BusinessException(ErrorCode.PARAMS_ERROR, "输入内容过长，不要超过 1000 字"));
@@ -268,19 +274,80 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         if (codeGenTypeEnum == null) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "不支持的代码生成类型");
         }
+
+        // 验证模型配置
+        AiModelConfig modelConfig = aiModelConfigService.getByModelKey(modelKey);
+        ThrowUtils.throwIf(modelConfig == null, ErrorCode.PARAMS_ERROR, "不支持的模型: " + modelKey);
+        ThrowUtils.throwIf(modelConfig.getIsEnabled() == null || modelConfig.getIsEnabled() != 1,
+                ErrorCode.PARAMS_ERROR, "模型已禁用: " + modelKey);
+        log.info("用户 {} 选择模型: {} ({}), 等级: {}, 费用: {}/1K tokens",
+                loginUser.getId(), modelConfig.getModelName(), modelKey,
+                modelConfig.getTier(), modelConfig.getPointsPerKToken());
+
+        // 4.0 防刷检测
+        // 检查用户身份（管理员豁免所有限制）
+        boolean isAdmin = UserConstant.ADMIN_ROLE.equals(loginUser.getUserRole());
+
+        // 检查用户今日是否被禁止生成（管理员免检）
+        if (!isAdmin && generationValidationService.isUserBannedToday(loginUser.getId())) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "您今日已达到最大警告次数，暂时无法生成应用");
+        }
+
+        // 检查用户今日生成次数是否超限（管理员免检）
+        if (!isAdmin && generationValidationService.isGenerationCountExceeded(loginUser.getId())) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR,
+                    String.format("您今日生成次数已达上限（%d次），请明天再试",
+                            PointsConstants.DAILY_GENERATION_LIMIT));
+        }
+
+        // 检查用户今日Token消耗是否超限（管理员免检）
+        if (!isAdmin && generationValidationService.isTokenLimitExceeded(loginUser.getId())) {
+            int usage = generationValidationService.getTodayTokenUsage(loginUser.getId());
+            throw new BusinessException(ErrorCode.OPERATION_ERROR,
+                    String.format("您今日Token消耗已达上限（%d/%d），请明天再试",
+                            usage, PointsConstants.DAILY_TOKEN_LIMIT));
+        }
+
+        // 检查24小时内是否重复生成相同需求（管理员免检）
+        if (!isAdmin && generationValidationService.isDuplicateGeneration(loginUser.getId(), message)) {
+            int warningCount = generationValidationService.recordWarningAndPunish(loginUser.getId(), "24小时内重复生成相同需求");
+            String msg = String.format("检测到重复生成，已记录警告（今日第%d次），并扣除%d积分",
+                    warningCount, PointsConstants.INVALID_GENERATION_PENALTY);
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, msg);
+        }
+
+        // 增加今日生成次数（管理员免计数）
+        if (!isAdmin) {
+            generationValidationService.incrementGenerationCount(loginUser.getId());
+        }
+
+        // 4.1 检查用户积分最低门槛（不再预扣，由监听器实时扣费）
+        int minPoints = 50; // 最低积分门槛，确保基本使用能力
+        if (!userPointService.checkPointsSufficient(loginUser.getId(), minPoints)) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR,
+                    String.format("积分不足，至少需要 %d 积分才能生成，请先签到或邀请好友获取积分", minPoints));
+        }
+        log.info("用户 {} 开始生成应用 {}，当前积分充足（>= {}）", loginUser.getId(), appId, minPoints);
+
         // 5. 通过校验后，添加用户消息到对话历史
         chatHistoryService.addChatMessage(appId, message, ChatHistoryMessageTypeEnum.USER.getValue(), loginUser.getId());
+
+        // 记录本次生成（用于后续重复检测，管理员免记录）
+        if (!isAdmin) {
+            generationValidationService.recordGeneration(loginUser.getId(), message);
+        }
 
         //生成应用前设置上下文
         MonitorContextHolder.setContext(
                 MonitorContext.builder()
                         .userId(loginUser.getId().toString())
                         .appId(appId.toString())
+                        .modelKey(modelKey)
                         .build()
         );
 
         // 6. 调用 AI 生成代码（流式）
-        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId, null, loginUser.getId(), loginUser);
+        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId, null, loginUser.getId(), loginUser, modelKey);
 
         //流式响应完成后再清除上下文
         //7. 收集 AI 响应内容并在完成后记录到对话历史
@@ -509,26 +576,27 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     /**
      * 取消正在进行的代码生成
-     * 
+     * <p>
      * 这个方法用于中断指定应用的代码生成任务。
-     * 
+     * <p>
      * 工作流程：
      * 1. 调用 AiCodeGeneratorFacade.interrupt(appId) 设置中断标志
      * 2. AI检测到中断标志后，停止生成代码
      * 3. 已生成的内容会自动保存到对话历史中
-     * 
+     * <p>
      * 参数说明：
-     * @param appId 应用ID，用于指定要中断哪个应用的代码生成
+     *
+     * @param appId  应用ID，用于指定要中断哪个应用的代码生成
      * @param userId 用户ID，用于权限验证
-     * 
-     * 返回值：
+     *               <p>
+     *               返回值：
      * @return 是否成功取消
-     * 
+     * <p>
      * 使用场景：
      * - 用户点击"停止生成"按钮
      * - 用户切换到其他页面，需要停止当前生成
      * - 系统检测到异常，需要立即停止生成
-     * 
+     * <p>
      * 注意：
      * - 中断后，已生成的内容会自动保存到对话历史中
      * - 如果应用没有正在进行的生成任务，这个方法也会返回true
@@ -536,16 +604,16 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     public boolean cancelGeneration(Long appId, Long userId) {
         try {
             log.info("开始取消代码生成，appId: {}, userId: {}", appId, userId);
-            
+
             // 调用 AiCodeGeneratorFacade 的中断方法
             boolean success = aiCodeGeneratorFacade.interrupt(appId, userId);
-            
+
             if (success) {
                 log.info("成功取消代码生成，appId: {}, userId: {}", appId, userId);
             } else {
                 log.warn("取消代码生成失败，appId: {}, userId: {}", appId, userId);
             }
-            
+
             return success;
         } catch (Exception e) {
             log.error("取消代码生成失败，appId: {}, userId: {}, 错误: {}", appId, userId, e.getMessage(), e);

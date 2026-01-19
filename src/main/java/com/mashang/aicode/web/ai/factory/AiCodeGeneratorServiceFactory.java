@@ -71,6 +71,9 @@ public class AiCodeGeneratorServiceFactory {
     @Resource
     private ToolManager toolManager;
 
+    @Resource
+    private DynamicAiModelFactory dynamicAiModelFactory; // 动态AI模型工厂
+
 
     private final Cache<String, AiCodeGeneratorService> serviceCache = Caffeine.newBuilder().maximumSize(1000).expireAfterWrite(Duration.ofMinutes(30)).expireAfterAccess(Duration.ofMinutes(10)).removalListener((key, value, cause) -> {
         log.debug("AI 服务实例被移除，key: {}, 原因: {}", key, cause);
@@ -86,11 +89,56 @@ public class AiCodeGeneratorServiceFactory {
     /**
      * 创建新的 AI 服务实例
      */
+    private AiCodeGeneratorService createAiCodeGeneratorService(long appId, CodeGenTypeEnum codeGenType, String modelKey) {
+        // 根据 appId 构建独立的对话记忆
+        MessageWindowChatMemory chatMemory = MessageWindowChatMemory.builder().id(appId).chatMemoryStore(redisChatMemoryStore).maxMessages(30).build();
+        // 从数据库加载历史对话到记忆中
+        chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, 30);
+        // 使用 DynamicAiModelFactory 创建动态模型
+        StreamingChatModel dynamicStreamingChatModel = dynamicAiModelFactory.getStreamingChatModel(modelKey);
+        // 根据代码生成类型选择不同的模型配置
+        return switch (codeGenType) {
+            // Vue 项目生成使用推理模型
+            case VUE_PROJECT, REACT_PROJECT -> {
+//                StreamingChatModel streamingChatModel = SpringContextUtil.getBean("streamingChatModelPrototype", StreamingChatModel.class);
+
+                yield AiServices.builder(AiCodeGeneratorService.class)
+                        .streamingChatModel(dynamicStreamingChatModel)
+                        .chatMemoryProvider(memoryId -> chatMemory)
+                        .tools(getLangchainTools())
+                        .inputGuardrails(new PromptSafetyInputGuardrail())
+                        .maxSequentialToolsInvocations(10)
+                        //出路工具调用幻觉问题
+                        .hallucinatedToolNameStrategy(toolExecutionRequest ->
+                                ToolExecutionResultMessage.from(
+                                        toolExecutionRequest, "Error: there is no called" +
+                                                toolExecutionRequest.name()
+                                )).build();
+            }
+            case HTML, MULTI_FILE -> {
+                StreamingChatModel openAiModel = SpringContextUtil.getBean("streamingChatModelPrototype", StreamingChatModel.class);
+                yield AiServices.builder(AiCodeGeneratorService.class)
+                        .chatModel(ollamaChatModel)
+                        .streamingChatModel(openAiModel)
+                        .chatMemory(chatMemory)
+//                        .inputGuardrails(new PromptSafetyInputGuardrail())
+                        .build();
+            }
+            default ->
+                    throw new BusinessException(ErrorCode.SYSTEM_ERROR, "不支持的代码生成类型: " + codeGenType.getValue());
+        };
+    }
+
+    /**
+     * 创建新的 AI 服务实例
+     */
     private AiCodeGeneratorService createAiCodeGeneratorService(long appId, CodeGenTypeEnum codeGenType) {
         // 根据 appId 构建独立的对话记忆
-        MessageWindowChatMemory chatMemory = MessageWindowChatMemory.builder().id(appId).chatMemoryStore(redisChatMemoryStore).maxMessages(10).build();
+        MessageWindowChatMemory chatMemory = MessageWindowChatMemory.builder().id(appId).chatMemoryStore(redisChatMemoryStore).maxMessages(30).build();
         // 从数据库加载历史对话到记忆中
-        chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, 10);
+        chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, 30);
+        // 使用 DynamicAiModelFactory 创建动态模型
+//        StreamingChatModel dynamicStreamingChatModel = dynamicAiModelFactory.getStreamingChatModel(modelKey);
         // 根据代码生成类型选择不同的模型配置
         return switch (codeGenType) {
             // Vue 项目生成使用推理模型
@@ -124,8 +172,17 @@ public class AiCodeGeneratorServiceFactory {
         };
     }
 
+
     /**
      * 根据 appId 和代码生成类型获取服务（带缓存）
+     */
+    public AiCodeGeneratorService getAiCodeGeneratorService(long appId, CodeGenTypeEnum codeGenType, String modelKey) {
+        String cacheKey = buildCacheKey(appId, codeGenType, modelKey);
+        return serviceCache.get(cacheKey, key -> createAiCodeGeneratorService(appId, codeGenType, modelKey));
+    }
+
+    /**
+     * 根据 appId 和代码生成类型 codeGenType 获取服务（带缓存）
      */
     public AiCodeGeneratorService getAiCodeGeneratorService(long appId, CodeGenTypeEnum codeGenType) {
         String cacheKey = buildCacheKey(appId, codeGenType);
@@ -134,6 +191,17 @@ public class AiCodeGeneratorServiceFactory {
 
     /**
      * 构建缓存键
+     */
+    private String buildCacheKey(long appId, CodeGenTypeEnum codeGenType, String modelKey) {
+        return appId + "_" + codeGenType.getValue() + "_" + modelKey;
+    }
+
+    /**
+     * 构建缓存键
+     *
+     * @param appId
+     * @param codeGenType
+     * @return
      */
     private String buildCacheKey(long appId, CodeGenTypeEnum codeGenType) {
         return appId + "_" + codeGenType.getValue();

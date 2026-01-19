@@ -63,3 +63,7 @@ export async function sendEmailCode(body: API.SendEmailCodeRequest) {
 export async function userRegisterByEmail(body: API.UserRegisterRequest) {
   return request.post<any, API.BaseResponseLong>('/user/register/email', body);
 }
+
+export async function getUserPoint(userId: string) {
+  return request.get<any, API.BaseResponseUserPointVO>('/userPoint/get', { params: { userId } });
+}

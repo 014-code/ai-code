@@ -20,6 +20,8 @@ public class MonitorContext implements Serializable {
     private String userId;
     //应用id
     private String appId;
+    //模型key
+    private String modelKey;
 
     @Serial
     private static final long serialVersionUID = 1L;

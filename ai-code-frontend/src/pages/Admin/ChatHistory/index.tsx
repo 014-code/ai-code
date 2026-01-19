@@ -152,7 +152,6 @@ const ChatHistoryAdminPage: React.FC = () => {
           showQuickJumper: true,
         }}
         toolBarRender={() => [
-          {/* 新建对话历史按钮 */}
           <Button
             type="primary"
             key="primary"

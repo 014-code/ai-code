@@ -12,10 +12,12 @@ import com.mashang.aicode.web.exception.ErrorCode;
 import com.mashang.aicode.web.mapper.UserMapper;
 import com.mashang.aicode.web.model.dto.user.UserQueryRequest;
 import com.mashang.aicode.web.model.entity.User;
+import com.mashang.aicode.web.model.entity.UserPoint;
 import com.mashang.aicode.web.model.enums.UserRoleEnum;
 import com.mashang.aicode.web.model.vo.LoginUserVO;
 import com.mashang.aicode.web.model.vo.UserVO;
 import com.mashang.aicode.web.service.EmailService;
+import com.mashang.aicode.web.service.UserPointService;
 import com.mashang.aicode.web.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
@@ -37,6 +39,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Resource
     private EmailService emailService;
+
+    @Resource
+    private UserPointService userPointService;
 
     @Override
     public long userRegister(String userAccount, String userPassword, String checkPassword) {
@@ -136,6 +141,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         UserVO userVO = new UserVO();
         BeanUtil.copyProperties(user, userVO);
+        
+        UserPoint userPoint = userPointService.getUserPointByUserId(user.getId());
+        if (userPoint != null) {
+            userVO.setUserPoints(userPoint.getAvailablePoints());
+        }
+        
         return userVO;
     }
 

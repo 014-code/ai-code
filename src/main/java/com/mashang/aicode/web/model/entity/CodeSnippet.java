@@ -21,43 +21,43 @@ public class CodeSnippet implements Serializable {
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    @TableField("snippet_name")
+    @TableField("snippetName")
     private String snippetName;
 
-    @TableField("snippet_type")
+    @TableField("snippetType")
     private String snippetType;
 
-    @TableField("snippet_category")
+    @TableField("snippetCategory")
     private String snippetCategory;
 
-    @TableField("snippet_desc")
+    @TableField("snippetDesc")
     private String snippetDesc;
 
-    @TableField("snippet_code")
+    @TableField("snippetCode")
     private String snippetCode;
 
-    @TableField("usage_scenario")
+    @TableField("usageScenario")
     private String usageScenario;
 
     @TableField("tags")
     private String tags;
 
-    @TableField("is_active")
+    @TableField("isActive")
     private Integer isActive;
 
     @TableField("priority")
     private Integer priority;
 
-    @TableField("creator_id")
+    @TableField("creatorId")
     private Long creatorId;
 
-    @TableField("create_time")
+    @TableField("createTime")
     private Date createTime;
 
-    @TableField("update_time")
+    @TableField("updateTime")
     private Date updateTime;
 
     @TableLogic
-    @TableField("is_delete")
+    @TableField("isDelete")
     private Integer isDelete;
 }

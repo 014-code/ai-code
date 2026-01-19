@@ -56,6 +56,9 @@ public class WorkflowContext implements Serializable {
     //构造返回结果路径
     private String buildResultDir;
 
+    //调用的模型名称
+    private String modelKey;
+
     //条件边校验结果
     private QualityResult qualityResult;
 

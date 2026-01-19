@@ -8,7 +8,8 @@ import {
     UserDeleteOutlined,
     EyeOutlined,
     LikeOutlined,
-    CommentOutlined
+    CommentOutlined,
+    GiftOutlined
 } from '@ant-design/icons';
 import {
     getFriendRequestList,
@@ -20,6 +21,7 @@ import {
 } from '@/services/backend/friendController';
 import {getUserForumPostList} from '@/services/backend/forumPostController';
 import {getUserInfo} from '@/services/backend/userController';
+import {getCurrentUserPoint} from '@/services/backend/userPointController';
 import {useScrollLoad} from '@/hooks/useScrollLoad';
 import type {UserVO, FriendRequestVO} from '@/services/backend/types';
 import styles from './index.module.less';
@@ -32,6 +34,7 @@ const UserProfilePage: React.FC = () => {
     const {userId} = useParams<{ userId: string }>();
     const navigate = useNavigate();
     const [userInfo, setUserInfo] = useState<UserVO | null>(null);
+    const [userPoint, setUserPoint] = useState<API.UserPoint | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isFriend, setIsFriend] = useState(false);
     const [friendRequests, setFriendRequests] = useState<FriendRequestVO[]>([]);
@@ -58,6 +61,23 @@ const UserProfilePage: React.FC = () => {
             })
             .finally(() => {
                 setIsLoading(false);
+            });
+    };
+
+    /**
+     * 获取用户积分信息
+     */
+    const fetchUserPoint = () => {
+        console.log('开始获取用户积分...');
+        getCurrentUserPoint()
+            .then((response) => {
+                console.log('获取用户积分响应:', response);
+                console.log('用户积分数据:', response.data);
+                setUserPoint(response.data);
+            })
+            .catch((error) => {
+                console.error('获取用户积分失败:', error);
+                message.error('获取用户积分失败');
             });
     };
 
@@ -191,6 +211,7 @@ const UserProfilePage: React.FC = () => {
      */
     useEffect(() => {
         fetchUserInfo();
+        fetchUserPoint();
         checkFriendStatus();
         fetchFriendRequests();
         fetchUserPosts(1, true);
@@ -238,6 +259,16 @@ const UserProfilePage: React.FC = () => {
                     <div className={styles.infoSection}>
                         <h1 className={styles.userName}>{userInfo.userName}</h1>
                         <p className={styles.userProfile}>{userInfo.userProfile || '该用户还没有设置个人简介'}</p>
+                        {userPoint && (
+                            <div className={styles.pointsInfo}>
+                                <Tag icon={<GiftOutlined />} color="gold">
+                                    总积分: {userPoint.totalPoints || 0}
+                                </Tag>
+                                <Tag icon={<GiftOutlined />} color="green">
+                                    可用积分: {userPoint.availablePoints || 0}
+                                </Tag>
+                            </div>
+                        )}
                         <div className={styles.actionButtons}>
                             {isFriend ? (
                                 <Button

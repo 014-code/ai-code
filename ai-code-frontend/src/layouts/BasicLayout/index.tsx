@@ -9,6 +9,7 @@ import {
   TableOutlined,
   TeamOutlined,
   RobotOutlined,
+  ToolOutlined,
 } from '@ant-design/icons';
 import Logo from '@/components/Logo';
 import Footer from '@/components/Footer';
@@ -93,6 +94,11 @@ const BasicLayout = () => {
                 path: '/admin/aiModelConfig',
                 name: 'AI模型配置',
                 icon: <RobotOutlined />,
+              },
+              {
+                path: '/admin/dataRepair',
+                name: '数据修复工具',
+                icon: <ToolOutlined />,
               },
             ],
           },

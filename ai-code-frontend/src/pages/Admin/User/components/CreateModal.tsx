@@ -2,7 +2,6 @@ import { addUser } from '@/services/backend/userController';
 import { ProTable } from '@ant-design/pro-components';
 import type { ProColumns } from '@ant-design/pro-table';
 import { message, Modal } from 'antd';
-import React from 'react';
 
 interface Props {
   visible: boolean;

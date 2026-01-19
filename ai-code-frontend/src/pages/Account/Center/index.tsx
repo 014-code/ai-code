@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useGlobalContext } from '@/context/GlobalContext';
 import { getLoginUser, updateUserInfo, updateUserPassword, updateUserAvatar } from '@/services/backend/userController';
 import { getFriendRequestList, acceptFriendRequest, rejectFriendRequest } from '@/services/backend/friendController';
+import { getCurrentUserPoint } from '@/services/backend/userPointController';
 import { LockOutlined, MailOutlined, UserOutlined, UserAddOutlined, UserDeleteOutlined } from '@ant-design/icons';
 import { Avatar, Button, Card, Col, Form, Input, message, Row, List, Empty, Spin } from 'antd';
 import type { UploadChangeParam, UploadFile } from 'antd/es/upload';
@@ -29,6 +30,8 @@ const AccountCenter: React.FC = () => {
   // 好友申请列表
   const [friendRequests, setFriendRequests] = useState<FriendRequestVO[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
+  // 用户积分
+  const [userPoint, setUserPoint] = useState<API.UserPoint | null>(null);
 
   /**
    * 初始化时获取用户信息
@@ -37,6 +40,7 @@ const AccountCenter: React.FC = () => {
   useEffect(() => {
     fetchUserInfo();
     fetchFriendRequests();
+    fetchUserPoint();
   }, []);
 
   /**
@@ -56,6 +60,20 @@ const AccountCenter: React.FC = () => {
       })
       .finally(() => {
         setRequestsLoading(false);
+      });
+  };
+
+  /**
+   * 获取用户积分信息
+   * 从服务器获取当前登录用户的积分详情
+   */
+  const fetchUserPoint = () => {
+    getCurrentUserPoint()
+      .then((response) => {
+        setUserPoint(response.data);
+      })
+      .catch((error) => {
+        console.error('获取用户积分失败:', error);
       });
   };
 
@@ -214,6 +232,15 @@ const AccountCenter: React.FC = () => {
             <ProDescriptions column={1} bordered>
               <ProDescriptions.Item label="用户角色">
                 {currentUser?.userRole === 'admin' ? '管理员' : '普通用户'}
+              </ProDescriptions.Item>
+              <ProDescriptions.Item label="总积分">
+                {userPoint?.totalPoints || 0}
+              </ProDescriptions.Item>
+              <ProDescriptions.Item label="可用积分">
+                {userPoint?.availablePoints || 0}
+              </ProDescriptions.Item>
+              <ProDescriptions.Item label="冻结积分">
+                {userPoint?.frozenPoints || 0}
               </ProDescriptions.Item>
               <ProDescriptions.Item label="创建时间">
                 {currentUser?.createTime}

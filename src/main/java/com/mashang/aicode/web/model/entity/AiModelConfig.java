@@ -6,14 +6,17 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.Date;
 
 @TableName("ai_model_config")
 @Data
+@Builder
 @AllArgsConstructor
 @NoArgsConstructor
 public class AiModelConfig implements Serializable {
@@ -21,40 +24,52 @@ public class AiModelConfig implements Serializable {
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    @TableField("model_key")
+    @TableField("modelKey")
     private String modelKey;
 
-    @TableField("model_name")
+    @TableField("modelName")
     private String modelName;
 
     @TableField("provider")
     private String provider;
 
-    @TableField("base_url")
+    @TableField("baseUrl")
     private String baseUrl;
 
     @TableField("tier")
     private String tier;
 
-    @TableField("points_per_k_token")
+    @TableField("pointsPerKToken")
     private Integer pointsPerKToken;
 
     @TableField("description")
     private String description;
 
-    @TableField("is_enabled")
+    @TableField("isEnabled")
     private Integer isEnabled;
 
-    @TableField("sort_order")
+    @TableField("sortOrder")
     private Integer sortOrder;
 
-    @TableField("create_time")
+    @TableField("qualityScore")
+    private BigDecimal qualityScore;
+
+    @TableField("successRate")
+    private BigDecimal successRate;
+
+    @TableField("avgTokenUsage")
+    private Integer avgTokenUsage;
+
+    @TableField("userRating")
+    private BigDecimal userRating;
+
+    @TableField("createTime")
     private Date createTime;
 
-    @TableField("update_time")
+    @TableField("updateTime")
     private Date updateTime;
 
     @TableLogic
-    @TableField("is_delete")
+    @TableField("isDelete")
     private Integer isDelete;
 }

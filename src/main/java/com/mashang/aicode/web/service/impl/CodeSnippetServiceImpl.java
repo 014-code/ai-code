@@ -21,11 +21,11 @@ public class CodeSnippetServiceImpl extends ServiceImpl<CodeSnippetMapper, CodeS
         QueryWrapper<CodeSnippet> wrapper = new QueryWrapper<>();
 
         if (StrUtil.isNotBlank(snippetType)) {
-            wrapper.eq("snippet_type", snippetType);
+            wrapper.eq("snippetType", snippetType);
         }
 
         if (StrUtil.isNotBlank(category)) {
-            wrapper.eq("snippet_category", category);
+            wrapper.eq("snippetCategory", category);
         }
 
         if (tags != null && !tags.isEmpty()) {
@@ -36,8 +36,8 @@ public class CodeSnippetServiceImpl extends ServiceImpl<CodeSnippetMapper, CodeS
             });
         }
 
-        wrapper.eq("is_active", 1);
-        wrapper.eq("is_delete", 0);
+        wrapper.eq("isActive", 1);
+        wrapper.eq("isDelete", 0);
         wrapper.orderByDesc("priority");
         wrapper.last("LIMIT 5");
         return list(wrapper);
