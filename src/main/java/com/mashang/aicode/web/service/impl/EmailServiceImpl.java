@@ -8,6 +8,7 @@ import com.mashang.aicode.web.exception.BusinessException;
 import com.mashang.aicode.web.exception.ErrorCode;
 import com.mashang.aicode.web.mapper.EmailVerificationCodeMapper;
 import com.mashang.aicode.web.model.entity.EmailVerificationCode;
+import com.mashang.aicode.web.model.entity.PointsRecord;
 import com.mashang.aicode.web.service.EmailService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +17,9 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
+import java.util.List;
 
 /**
  * 邮件服务实现类
@@ -170,5 +173,106 @@ public class EmailServiceImpl extends ServiceImpl<EmailVerificationCodeMapper, E
                         014AiCode 团队
                         """,
                 purpose, code, CODE_EXPIRE_MINUTES);
+    }
+
+    /**
+     * 发送积分数据一致性异常告警邮件
+     *
+     * @param toEmail         接收人邮箱
+     * @param inconsistentUsers 异常用户列表
+     * @param totalCount      异常用户总数
+     */ 
+    @Override
+    public void sendPointsAlertEmail(String toEmail, List<InconsistentUserInfo> inconsistentUsers, int totalCount) {
+        if (StrUtil.hasBlank(toEmail) || inconsistentUsers == null || inconsistentUsers.isEmpty()) {
+            log.warn("积分告警邮件发送参数无效");
+            return;
+        }
+
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(toEmail);
+            message.setSubject("【014AiCode 告警】积分数据一致性异常");
+            message.setText(buildPointsAlertEmailContent(inconsistentUsers, totalCount));
+
+            mailSender.send(message);
+            log.info("积分异常告警邮件发送成功: toEmail={}, 异常用户数={}", toEmail, totalCount);
+        } catch (Exception e) {
+            log.error("积分异常告警邮件发送失败: toEmail={}", toEmail, e);
+        }
+    }
+
+    private String buildPointsAlertEmailContent(List<InconsistentUserInfo> users, int totalCount) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("尊敬的管理员你好 ( ^_^ )ノ\n\n");
+        sb.append("【014AiCode 积分系统告警】\n\n");
+        sb.append("系统检测到积分数据存在不一致的用户共计 ").append(totalCount).append(" 人，请及时处理。\n\n");
+        sb.append("━━━━━━━━━━━━━━━━━━━━━━━━\n");
+        sb.append("异常用户详情\n");
+        sb.append("━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        for (int i = 0; i < users.size(); i++) {
+            InconsistentUserInfo user = users.get(i);
+            sb.append("【用户 ").append(i + 1).append("】\n");
+            sb.append("  用户ID: ").append(user.userId()).append("\n");
+            sb.append("  账号: ").append(user.userAccount()).append("\n");
+            sb.append("  昵称: ").append(user.userName()).append("\n");
+            sb.append("  账户显示积分: ").append(user.accountBalance()).append("\n");
+            sb.append("  计算实际积分: ").append(user.calculatedBalance()).append("\n");
+            sb.append("  差异: ").append(user.difference() > 0 ? "+" : "").append(user.difference()).append("\n");
+            sb.append("\n  最近积分变动记录:\n");
+
+            if (user.recentChanges() != null && !user.recentChanges().isEmpty()) {
+                for (PointsRecord record : user.recentChanges()) {
+                    String typeDesc = getPointsTypeDescription(record.getType());
+                    String statusDesc = getPointsStatusDescription(record.getStatus());
+                    sb.append("    - ").append(record.getCreateTime().format(formatter))
+                            .append(" | ").append(typeDesc)
+                            .append(" | 变动: ").append(record.getPoints() > 0 ? "+" : "").append(record.getPoints())
+                            .append(" | 余额: ").append(record.getBalance())
+                            .append(" | 状态: ").append(statusDesc).append("\n");
+                }
+            } else {
+                sb.append("    (无变动记录)\n");
+            }
+            sb.append("\n");
+        }
+
+        sb.append("━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
+        sb.append("请登录管理后台检查并修复以上异常。\n\n");
+        sb.append("如非本人操作,请忽略此邮件。\n\n");
+        sb.append("---\n");
+        sb.append("014AiCode 系统自动发送\n");
+
+        return sb.toString();
+    }
+
+    private String getPointsTypeDescription(String type) {
+        if (type == null) return "未知类型";
+        return switch (type) {
+            case "REGISTER" -> "注册奖励";
+            case "LOGIN" -> "登录奖励";
+            case "INVITE" -> "邀请奖励";
+            case "GENERATE" -> "生成应用奖励";
+            case "CONSUME" -> "消费扣减";
+            case "EXPIRE" -> "积分过期";
+            case "ADMIN_ADD" -> "管理员调整";
+            case "EXPIRE_REMINDER" -> "过期提醒";
+            default -> type;
+        };
+    }
+
+    private String getPointsStatusDescription(String status) {
+        if (status == null) return "未知状态";
+        return switch (status) {
+            case "ACTIVE" -> "有效";
+            case "PARTIAL_CONSUMED" -> "部分消耗";
+            case "CONSUMED" -> "已消耗";
+            case "EXPIRED" -> "已过期";
+            default -> status;
+        };
     }
 }
