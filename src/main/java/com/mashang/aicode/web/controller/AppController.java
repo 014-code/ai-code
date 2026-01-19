@@ -34,6 +34,7 @@ import com.mashang.aicode.web.ratelimiter.enums.RateLimitType;
 import com.mashang.aicode.web.service.*;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.mashang.aicode.web.utils.IpUtils;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -80,6 +81,9 @@ public class AppController {
     private AppNameServiceFactory appNameServiceFactory;
     @Resource
     private SpaceUserService spaceUserService;
+
+    @Resource
+    private IpUtils ipUtils;
 
 
     /**
@@ -378,7 +382,8 @@ public class AppController {
     @GetMapping(value = "/chat/gen/code", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     //redisson令牌桶限流
     @RateLimit(limitType = RateLimitType.USER, rate = 5, rateInterval = 60, message = "AI 对话请求过于频繁，请稍后再试")
-    public Flux<ServerSentEvent<String>> chatToGenCode(@RequestParam Long appId, @RequestParam String message, HttpServletRequest request) {
+    public Flux<ServerSentEvent<String>> chatToGenCode(@RequestParam Long appId, @RequestParam String message, HttpServletRequest request
+            , @RequestParam(required = false) String modelKey) {
         ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID无效");
         ThrowUtils.throwIf(StrUtil.isBlank(message), ErrorCode.PARAMS_ERROR, "用户消息不能为空");
         User loginUser = userService.getLoginUser(request);
@@ -386,7 +391,15 @@ public class AppController {
         // 校验权限：应用所有者、精选应用、或空间成员可以访问
         checkAppAccessPermission(appId, loginUser);
 
-        Flux<String> contentFlux = appService.chatToGenCode(appId, message, loginUser);
+        // modelKey 可选，如果不传则使用默认模型（轻量级编程模型）
+        if (StrUtil.isBlank(modelKey)) {
+            modelKey = "codex-mini-latest"; // 默认模型：Codex Mini 最新版（1积分/1K tokens）
+        }
+
+        // IP级别限流检查（每分钟10次）
+        ipUtils.checkIpRateLimit(request);
+
+        Flux<String> contentFlux = appService.chatToGenCode(appId, message, loginUser, modelKey);
         return contentFlux
                 .map(chunk -> {
                     Map<String, String> wrapper = Map.of("d", chunk);

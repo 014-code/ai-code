@@ -1,5 +1,6 @@
 package com.mashang.aicode.web.controller;
 
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.mashang.aicode.web.ai.model.enums.CodeGenTypeEnum;
 import com.mashang.aicode.web.constant.AppConstant;
@@ -35,28 +36,34 @@ public class WorkflowSseController {
     private UserService userService;
 
     @PostMapping("/execute")
-    public WorkflowContext executeWorkflow(@RequestParam String prompt, 
-                                          @RequestParam(required = false) Long appId,
-                                          HttpServletRequest request) {
+    public WorkflowContext executeWorkflow(@RequestParam String prompt,
+                                           @RequestParam(required = false) Long appId,
+                                           HttpServletRequest request) {
         log.info("收到同步工作流执行请求: prompt={}, appId={}", prompt, appId);
-    
-        
+
+
         return new CodeGenWorkflow().executeWorkflow(prompt, appId);
     }
 
 
     @GetMapping(value = "/execute-flux", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<ServerSentEvent<String>> executeWorkflowWithFlux(@RequestParam String prompt, 
-                                                                  @RequestParam(required = false) Long appId,
-                                                                  HttpServletRequest request) {
+    public Flux<ServerSentEvent<String>> executeWorkflowWithFlux(@RequestParam String prompt,
+                                                                 @RequestParam(required = false) Long appId,
+                                                                 HttpServletRequest request,
+                                                                 @RequestParam(required = false) String modelKey) {
         log.info("收到 Flux 工作流执行请求: prompt={}, appId={}", prompt, appId);
-        
+
+        // modelKey 可选，如果不传则使用默认模型（轻量级编程模型）
+        if (StrUtil.isBlank(modelKey)) {
+            modelKey = "codex-mini-latest"; // 默认模型：Codex Mini 最新版（1积分/1K tokens）
+        }
+
         // 检查是否是修改现有项目的请求
         if (isModifyExistingProject(appId)) {
             log.info("检测到是修改现有项目，直接调用 AI 服务，跳过工作流");
             // 获取当前登录用户
             User loginUser = userService.getLoginUser(request);
-            Flux<String> contentFlux = appService.chatToGenCode(appId, prompt, loginUser);
+            Flux<String> contentFlux = appService.chatToGenCode(appId, prompt, loginUser, modelKey);
             return contentFlux
                     .map(chunk -> {
                         Map<String, String> wrapper = Map.of("d", chunk);
@@ -73,7 +80,7 @@ public class WorkflowSseController {
                                     .build()
                     ));
         }
-        
+
         // 不是修改项目，走工作流，仿照/chat/gen/code最后的sse流式输出完成
         // 工作流返回的是字符串格式的 SSE（"event: xxx\ndata: xxx\n\n"），需要转换为 ServerSentEvent
         Flux<String> workflowFlux = new CodeGenWorkflow().executeWorkflowWithFlux(prompt, appId);
@@ -85,7 +92,7 @@ public class WorkflowSseController {
                 String eventType = null;
                 StringBuilder dataBuilder = new StringBuilder();
                 boolean inData = false;
-                
+
                 for (String line : lines) {
                     if (line.startsWith("event: ")) {
                         eventType = line.substring(7).trim();
@@ -101,7 +108,7 @@ public class WorkflowSseController {
                         dataBuilder.append("\n").append(line);
                     }
                 }
-                
+
                 ServerSentEvent.Builder<String> builder = ServerSentEvent.builder();
                 if (eventType != null && !eventType.isEmpty()) {
                     builder.event(eventType);
@@ -126,6 +133,7 @@ public class WorkflowSseController {
 
     /**
      * 判断是否是修改现有项目的请求
+     *
      * @param appId 应用ID
      * @return true 如果是修改现有项目，false 如果是新建项目
      */
@@ -133,23 +141,23 @@ public class WorkflowSseController {
         if (appId == null || appId == 0L) {
             return false;
         }
-        
+
         try {
             App app = appService.getById(appId);
             if (app == null || app.getCodeGenType() == null) {
                 return false;
             }
-            
+
             CodeGenTypeEnum codeGenType = CodeGenTypeEnum.getEnumByValue(app.getCodeGenType());
             if (codeGenType == null) {
                 return false;
             }
-            
+
             // 根据项目类型构建项目目录路径
             String projectDirName = getProjectDirName(codeGenType, appId);
             Path projectPath = Paths.get(AppConstant.CODE_OUTPUT_ROOT_DIR, projectDirName);
             File projectDir = projectPath.toFile();
-            
+
             // 如果项目目录存在，说明是修改现有项目
             return projectDir.exists() && projectDir.isDirectory();
         } catch (Exception e) {

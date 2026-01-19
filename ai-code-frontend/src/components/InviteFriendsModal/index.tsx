@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Modal, List, Checkbox, Button, Input, Spin, message, Empty } from 'antd';
 import { SearchOutlined, LoadingOutlined } from '@ant-design/icons';
 import { getFriendList } from '@/services/backend/friendController';

@@ -42,6 +42,11 @@ public class UserVO implements Serializable {
     private String userRole;
 
     /**
+     * 用户积分
+     */
+    private Integer userPoints;
+
+    /**
      * 创建时间
      */
     private LocalDateTime createTime;

@@ -41,19 +41,19 @@ public class CodeSnippetSearchTool extends BaseTool {
         QueryWrapper<CodeSnippet> queryWrapper = new QueryWrapper<>();
 
         if (StrUtil.isNotBlank(snippetType)) {
-            queryWrapper.eq("snippet_type", snippetType);
+            queryWrapper.eq("snippetType", snippetType);
         }
 
         if (StrUtil.isNotBlank(snippetCategory)) {
-            queryWrapper.eq("snippet_category", snippetCategory);
+            queryWrapper.eq("snippetCategory", snippetCategory);
         }
 
         if (StrUtil.isNotBlank(snippetDesc)) {
-            queryWrapper.like("snippet_desc", snippetDesc);
+            queryWrapper.like("snippetDesc", snippetDesc);
         }
 
         if (StrUtil.isNotBlank(usageScenario)) {
-            queryWrapper.like("usage_scenario", usageScenario);
+            queryWrapper.like("usageScenario", usageScenario);
         }
 
         if (StrUtil.isNotBlank(tags)) {
@@ -65,10 +65,10 @@ public class CodeSnippetSearchTool extends BaseTool {
             });
         }
 
-        queryWrapper.eq("is_active", 1);
-        queryWrapper.eq("is_delete", 0);
+        queryWrapper.eq("isActive", 1);
+        queryWrapper.eq("isDelete", 0);
         queryWrapper.orderByDesc("priority");
-        queryWrapper.orderByDesc("create_time");
+        queryWrapper.orderByDesc("createTime");
 
         if (limit == null || limit <= 0) {
             limit = 10;

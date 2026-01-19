@@ -1,4 +1,5 @@
 package com.mashang.aicode.web.service.impl;
+
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.mashang.aicode.web.exception.BusinessException;
@@ -9,6 +10,7 @@ import com.mashang.aicode.web.model.entity.SignInRecord;
 import com.mashang.aicode.web.model.enums.PointsTypeEnum;
 import com.mashang.aicode.web.service.PointsRecordService;
 import com.mashang.aicode.web.service.SignInRecordService;
+import com.mashang.aicode.web.service.UserPointService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
@@ -37,6 +39,9 @@ public class SignInRecordServiceImpl extends ServiceImpl<SignInRecordMapper, Sig
     @Resource
     private RedissonClient redissonClient;
 
+    @Resource
+    private UserPointService userPointService;
+
     // 签到积分配置
     private static final int BASE_SIGN_IN_POINTS = 5; // 基础签到积分
     private static final int CONTINUOUS_3_DAYS_BONUS = 3; // 连续3天额外奖励
@@ -51,14 +56,14 @@ public class SignInRecordServiceImpl extends ServiceImpl<SignInRecordMapper, Sig
         // 使用分布式锁防止并发签到
         String lockKey = "sign_in:lock:" + userId;
         RLock lock = redissonClient.getLock(lockKey);
-        
+
         try {
             // 尝试获取锁，最多等待3秒，锁自动释放时间10秒
             boolean locked = lock.tryLock(3, 10, TimeUnit.SECONDS);
             if (!locked) {
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, "系统繁忙，请稍后重试");
             }
-            
+
             // 加锁后再次检查今日是否已签到（双重检查）
             if (hasSignedInToday(userId)) {
                 throw new BusinessException(ErrorCode.OPERATION_ERROR, "今日已签到，请勿重复签到");
@@ -81,7 +86,7 @@ public class SignInRecordServiceImpl extends ServiceImpl<SignInRecordMapper, Sig
             ThrowUtils.throwIf(!saved, ErrorCode.SYSTEM_ERROR, "保存签到记录失败");
 
             // 发放积分
-            boolean pointsAdded = pointsRecordService.addPoints(
+            boolean pointsAdded = userPointService.addPoints(
                     userId,
                     pointsEarned,
                     PointsTypeEnum.SIGN_IN.getValue(),
@@ -109,7 +114,7 @@ public class SignInRecordServiceImpl extends ServiceImpl<SignInRecordMapper, Sig
             }
 
             return result;
-            
+
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             log.error("用户 {} 签到时获取锁被中断", userId, e);

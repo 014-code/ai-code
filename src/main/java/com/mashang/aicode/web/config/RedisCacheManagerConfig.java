@@ -6,9 +6,11 @@ import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import jakarta.annotation.Resource;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -28,6 +30,8 @@ public class RedisCacheManagerConfig {
     private RedisConnectionFactory redisConnectionFactory;
 
     @Bean
+    //默认
+    @Primary
     public CacheManager cacheManager() {
 
         ObjectMapper objectMapper = new ObjectMapper();
@@ -74,7 +78,7 @@ public class RedisCacheManagerConfig {
                 .cacheDefaults(config)
                 .build();
     }
-    
+
     /**
      * 短ttl配置
      */
