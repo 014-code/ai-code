@@ -22,6 +22,8 @@ import {
     listLatestChatHistoryVo,
 } from "@/services/backend/chatHistoryController";
 import {getLoginUser} from "@/services/backend/userController";
+import {estimateGenerationCost} from "@/services/backend/pointsController";
+import {getEnabledModels} from "@/services/backend/aiModelConfigController";
 import ReactMarkdown from 'react-markdown';
 import {getStaticPreviewUrl} from "@/constants/proUrlOperation";
 import {CODE_GEN_TYPE_CONFIG} from "@/constants/codeGenTypeEnum";
@@ -73,6 +75,15 @@ const ChatPage: React.FC = () => {
     const [hasSentInitMessage, setHasSentInitMessage] = useState<boolean>(false);  // 是否已发送初始消息
     const [isSendingMessage, setIsSendingMessage] = useState<boolean>(false);  // 是否正在发送消息
     const [lastCreateTime, setLastCreateTime] = useState<string | undefined>();  // 最后一条消息的创建时间
+    const [estimatedCost, setEstimatedCost] = useState<number>(6);  // 预估消耗积分
+    const [estimateDetail, setEstimateDetail] = useState<{
+      modelName?: string;
+      qualityScore?: number;
+      qualityScoreDescription?: string;
+      estimatedTokenUsage?: number;
+    } | null>(null);  // 预估消耗详情
+    const [models, setModels] = useState<API.AiModelConfig[]>([]);  // 可用模型列表
+    const [selectedModelKey, setSelectedModelKey] = useState<string>('');  // 选中的模型key
 
     // 引用管理
     const messagesEndRef = useRef<HTMLDivElement>(null);  // 消息滚动到底部的引用
@@ -116,6 +127,13 @@ const ChatPage: React.FC = () => {
             initPageData();
         }
     }, [appId]);
+
+    // 加载预估消耗积分（当模型或应用信息变化时重新计算）
+    useEffect(() => {
+        if (selectedModelKey && appInfo) {
+            loadEstimatedCost();
+        }
+    }, [selectedModelKey, appInfo]);
 
     // 消息滚动到底部
     useEffect(() => {
@@ -190,6 +208,9 @@ const ChatPage: React.FC = () => {
             message.error('获取应用信息失败：' + error.message);
         });
 
+        // 获取可用模型列表
+        loadModels();
+
         // 处理URL中的提示词
         const urlParams = new URLSearchParams(window.location.search);
         const promptFromUrl = urlParams.get('prompt');
@@ -207,6 +228,48 @@ const ChatPage: React.FC = () => {
 
         // 加载最新对话历史
         loadLatestChatHistory();
+    };
+
+    /**
+     * 加载可用模型列表
+     */
+    const loadModels = () => {
+        getEnabledModels()
+            .then(res => {
+                const modelList = Array.isArray(res.data) ? res.data : [];
+                setModels(modelList);
+                if (modelList.length > 0) {
+                    setSelectedModelKey(modelList[0].modelKey || '');
+                }
+            })
+            .catch(error => {
+                console.error('加载模型列表失败：', error);
+            });
+    };
+
+    /**
+     * 加载预估消耗积分
+     */
+    const loadEstimatedCost = () => {
+        const genType = appInfo?.codeGenType || 'html';
+        estimateGenerationCost({
+            genType,
+            modelKey: selectedModelKey || undefined
+        })
+            .then(res => {
+                if (res.data) {
+                    setEstimatedCost(res.data.estimatedPoints || 6);
+                    setEstimateDetail({
+                        modelName: res.data.modelName,
+                        qualityScore: res.data.qualityScore,
+                        qualityScoreDescription: res.data.qualityScoreDescription,
+                        estimatedTokenUsage: res.data.estimatedTokenUsage
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('获取预估消耗积分失败：', error);
+            });
     };
 
     /**
@@ -1256,6 +1319,15 @@ const ChatPage: React.FC = () => {
                                 )}
                             </Space.Compact>
                             <div style={{fontSize: 12, color: '#999', marginTop: 8}}>提示：Ctrl+Enter 发送</div>
+                            <div style={{fontSize: 12, color: '#faad14', marginTop: 4}}>
+                                预估消耗：{estimatedCost} 积分
+                                {estimateDetail?.modelName && (
+                                    <span style={{color: '#999', marginLeft: 8}}>
+                                        ({estimateDetail.modelName}
+                                        {estimateDetail.qualityScoreDescription && ` · ${estimateDetail.qualityScoreDescription}`})
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
 

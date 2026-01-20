@@ -432,7 +432,9 @@ declare namespace API {
     suggestions?: string[];
   }
 
-  interface ServerSentEventString = true;
+  interface ServerSentEventString{
+      true
+  };
 
   interface User {
     id?: number;
@@ -911,6 +913,27 @@ declare namespace API {
   interface BaseResponsePageAiModelConfig {
     code?: number;
     data?: PageAiModelConfig;
+    message?: string;
+  }
+
+  interface InviteRecord {
+    id?: number;
+    inviterId?: number;
+    inviteeId?: number;
+    inviteCode?: string;
+    registerIp?: string;
+    deviceId?: string;
+    status?: string;
+    inviterPoints?: number;
+    inviteePoints?: number;
+    registerTime?: string;
+    createTime?: string;
+    updateTime?: string;
+  }
+
+  interface BaseResponseListInviteRecord {
+    code?: number;
+    data?: InviteRecord[];
     message?: string;
   }
 }

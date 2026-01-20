@@ -17,6 +17,7 @@ import com.mashang.aicode.web.model.entity.User;
 import com.mashang.aicode.web.model.vo.LoginUserVO;
 import com.mashang.aicode.web.model.vo.UserVO;
 import com.mashang.aicode.web.service.EmailService;
+import com.mashang.aicode.web.service.InviteRecordService;
 import com.mashang.aicode.web.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
@@ -36,6 +37,9 @@ public class UserController {
 
     @Resource
     private EmailService emailService;
+
+    @Resource
+    private InviteRecordService inviteRecordService;
 
     /**
      * 发送邮箱验证码
@@ -277,5 +281,66 @@ public class UserController {
         User loginUser = userService.getLoginUser(request);
         boolean result = userService.updateUserAvatar(userUpdateAvatarRequest.getUserAvatar(), loginUser.getId());
         return ResultUtils.success(result);
+    }
+
+    /**
+     * 绑定邀请码
+     * 用户注册后可以填写他人的邀请码来建立邀请关系
+     *
+     * @param bindInviteCodeRequest 绑定邀请码请求
+     * @param request               请求对象
+     * @return 绑定结果
+     */
+    @PostMapping("/bind/inviteCode")
+    public BaseResponse<Boolean> bindInviteCode(@RequestBody BindInviteCodeRequest bindInviteCodeRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(bindInviteCodeRequest == null, ErrorCode.PARAMS_ERROR);
+        String inviteCode = bindInviteCodeRequest.getInviteCode();
+        ThrowUtils.throwIf(StrUtil.isBlank(inviteCode), ErrorCode.PARAMS_ERROR, "邀请码不能为空");
+
+        User loginUser = userService.getLoginUser(request);
+
+        // 检查用户是否已经绑定过邀请码（通过invite_record表查询）
+        if (inviteRecordService.hasBoundInviteCode(loginUser.getId())) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "您已经绑定过邀请码，无法重复绑定");
+        }
+
+        // 调用邀请服务绑定邀请关系
+        String registerIp = getClientIp(request);
+        String deviceId = request.getHeader("Device-Id");
+        boolean result = inviteRecordService.bindInvite(inviteCode, loginUser.getId(), registerIp, deviceId);
+
+        if (result) {
+            // 发放邀请奖励
+            inviteRecordService.rewardInviteRegister(loginUser.getId());
+        }
+
+        return ResultUtils.success(result);
+    }
+
+    /**
+     * 获取客户端IP地址
+     */
+    private String getClientIp(HttpServletRequest request) {
+        String ip = request.getHeader("X-Forwarded-For");
+        if (StrUtil.isBlank(ip) || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("Proxy-Client-IP");
+        }
+        if (StrUtil.isBlank(ip) || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("WL-Proxy-Client-IP");
+        }
+        if (StrUtil.isBlank(ip) || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("HTTP_CLIENT_IP");
+        }
+        if (StrUtil.isBlank(ip) || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("HTTP_X_FORWARDED_FOR");
+        }
+        if (StrUtil.isBlank(ip) || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+        // 多个代理时，第一个IP为真实IP
+        if (ip != null && ip.contains(",")) {
+            ip = ip.split(",")[0].trim();
+        }
+        return ip;
     }
 }

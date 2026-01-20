@@ -3,8 +3,9 @@ import { useGlobalContext } from '@/context/GlobalContext';
 import { getLoginUser, updateUserInfo, updateUserPassword, updateUserAvatar } from '@/services/backend/userController';
 import { getFriendRequestList, acceptFriendRequest, rejectFriendRequest } from '@/services/backend/friendController';
 import { getCurrentUserPoint } from '@/services/backend/userPointController';
-import { LockOutlined, MailOutlined, UserOutlined, UserAddOutlined, UserDeleteOutlined } from '@ant-design/icons';
-import { Avatar, Button, Card, Col, Form, Input, message, Row, List, Empty, Spin } from 'antd';
+import { getInviteCode, bindInviteCode } from '@/services/backend/inviteController';
+import { LockOutlined, MailOutlined, UserOutlined, UserAddOutlined, UserDeleteOutlined, CopyOutlined, LinkOutlined } from '@ant-design/icons';
+import { Avatar, Button, Card, Col, Form, Input, message, Row, List, Empty, Spin, Modal, Descriptions, Divider } from 'antd';
 import type { UploadChangeParam, UploadFile } from 'antd/es/upload';
 import { Upload, Tabs, Space } from 'antd';
 import { ProCard, ProDescriptions } from '@ant-design/pro-components';
@@ -32,6 +33,12 @@ const AccountCenter: React.FC = () => {
   const [requestsLoading, setRequestsLoading] = useState(false);
   // 用户积分
   const [userPoint, setUserPoint] = useState<API.UserPoint | null>(null);
+  // 邀请码相关
+  const [inviteCode, setInviteCode] = useState<string>('');
+  const [inviteUrl, setInviteUrl] = useState<string>('');
+  const [bindInviteModalVisible, setBindInviteModalVisible] = useState(false);
+  const [bindInviteInput, setBindInviteInput] = useState('');
+  const [isBinding, setIsBinding] = useState(false);
 
   /**
    * 初始化时获取用户信息
@@ -41,7 +48,77 @@ const AccountCenter: React.FC = () => {
     fetchUserInfo();
     fetchFriendRequests();
     fetchUserPoint();
+    fetchInviteCode();
   }, []);
+
+  /**
+   * 获取邀请码
+   */
+  const fetchInviteCode = () => {
+    getInviteCode()
+      .then((response) => {
+        if (response.data) {
+          setInviteCode(response.data.inviteCode || '');
+          setInviteUrl(response.data.inviteUrl || '');
+        }
+      })
+      .catch((error) => {
+        console.error('获取邀请码失败:', error);
+      });
+  };
+
+  /**
+   * 绑定邀请码
+   */
+  const handleBindInviteCode = () => {
+    if (!bindInviteInput.trim()) {
+      message.warning('请输入邀请码');
+      return;
+    }
+
+    setIsBinding(true);
+    bindInviteCode(bindInviteInput.trim())
+      .then((response) => {
+        if (response.data) {
+          message.success('绑定邀请码成功，您已获得积分奖励！');
+          setBindInviteModalVisible(false);
+          setBindInviteInput('');
+          fetchUserPoint();
+        }
+      })
+      .catch((error) => {
+        message.error(error.message || '绑定邀请码失败，请检查邀请码是否正确');
+      })
+      .finally(() => {
+        setIsBinding(false);
+      });
+  };
+
+  /**
+   * 复制邀请码
+   */
+  const copyInviteCode = () => {
+    navigator.clipboard.writeText(inviteCode)
+      .then(() => {
+        message.success('邀请码已复制到剪贴板');
+      })
+      .catch(() => {
+        message.error('复制失败，请手动复制');
+      });
+  };
+
+  /**
+   * 复制邀请链接
+   */
+  const copyInviteUrl = () => {
+    navigator.clipboard.writeText(inviteUrl)
+      .then(() => {
+        message.success('邀请链接已复制到剪贴板');
+      })
+      .catch(() => {
+        message.error('复制失败，请手动复制');
+      });
+  };
 
   /**
    * 获取好友申请列表
@@ -246,6 +323,37 @@ const AccountCenter: React.FC = () => {
                 {currentUser?.createTime}
               </ProDescriptions.Item>
             </ProDescriptions>
+            <Divider />
+            <Descriptions title="邀请信息" column={1} size="small">
+              <Descriptions.Item label="我的邀请码">
+                <span>{inviteCode}</span>
+                <Button
+                  type="text"
+                  icon={<CopyOutlined />}
+                  onClick={copyInviteCode}
+                  size="small"
+                />
+              </Descriptions.Item>
+              <Descriptions.Item label="邀请链接">
+                <span style={{maxWidth: 180, display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                  {inviteUrl}
+                </span>
+                <Button
+                  type="text"
+                  icon={<CopyOutlined />}
+                  onClick={copyInviteUrl}
+                  size="small"
+                />
+              </Descriptions.Item>
+            </Descriptions>
+            <Button
+              type="link"
+              icon={<LinkOutlined />}
+              onClick={() => setBindInviteModalVisible(true)}
+              style={{paddingLeft: 0, marginTop: 8}}
+            >
+              填写他人的邀请码
+            </Button>
           </Card>
         </Col>
         {/* 设置选项卡 */}
@@ -449,6 +557,36 @@ const AccountCenter: React.FC = () => {
           </Card>
         </Col>
       </Row>
+
+      <Modal
+        title="填写邀请码"
+        open={bindInviteModalVisible}
+        onCancel={() => setBindInviteModalVisible(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setBindInviteModalVisible(false)}>
+            取消
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            loading={isBinding}
+            onClick={handleBindInviteCode}
+          >
+            绑定
+          </Button>,
+        ]}
+      >
+        <div style={{marginBottom: 16}}>
+          <p>请输入他人的邀请码，绑定后您将获得积分奖励。</p>
+          <p>注意：每个账号只能绑定一次邀请码。</p>
+        </div>
+        <Input
+          placeholder="请输入邀请码"
+          value={bindInviteInput}
+          onChange={(e) => setBindInviteInput(e.target.value)}
+          onPressEnter={handleBindInviteCode}
+        />
+      </Modal>
     </div>
   );
 };

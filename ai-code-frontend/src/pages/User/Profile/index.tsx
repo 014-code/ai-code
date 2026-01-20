@@ -20,7 +20,7 @@ import {
     sendFriendRequest
 } from '@/services/backend/friendController';
 import {getUserForumPostList} from '@/services/backend/forumPostController';
-import {getUserInfo} from '@/services/backend/userController';
+import {getUserInfo, getLoginUser} from '@/services/backend/userController';
 import {getCurrentUserPoint} from '@/services/backend/userPointController';
 import {useScrollLoad} from '@/hooks/useScrollLoad';
 import type {UserVO, FriendRequestVO} from '@/services/backend/types';
@@ -269,6 +269,7 @@ const UserProfilePage: React.FC = () => {
                                 </Tag>
                             </div>
                         )}
+
                         <div className={styles.actionButtons}>
                             {isFriend ? (
                                 <Button

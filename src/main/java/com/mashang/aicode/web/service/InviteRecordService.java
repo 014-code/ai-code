@@ -52,6 +52,22 @@ public interface InviteRecordService extends IService<InviteRecord> {
     boolean checkInviteAbuse(String registerIp, String deviceId);
 
     /**
+     * 根据邀请码获取邀请人ID
+     *
+     * @param inviteCode 邀请码
+     * @return 邀请人ID
+     */
+    Long getUserIdByInviteCode(String inviteCode);
+
+    /**
+     * 检查用户是否已经绑定了邀请码
+     *
+     * @param userId 用户ID
+     * @return 是否已绑定
+     */
+    boolean hasBoundInviteCode(Long userId);
+
+    /**
      * 获取用户的邀请记录列表
      *
      * @param userId 用户ID
