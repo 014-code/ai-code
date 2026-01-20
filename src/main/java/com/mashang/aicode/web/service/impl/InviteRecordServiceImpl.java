@@ -523,4 +523,43 @@ public class InviteRecordServiceImpl extends ServiceImpl<InviteRecordMapper, Inv
 
         throw new BusinessException(ErrorCode.SYSTEM_ERROR, "生成邀请记录编码失败，请稍后重试");
     }
+
+    @Override
+    public Long getUserIdByInviteCode(String inviteCode) {
+        ThrowUtils.throwIf(StrUtil.isBlank(inviteCode), ErrorCode.PARAMS_ERROR, "邀请码不能为空");
+
+        // 查找使用该邀请码的记录
+        QueryWrapper<InviteRecord> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("inviteCode", inviteCode)
+                .isNotNull("inviterId")
+                .gt("inviterId", 0)
+                .orderByDesc("createTime")
+                .last("LIMIT 1");
+
+        InviteRecord record = this.getOne(queryWrapper);
+        if (record != null) {
+            return record.getInviterId();
+        }
+
+        return null;
+    }
+
+    @Override
+    public boolean hasBoundInviteCode(Long userId) {
+        if (userId == null || userId <= 0) {
+            return false;
+        }
+
+        QueryWrapper<InviteRecord> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("inviteeId", userId)
+                .eq("status", InviteStatusEnum.REGISTERED.getValue())
+                .or()
+                .eq("inviteeId", userId)
+                .eq("status", InviteStatusEnum.REWARDED.getValue())
+                .or()
+                .eq("inviteeId", userId)
+                .eq("status", InviteStatusEnum.REVOKED.getValue());
+
+        return this.count(queryWrapper) > 0;
+    }
 }

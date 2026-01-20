@@ -19,6 +19,7 @@ import com.mashang.aicode.web.model.entity.ChatHistory;
 import com.mashang.aicode.web.model.vo.ChatHistoryVO;
 import com.mashang.aicode.web.service.AppService;
 import com.mashang.aicode.web.service.ChatHistoryService;
+import com.mashang.aicode.web.service.SpaceUserService;
 import com.mashang.aicode.web.service.UserService;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -45,6 +46,9 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
     @Resource
     @Lazy
     private AppService appService;
+
+    @Resource
+    private SpaceUserService spaceUserService;
 
     @Override
     public boolean saveUserMessage(Long appId, Long userId, String messageContent) {
@@ -128,9 +132,21 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
 
         App app = appService.getById(appId);
         ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+
         boolean isAdmin = UserConstant.ADMIN_ROLE.equals(loginUser.getUserRole());
         boolean isCreator = app.getUserId().equals(loginUser.getId());
-        ThrowUtils.throwIf(!isAdmin && !isCreator, ErrorCode.NO_AUTH_ERROR, "无权查看该应用的对话历史");
+        boolean isFeatured = app.getPriority() != null && app.getPriority() == 1;
+
+        boolean isSpaceMember = false;
+        if (app.getSpaceId() != null) {
+            QueryWrapper queryWrapper = new QueryWrapper();
+            queryWrapper.eq("spaceId", app.getSpaceId());
+            queryWrapper.eq("userId", loginUser.getId());
+            isSpaceMember = spaceUserService.count(queryWrapper) > 0;
+        }
+
+        ThrowUtils.throwIf(!isAdmin && !isCreator && !isFeatured && !isSpaceMember,
+                ErrorCode.NO_AUTH_ERROR, "无权查看该应用的对话历史");
 
         //游标查询，即记录上一次分页查到的最后一条位置，然后下一次分页就会启用该位置为起始点查询，好处就是不用从头翻起
         ChatHistoryQueryRequest queryRequest = new ChatHistoryQueryRequest();
