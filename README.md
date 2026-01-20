@@ -74,21 +74,26 @@ sequenceDiagram
     
     A->>WS: 1. 连接应用
     WS->>WS: 2. 保存会话到 appSessions
-    WS-->>A: 3. 广播"用户加入"消息
-    WS-->>B: 3. 广播"用户加入"消息
+    WS-->>A: 3. 广播用户加入消息
+    WS-->>B: 3. 广播用户加入消息
     
-    A->>WS: 4. 发送编辑操作 (ENTER_EDIT/EDIT_ACTION)
+    A->>WS: 4. 发送编辑操作 ENTER_EDIT或EDIT_ACTION
     WS->>WS: 5. 接收 WebSocket 消息
     
     WS->>Dis: 6. 发布事件到 RingBuffer
-    Note over Dis: long next = ringBuffer.next()<br/>ringBuffer.set(next, event)<br/>ringBuffer.publish(next)
+    Note over Dis: long next = ringBuffer.next()
+    Note over Dis: ringBuffer.set(next, event)
+    Note over Dis: ringBuffer.publish(next)
     
-    Note over Dis: RingBuffer (大小: 262144)<br/>生产者 → 消费者1 → 消费者2
+    Note over Dis: RingBuffer 大小262144生产者消费者
     
     Dis->>Handler: 8. 消费者线程处理事件
-    Note over Handler: AppEditEventWorkHandler.onEvent()<br/>- ENTER_EDIT → handleEnterEditMessage<br/>- EDIT_ACTION → handleEditActionMessage<br/>- EXIT_EDIT → handleExitEditMessage
+    Note over Handler: AppEditEventWorkHandler.onEvent
+    Note over Handler: ENTER_EDIT处理
+    Note over Handler: EDIT_ACTION处理
+    Note over Handler: EXIT_EDIT处理
     
-    Handler->>Handler: 9. 执行业务逻辑<br/>检查编辑锁/广播消息
+    Handler->>Handler: 9. 执行业务逻辑
     
     Handler-->>A: 10. 向所有用户广播结果
     Handler-->>B: 10. 向所有用户广播结果
@@ -909,9 +914,9 @@ flowchart TB
     end
 
     subgraph Monitor["可观测性层"]
-        Prom["Prometheus\n指标采集"]
-        Graf["Grafana\n可视化面板"]
-        Logs["日志系统\nLogback + ELK"]
+        Prom["Prometheus 指标采集"]
+        Graf["Grafana 可视化面板"]
+        Logs["日志系统 Logback ELK"]
     end
 
     Client --> Gateway
@@ -990,10 +995,10 @@ flowchart TB
         Task["GenerationTaskManager（任务状态管理）"]
         
         subgraph Output["SSE 流式响应"]
-            O1['{"type": "partial", "content": "..."}']
-            O2['{"type": "tool_request", "tool": "...", "args": ...}']
-            O3['{"type": "tool_executed", "result": "..."}']
-            O4['{"type": "complete"}']
+            O1["{type: partial, content: ...}"]
+            O2["{type: tool_request, tool: ..., args: ...}"]
+            O3["{type: tool_executed, result: ...}"]
+            O4["{type: complete}"]
         end
     end
 
@@ -1004,19 +1009,19 @@ flowchart TB
 
     subgraph Saver["CodeFileSaverExecutor（代码保存执行器）"]
         S1["模板方法模式：CodeFileSaverTemplate<T>"]
-        S2["保存目录: {CODE_OUTPUT_ROOT_DIR}/{CodeGenType}_{appId}/"]
+        S2["保存目录: CODE_OUTPUT_ROOT_DIR/CodeGenType_appId"]
     end
 
     subgraph Points["积分消耗计算层"]
         Pt["PointsController.calculateEstimatedPoints()"]
-        PtFn["积分 = (输入tokens + 输出tokens) / 1000 × 模型单价"]
+        PtFn["积分 = tokens除以1000乘以模型单价"]
     end
 
     subgraph Result["返回结果"]
         R1["生成目录路径"]
-        R2["代码内容（预览）"]
+        R2["代码内容预览"]
         R3["积分消耗明细"]
-        R4["文件列表（可下载）"]
+        R4["文件列表"]
     end
 
     Request --> Frontend
@@ -1329,9 +1334,13 @@ flowchart TB
     end
     
     subgraph Step5["第五步：返回验证结果"]
-        Output["{totalErrors, totalWarnings, errors: [...]}")
+        Output["{totalErrors, totalWarnings, errors: ...}"]
         Limit["只返回前10个错误"]
         Return["返回格式化的验证报告"]
+    end
+    
+    subgraph Step6["第六步：代码示例展示"]
+        CodeEx["代码验证工具核心实现"]
     end
     
     Init --> Step1
@@ -1339,6 +1348,7 @@ flowchart TB
     Step2 --> Step3
     Step3 --> Step4
     Step4 --> Step5
+    Step5 --> Step6
     
     Cond -- YES --> Yes1 --> Path
     Cond -- NO --> No1 --> Path
@@ -1348,8 +1358,8 @@ flowchart TB
     Deps -- YES --> ExistCfg
     ExistCfg -- YES --> YesCfg
     ExistCfg -- NO --> NoCfg
-    NoCfg --> |React| ReactCfg
-    NoCfg --> |Vue| VueCfg
+    NoCfg --> ReactCfg
+    NoCfg --> VueCfg
     ReactCfg --> Step4
     VueCfg --> Step4
     Cmd --> Timeout --> Result --> Summary --> Step5
@@ -1790,22 +1800,22 @@ flowchart TB
     Start --> GetUser --> CheckPerm --> GetRes --> Judge
     
     Judge --> Owner
-    Owner -- YES --> |✓| AllowAccess1
+    Owner -- YES --> AllowAccess1
     Owner -- NO --> Featured
     
-    Featured -- YES --> |✓| AllowAccess2
+    Featured -- YES --> AllowAccess2
     Featured -- NO --> SpaceMem
     
-    SpaceMem -- YES --> |✓| AllowAccess3
+    SpaceMem -- YES --> AllowAccess3
     SpaceMem -- NO --> Other
     
-    Other -- NO --> |✗| Error
+    Other -- NO --> Error
     
     subgraph Final["权限结果"]
-        AllowAccess1["✓ 允许访问"]
-        AllowAccess2["✓ 允许访问"]
-        AllowAccess3["✓ 允许访问"]
-        Error["✗ 返回权限错误"]
+        AllowAccess1["允许访问"]
+        AllowAccess2["允许访问"]
+        AllowAccess3["允许访问"]
+        Error["拒绝访问"]
     end
     
     AllowAccess1 --> Final
@@ -1888,16 +1898,16 @@ flowchart TB
         DeductFn["UserPointService.deductPointsWithModel()"]
         
         subgraph Lock["获取分布式锁"]
-            RedisLock["Redis分布式锁\ntryLock"]
+            RedisLock["Redis分布式锁 tryLock"]
         end
         
         subgraph FIFO["FIFO队列查询"]
-            Query["查询用户积分记录\n按createTime升序排列"]
+            Query["查询用户积分记录按createTime升序排列"]
         end
         
         subgraph DeductCalc["逐条扣减计算"]
-            CalcDeduct["每条记录：min(剩余需求积分, 剩余可用积分)"]
-            UpdateDB["更新积分记录状态\n和用户剩余积分"]
+            CalcDeduct["每条记录min剩余需求积分剩余可用积分"]
+            UpdateDB["更新积分记录状态和用户剩余积分"]
         end
         
         subgraph Result["扣减结果"]
@@ -1913,8 +1923,8 @@ flowchart TB
     end
 
     subgraph Expire["积分过期处理"]
-        Scheduler["定时任务\n@Scheduled(cron)"]
-        QueryExpired["查询过期积分记录\nstatus=ACTIVE AND expireTime < now"]
+        Scheduler["定时任务 @Scheduled(cron)"]
+        QueryExpired["查询过期积分记录status=ACTIVE"]
         UpdateStatus["更新状态为EXPIRED"]
         Log["记录过期日志"]
         
