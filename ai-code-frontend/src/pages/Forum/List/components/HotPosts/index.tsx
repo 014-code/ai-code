@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, List, Avatar, Space, Empty, Spin } from 'antd';
 import { EyeOutlined, LikeOutlined, MessageOutlined, FireOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -14,7 +14,7 @@ const HotPosts: React.FC = () => {
     setLoading(true);
     listHotPosts(10).then((res) => {
       setHotPosts(res.data || []);
-    }).catch((error: any) => {
+    }).catch((error) => {
       console.error('加载热门帖子失败:', error);
     }).finally(() => {
       setLoading(false);

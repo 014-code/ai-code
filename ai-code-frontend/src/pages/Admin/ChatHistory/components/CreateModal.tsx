@@ -2,8 +2,6 @@ import { saveUserMessage } from '@/services/backend/chatHistoryController';
 import { ProTable } from '@ant-design/pro-components';
 import type { ProColumns } from '@ant-design/pro-table';
 import { message, Modal } from 'antd';
-import React from 'react';
-
 interface Props {
   visible: boolean;
   columns: ProColumns<API.ChatHistory>[];
@@ -17,7 +15,7 @@ const handleAdd = (fields: API.ChatHistoryAddRequest) => {
     hide();
     message.success('创建成功');
     return true;
-  }).catch((error: any) => {
+  }).catch((error) => {
     hide();
     message.error('创建失败，' + error.message);
     return false;

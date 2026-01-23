@@ -1,0 +1,95 @@
+# AI
+langchain4j:
+  open-ai:
+    chat-model:
+      base-url: https://api.deepseek.com
+      api-key: xx
+      model-name: deepseek-chat
+      #      strict-json-schema: true
+      #      response-format: json_object
+      max-tokens: 8192
+      log-requests: true
+      log-responses: true
+      max-retries: 3
+    streaming-chat-model:
+      base-url: https://api.deepseek.com
+      api-key: xx
+      model-name: deepseek-chat
+      max-tokens: 8192
+      log-requests: true
+      log-responses: true
+    #   使用思考模型必须新增think好像是这样的字段接收ai返回结果才可以，不然直接报
+    reasoning-streaming-chat-model:
+      base-url: https://api.deepseek.com
+      api-key: xx
+      model-name: deepseek-reasoner
+      max-tokens: 32768
+      temperature: 0.1
+      log-requests: true
+      log-responses: true
+    routing-chat-model:
+      base-url: https://api.deepseek.com
+      api-key: xx
+      model-name: deepseek-chat
+      log-requests: true
+      log-responses: true
+# 本地部署
+  ollama:
+    chat-model:
+      base-url: http://127.0.0.1:11434/v1
+      # 这里需要修改成自己部署运行的模型名称
+      model-name: qwen2.5-coder:7b
+      max-tokens: 8192
+      log-requests: true
+      log-responses: true
+    streaming-chat-model:
+      base-url: http://127.0.0.1:11434/v1
+      # 这里需要修改成自己部署运行的模型名称
+      model-name: qwen2.5-coder:7b
+      max-tokens: 8192
+      log-requests: true
+      log-responses: true
+    reasoning-streaming-chat-model:
+      base-url: http://127.0.0.1:11434/v1
+      model-name: qwen2.5-coder:7b
+      max-tokens: 32768
+      temperature: 0.1
+      log-requests: true
+      log-responses: true
+    routing-chat-model:
+      base-url: http://127.0.0.1:11434/v1
+      model-name: qwen2.5-coder:7b
+      log-requests: true
+      log-responses: true
+#腾讯云存储
+cos:
+  client:
+    host: "xx"
+    secretId: "xx"
+    secretKey: "xx"
+    region: "xx"
+    bucket: "xx"
+#图片搜索api
+pexels:
+  api-key: "xx"
+#阿里灵机大模型
+dashscope:
+  api-key: xx
+  image-model: wan2.2-t2i-flash
+spring:
+  # 邮件配置
+  mail:
+    host: smtp.qq.com
+    port: 587
+    username: xx@qq.com
+    password: xx
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+  # 告警配置
+  alert:
+    email: xx@qq.com

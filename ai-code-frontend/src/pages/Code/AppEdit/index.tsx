@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGlobalContext } from '@/context/GlobalContext';
 import { getAppVoById, updateApp, updateAppByAdmin } from '@/services/backend/appController';
@@ -48,7 +48,7 @@ const AppEditPage: React.FC = () => {
    * 处理表单提交
    * @param values 表单提交的值
    */
-  const handleSubmit = (values: any) => {
+  const handleSubmit = (values) => {
     if (!canEdit()) return message.error('无权限');
     setLoading(true);
     // 根据用户角色选择不同的更新方法
@@ -56,7 +56,7 @@ const AppEditPage: React.FC = () => {
     updateFn({ ...values, id: appId }).then(() => {
       message.success('已保存');
       navigate('/home');
-    }).catch((e: any) => {
+    }).catch((e) => {
       message.error('保存失败：' + e.message);
     }).finally(() => {
       setLoading(false);

@@ -96,7 +96,7 @@ const ChatPage: React.FC = () => {
 
     // 使用无限滚动hook
   const { data: infiniteMessages, loading: infiniteLoading, hasMore, loadMoreData, reset: resetInfiniteScroll, addData, setData: setInfiniteData, updateItem, scrollContainerRef } = useInfiniteScroll<API.ChatHistoryVO>({
-    loadMore: async (page) => {
+    loadMore: async () => {
       if (!appId) return [];
       
       const res = await listAppChatHistory({

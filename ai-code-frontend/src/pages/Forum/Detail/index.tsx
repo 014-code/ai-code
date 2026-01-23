@@ -50,16 +50,16 @@ const ForumDetail: React.FC = () => {
     
     if (post.isLiked) {
       // 取消点赞
-      unlikeForumPost(params).then((res) => {
+      unlikeForumPost(params).then(() => {
         setPost((prev) => prev ? { ...prev, likeCount: (prev.likeCount || 0) - 1, isLiked: false } : null);
-      }).catch((error: any) => {
+      }).catch((error) => {
         message.error(error?.message ?? '操作失败');
       });
     } else {
       // 点赞
-      likeForumPost(params).then((res) => {
+      likeForumPost(params).then(() => {
         setPost((prev) => prev ? { ...prev, likeCount: (prev.likeCount || 0) + 1, isLiked: true } : null);
-      }).catch((error: any) => {
+      }).catch((error) => {
         message.error(error?.message ?? '操作失败');
       });
     }

@@ -22,7 +22,7 @@ const request = axios.create({
  */
 interface ResponseStructure {
   success: boolean;  // 请求是否成功
-  data: any;         // 响应数据
+  data;         // 响应数据
   code: number;      // 响应码
   message?: string;  // 响应消息
 }

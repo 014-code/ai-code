@@ -43,13 +43,13 @@ const AiModelConfigAdminPage: React.FC = () => {
     if (!row) return true;
     try {
       await deleteAiModelConfig({
-        id: row.id as any,
+        id: row.id,
       });
       hide();
       message.success('删除成功');
       actionRef?.current?.reload();
       return true;
-    } catch (error: any) {
+    } catch (error) {
       hide();
       message.error('删除失败，' + error.message);
       return false;
@@ -66,7 +66,7 @@ const AiModelConfigAdminPage: React.FC = () => {
       hide();
       message.success('状态更新成功');
       actionRef?.current?.reload();
-    } catch (error: any) {
+    } catch (error) {
       hide();
       message.error('状态更新失败，' + error.message);
     }

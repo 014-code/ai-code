@@ -4,7 +4,7 @@ import {PlusOutlined, HistoryOutlined} from '@ant-design/icons';
 import {PageContainer, ProTable} from '@ant-design/pro-components';
 import type {ActionType} from '@ant-design/pro-components';
 import type {ProColumns} from '@ant-design/pro-table';
-import {deleteUser, listUserVoByPage, getUserPoint} from '@/services/backend/userController';
+import {deleteUser, listUserVoByPage} from '@/services/backend/userController';
 import CreateModal from './components/CreateModal';
 import UpdateModal from './components/UpdateModal';
 import PointsModal from './components/PointsModal';
@@ -30,13 +30,13 @@ const UserAdminPage: React.FC = () => {
         const hide = message.loading('正在删除');
         if (!row) return true;
         deleteUser({
-            id: row.id as any,
+            id: row.id,
         }).then(() => {
             hide();
             message.success('删除成功');
             tableRef?.current?.reload();
             return true;
-        }).catch((error: any) => {
+        }).catch((error) => {
             hide();
             message.error('删除失败，' + error.message);
             return false;

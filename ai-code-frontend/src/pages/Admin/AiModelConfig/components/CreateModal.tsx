@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import { useRef } from 'react';
 import { Modal, Form, Input, InputNumber, Select } from 'antd';
 import type { ProFormInstance } from '@ant-design/pro-components';
 import { addAiModelConfig } from '@/services/backend/aiModelConfigController';
@@ -24,7 +24,7 @@ const CreateModal: React.FC<CreateModalProps> = ({
       await addAiModelConfig(values);
       onVisibleChange(false);
       onFinish();
-    } catch (error: any) {
+    } catch (error) {
       console.error('创建失败:', error);
     }
   };
@@ -39,7 +39,7 @@ const CreateModal: React.FC<CreateModalProps> = ({
       destroyOnClose
     >
       <Form
-        ref={formRef as any}
+        ref={formRef}
         layout="vertical"
         initialValues={{
           isEnabled: 1,

@@ -12,7 +12,6 @@ export function useScrollLoad(
 ) {
   const { threshold = 100, disabled = false, containerRef } = options;
   const loadingRef = useRef(false);
-  const lastScrollTopRef = useRef(0);
 
   const handleScroll = useCallback(() => {
     if (disabled || loadingRef.current) {

@@ -2,7 +2,6 @@ import { updatePointsRecord } from '@/services/backend/pointsRecordController';
 import { ProTable } from '@ant-design/pro-components';
 import type { ProColumns } from '@ant-design/pro-table';
 import { message, Modal } from 'antd';
-import React from 'react';
 
 interface Props {
   oldData?: API.PointsRecord;
@@ -19,7 +18,7 @@ const handleUpdate = async (fields: API.PointsRecord) => {
     hide();
     message.success('更新成功');
     return true;
-  } catch (error: any) {
+  } catch (error) {
     hide();
     message.error('更新失败，' + error.message);
     return false;
@@ -53,7 +52,7 @@ const UpdateModal: React.FC<Props> = (props) => {
         onSubmit={(values: API.PointsRecord) => {
           handleUpdate({
             ...values,
-            id: oldData.id,
+            id: oldData?.id,
           }).then(success => {
             if (success) {
               onSubmit?.(values);
