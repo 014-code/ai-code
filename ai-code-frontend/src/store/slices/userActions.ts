@@ -1,7 +1,7 @@
 import { setUserInfo, setLoading } from './userSlice';
 import request from '@/utils/request';
 
-export const fetchUserInfo = () => (dispatch: any) => {
+export const fetchUserInfo = () => (dispatch) => {
   if (window.location.pathname === '/user/login') {
     return;
   }

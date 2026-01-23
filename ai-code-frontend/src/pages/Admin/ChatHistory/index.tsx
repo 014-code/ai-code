@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button, message, Space, Typography } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
@@ -27,13 +27,13 @@ const ChatHistoryAdminPage: React.FC = () => {
     if (!row) return true;
     try {
       await deleteChatHistory({
-        id: row.id as any,
+        id: row.id,
       });
       hide();
       message.success('删除成功');
       actionRef?.current?.reload();
       return true;
-    } catch (error: any) {
+    } catch (error) {
       hide();
       message.error('删除失败，' + error.message);
       return false;

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { addApp, listMyAppVoByPage, listFeaturedAppVoByPage, listAllAppTypes, listAllPresetPrompts } from '@/services/backend/appController';
 import { listEnabledModels } from '@/services/backend/aiModelController';
@@ -35,8 +35,8 @@ const HomePage: React.FC = () => {
   // 状态管理
   const [prompt, setPrompt] = useState(''); // 提示词
   const [loading, setLoading] = useState(false); // 创建应用加载状态
-  const [myApps, setMyApps] = useState<any[]>([]); // 我的应用列表
-  const [featuredApps, setFeaturedApps] = useState<any[]>([]); // 精选应用列表
+  const [myApps, setMyApps] = useState<[]>([]); // 我的应用列表
+  const [featuredApps, setFeaturedApps] = useState<[]>([]); // 精选应用列表
   const [myAppsTotal, setMyAppsTotal] = useState(0); // 我的应用总数
   const [myAppsPageNum, setMyAppsPageNum] = useState(1); // 我的应用当前页码
   const [myAppsPageSize, setMyAppsPageSize] = useState(DEFAULT_MY_APPS_PAGE_SIZE); // 我的应用每页大小
@@ -85,7 +85,7 @@ const HomePage: React.FC = () => {
       });
       message.success('创建成功');
       navigate(`/chat/${appId}?prompt=${encodeURIComponent(prompt)}`);
-    } catch (e: any) {
+    } catch (e) {
       message.error('创建失败:' + e.message);
     }
     setLoading(false);
@@ -102,7 +102,7 @@ const HomePage: React.FC = () => {
       const { data } = await listMyAppVoByPage({ pageNum, pageSize });
       setMyApps(data?.records || []);
       setMyAppsTotal(data?.total || 0);
-    } catch (error: any) {
+    } catch (error) {
       message.error('加载我的应用失败');
     }
     setMyAppsLoading(false);
@@ -132,7 +132,7 @@ const HomePage: React.FC = () => {
         appType: appType === 'all' ? undefined : appType
       });
       setFeaturedApps(res.data?.records || []);
-    } catch (error: any) {
+    } catch (error) {
       console.error('加载精选应用失败:', error);
       setFeaturedApps([]);
     }
@@ -146,7 +146,7 @@ const HomePage: React.FC = () => {
     try {
       const res = await listAllAppTypes();
       setAppTypes(Array.isArray(res.data) ? res.data : []);
-    } catch (error: any) {
+    } catch (error) {
       console.error('加载应用类型失败:', error);
       setAppTypes([]);
     }
@@ -159,7 +159,7 @@ const HomePage: React.FC = () => {
     try {
       const { data } = await listAllPresetPrompts();
       setPresetPrompts(data || []);
-    } catch (error: any) {
+    } catch (error) {
       message.error('加载预设提示词失败');
     }
   };
@@ -174,7 +174,7 @@ const HomePage: React.FC = () => {
       if (Array.isArray(data) && data.length > 0) {
         setSelectedModelKey(data[0].modelKey);
       }
-    } catch (error: any) {
+    } catch (error) {
       message.error('加载AI模型失败');
     }
   };

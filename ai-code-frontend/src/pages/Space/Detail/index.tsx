@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, message, Row, Col, Typography, Input, Select, Space, Modal, Button, Avatar, Tag, Tooltip, Spin, Empty, List } from 'antd';
+import { Card, message, Row, Col, Typography, Input, Select, Space, Modal, Button, Avatar, Tag, Spin, Empty, List } from 'antd';
 import { listMyAppVoByPage } from '@/services/backend/appController';
 import { 
   getSpaceById, 
@@ -32,8 +32,6 @@ const SpaceDetailPage: React.FC = () => {
   const [space, setSpace] = useState<API.SpaceVO | null>(null);
   const [members, setMembers] = useState<API.SpaceUserVO[]>([]);
   const [apps, setApps] = useState<API.AppVO[]>([]);
-  const [searchKey, setSearchKey] = useState<string>('');
-  const [selectedAppType, setSelectedAppType] = useState<string>('all');
   const [myApps, setMyApps] = useState<API.AppVO[]>([]);
   const [addAppModalVisible, setAddAppModalVisible] = useState(false);
   const [inviteModalVisible, setInviteModalVisible] = useState(false);

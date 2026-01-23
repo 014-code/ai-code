@@ -1,4 +1,3 @@
-import React from 'react';
 import { Avatar, Button, Card, Col, Empty, message, Space, Skeleton, Tag } from "antd";
 import { useNavigate } from 'react-router-dom';
 import { getStaticPreviewUrl } from "@/constants/proUrlOperation";

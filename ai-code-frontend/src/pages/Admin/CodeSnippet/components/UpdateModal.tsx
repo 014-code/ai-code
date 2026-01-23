@@ -2,7 +2,6 @@ import { updateCodeSnippet } from '@/services/backend/codeSnippetController';
 import { ProTable } from '@ant-design/pro-components';
 import type { ProColumns } from '@ant-design/pro-table';
 import { message, Modal } from 'antd';
-import React from 'react';
 import CodeEditor from '@/components/CodeEditor';
 
 interface Props {
@@ -20,7 +19,7 @@ const handleUpdate = async (fields: API.CodeSnippet) => {
     hide();
     message.success('更新成功');
     return true;
-  } catch (error: any) {
+  } catch (error) {
     hide();
     message.error('更新失败，' + error.message);
     return false;
@@ -73,7 +72,7 @@ const UpdateModal: React.FC<Props> = (props) => {
         onSubmit={(values: API.CodeSnippet) => {
           handleUpdate({
             ...values,
-            id: oldData.id,
+            id: oldData?.id,
           }).then(success => {
             if (success) {
               onSubmit?.(values);

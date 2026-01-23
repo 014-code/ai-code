@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Modal, Form, Input, InputNumber, Select } from 'antd';
 import type { ProFormInstance } from '@ant-design/pro-components';
 import { updateAiModelConfig } from '@/services/backend/aiModelConfigController';
@@ -35,7 +35,7 @@ const UpdateModal: React.FC<UpdateModalProps> = ({
       });
       onVisibleChange(false);
       onFinish();
-    } catch (error: any) {
+    } catch (error) {
       console.error('更新失败:', error);
     }
   };
@@ -50,7 +50,7 @@ const UpdateModal: React.FC<UpdateModalProps> = ({
       destroyOnClose
     >
       <Form
-        ref={formRef as any}
+        ref={formRef}
         layout="vertical"
       >
         <Form.Item

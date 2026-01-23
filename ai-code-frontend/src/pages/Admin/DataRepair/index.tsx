@@ -28,7 +28,7 @@ const DataRepairAdminPage: React.FC = () => {
                 try {
                     const {data} = await initializePointsForAllUsers();
                     message.success(data?.message || '初始化成功');
-                } catch (error: any) {
+                } catch (error) {
                     message.error('初始化失败，' + error.message);
                 }
                 setLoading(false);
@@ -51,7 +51,7 @@ const DataRepairAdminPage: React.FC = () => {
             if (data) {
                 message.success('初始化成功');
             }
-        } catch (error: any) {
+        } catch (error) {
             message.error('初始化失败，' + error.message);
         }
         setUserPointsLoading(false);
@@ -68,7 +68,7 @@ const DataRepairAdminPage: React.FC = () => {
                 try {
                     const {data} = await grantPointsForAdmins({points});
                     message.success(data?.message || '发放成功');
-                } catch (error: any) {
+                } catch (error) {
                     message.error('发放失败，' + error.message);
                 }
                 setAdminPointsLoading(false);
