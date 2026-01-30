@@ -1,69 +1,141 @@
 import request from '@/utils/request';
+import type {
+  UserLoginParams,
+  UserRegisterParams,
+  UserUpdateParams,
+  UserUpdateInfoParams,
+  UserUpdatePasswordParams,
+  UserUpdateAvatarParams,
+  SendEmailCodeParams,
+  UserQueryParams,
+  DeleteParams,
+  UserAddParams,
+} from '@/api/params/userParams';
+import type {
+  UserVO,
+  UserDetailVO,
+  UserLoginVO,
+  UserRegisterVO,
+  UserPointsVO,
+  UserSimpleVO,
+} from '@/api/vo/userVO';
+import type { PageResponseVO } from '@/api/vo';
 
-export async function addUser(body: API.UserAddRequest) {
-  return request.post<any, API.BaseResponseLong>('/user/add', body);
+/**
+ * 添加用户
+ */
+export async function addUser(body: UserAddParams) {
+  return request.post<UserAddParams, PageResponseVO<number>>('/user/add', body);
 }
 
-export async function deleteUser(body: API.DeleteRequest) {
-  return request.post<any, API.BaseResponseBoolean>('/user/delete', body);
+/**
+ * 删除用户
+ */
+export async function deleteUser(body: DeleteParams) {
+  return request.post<DeleteParams, PageResponseVO<boolean>>('/user/delete', body);
 }
 
+/**
+ * 根据ID获取用户
+ */
 export async function getUserById(id: string) {
-  return request.get<any, API.BaseResponseUser>('/user/get', { params: { id } });
+  return request.get<string, PageResponseVO<UserVO>>('/user/get', { params: { id } });
 }
 
+/**
+ * 获取当前登录用户
+ */
 export async function getLoginUser() {
-  return request.get<any, API.BaseResponseLoginUserVO>('/user/get/login');
+  return request.get<void, PageResponseVO<UserLoginVO>>('/user/get/login');
 }
 
+/**
+ * 根据ID获取用户VO
+ */
 export async function getUserVoById(id: string) {
-  return request.get<any, API.BaseResponseUserVO>('/user/get/vo', { params: { id } });
+  return request.get<string, PageResponseVO<UserVO>>('/user/get/vo', { params: { id } });
 }
 
+/**
+ * 获取用户信息
+ */
 export async function getUserInfo(id: string) {
-  return request.get<any, API.BaseResponseUserVO>('/user/get/vo', { params: { id } });
+  return request.get<string, PageResponseVO<UserVO>>('/user/get/vo', { params: { id } });
 }
 
-export async function listUserVoByPage(body: API.UserQueryRequest) {
-  return request.post<any, API.BaseResponsePageUserVO>('/user/list/page/vo', body);
+/**
+ * 分页查询用户列表
+ */
+export async function listUserVoByPage(body: UserQueryParams) {
+  return request.post<UserQueryParams, PageResponseVO<PageResponseVO<UserVO>>>('/user/list/page/vo', body);
 }
 
-export async function userLogin(body: API.UserLoginRequest) {
-  return request.post<any, API.BaseResponseLoginUserVO>('/user/login', body);
+/**
+ * 用户登录
+ */
+export async function userLogin(body: UserLoginParams) {
+  return request.post<UserLoginParams, PageResponseVO<UserLoginVO>>('/user/login', body);
 }
 
+/**
+ * 用户登出
+ */
 export async function userLogout() {
-  return request.post<any, API.BaseResponseBoolean>('/user/logout', {});
+  return request.post<void, PageResponseVO<boolean>>('/user/logout', {});
 }
 
-export async function userRegister(body: API.UserRegisterRequest) {
-  return request.post<any, API.BaseResponseLong>('/user/register', body);
+/**
+ * 用户注册
+ */
+export async function userRegister(body: UserRegisterParams) {
+  return request.post<UserRegisterParams, PageResponseVO<number>>('/user/register', body);
 }
 
-export async function updateUser(body: API.UserUpdateRequest) {
-  return request.post<any, API.BaseResponseBoolean>('/user/update', body);
+/**
+ * 更新用户
+ */
+export async function updateUser(body: UserUpdateParams) {
+  return request.post<UserUpdateParams, PageResponseVO<boolean>>('/user/update', body);
 }
 
-export async function updateUserInfo(body: API.UserUpdateInfoRequest) {
-  return request.post<any, API.BaseResponseBoolean>('/user/update/info', body);
+/**
+ * 更新用户信息
+ */
+export async function updateUserInfo(body: UserUpdateInfoParams) {
+  return request.post<UserUpdateInfoParams, PageResponseVO<boolean>>('/user/update/info', body);
 }
 
-export async function updateUserPassword(body: API.UserUpdatePasswordRequest) {
-  return request.post<any, API.BaseResponseBoolean>('/user/update/password', body);
+/**
+ * 更新用户密码
+ */
+export async function updateUserPassword(body: UserUpdatePasswordParams) {
+  return request.post<UserUpdatePasswordParams, PageResponseVO<boolean>>('/user/update/password', body);
 }
 
-export async function updateUserAvatar(body: API.UserUpdateAvatarRequest) {
-  return request.post<any, API.BaseResponseBoolean>('/user/update/avatar', body);
+/**
+ * 更新用户头像
+ */
+export async function updateUserAvatar(body: UserUpdateAvatarParams) {
+  return request.post<UserUpdateAvatarParams, PageResponseVO<boolean>>('/user/update/avatar', body);
 }
 
-export async function sendEmailCode(body: API.SendEmailCodeRequest) {
-  return request.post<any, API.BaseResponseBoolean>('/user/email/send', body);
+/**
+ * 发送邮箱验证码
+ */
+export async function sendEmailCode(body: SendEmailCodeParams) {
+  return request.post<SendEmailCodeParams, PageResponseVO<boolean>>('/user/email/send', body);
 }
 
-export async function userRegisterByEmail(body: API.UserRegisterRequest) {
-  return request.post<any, API.BaseResponseLong>('/user/register/email', body);
+/**
+ * 通过邮箱注册
+ */
+export async function userRegisterByEmail(body: UserRegisterParams) {
+  return request.post<UserRegisterParams, PageResponseVO<number>>('/user/register/email', body);
 }
 
+/**
+ * 获取用户积分
+ */
 export async function getUserPoint(userId: string) {
-  return request.get<any, API.BaseResponseUserPointVO>('/userPoint/get', { params: { userId } });
+  return request.get<string, PageResponseVO<UserPointsVO>>('/userPoint/get', { params: { userId } });
 }
