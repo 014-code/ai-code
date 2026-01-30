@@ -1,10 +1,3 @@
-/**
- * 部署URL生成工具
- * 
- * 根据不同的代码生成类型生成对应的静态资源预览URL
- * 支持多种代码生成类型的URL格式转换
- */
-
 import { CodeGenTypeEnum } from '@/constants/codeGenTypeEnum';
 import { STATIC_BASE_URL } from '@/constants/index';
 

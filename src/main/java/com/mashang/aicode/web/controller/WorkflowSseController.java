@@ -63,7 +63,7 @@ public class WorkflowSseController {
             log.info("检测到是修改现有项目，直接调用 AI 服务，跳过工作流");
             // 获取当前登录用户
             User loginUser = userService.getLoginUser(request);
-            Flux<String> contentFlux = appService.chatToGenCode(appId, prompt, loginUser, modelKey);
+            Flux<String> contentFlux = appService.chatToGenCode(appId, prompt, loginUser);
             return contentFlux
                     .map(chunk -> {
                         Map<String, String> wrapper = Map.of("d", chunk);

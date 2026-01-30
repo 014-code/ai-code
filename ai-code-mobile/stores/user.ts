@@ -1,6 +1,6 @@
-import { getUserInfo } from "../api/user";
+import {getUserInfo} from "@/api/user";
 
-import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import {createAsyncThunk, createSlice} from "@reduxjs/toolkit";
 
 /**
  * 获取用户信息的异步 action
@@ -44,7 +44,7 @@ const userSlice = createSlice({
          * 将传入的用户信息合并到当前状态中
          */
         updateUser(state, action) {
-            return { ...state, ...action.payload };
+            return {...state, ...action.payload};
         },
 
         /**

@@ -85,11 +85,6 @@ const BasicLayout = () => {
               icon: <TableOutlined />,
             },
             {
-              path: '/admin/aiModelConfig',
-              name: 'AI模型配置',
-              icon: <RobotOutlined />,
-            },
-            {
               path: '/admin/dataRepair',
               name: '数据修复工具',
               icon: <ToolOutlined />,

@@ -24,7 +24,6 @@ import com.mashang.aicode.web.exception.ThrowUtils;
 import com.mashang.aicode.web.mapper.AppMapper;
 import com.mashang.aicode.web.mapper.UserMapper;
 import com.mashang.aicode.web.model.dto.app.AppQueryRequest;
-import com.mashang.aicode.web.model.entity.AiModelConfig;
 import com.mashang.aicode.web.model.entity.App;
 import com.mashang.aicode.web.model.entity.User;
 import com.mashang.aicode.web.model.enums.ChatHistoryMessageTypeEnum;
@@ -75,8 +74,6 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Resource
     private ScreenshotService screenshotService;
-    @Autowired
-    private AiModelConfigService aiModelConfigService;
     @Autowired
     private GenerationValidationService generationValidationService;
     @Autowired
@@ -263,7 +260,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
      * @return
      */
     @Override
-    public Flux<String> chatToGenCode(Long appId, String message, User loginUser, String modelKey) {
+    public Flux<String> chatToGenCode(Long appId, String message, User loginUser) {
 
         if (message == null || message.length() > 1000) {
             return Flux.error(new BusinessException(ErrorCode.PARAMS_ERROR, "输入内容过长，不要超过 1000 字"));
@@ -275,16 +272,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "不支持的代码生成类型");
         }
 
-        // 验证模型配置
-        AiModelConfig modelConfig = aiModelConfigService.getByModelKey(modelKey);
-        ThrowUtils.throwIf(modelConfig == null, ErrorCode.PARAMS_ERROR, "不支持的模型: " + modelKey);
-        ThrowUtils.throwIf(modelConfig.getIsEnabled() == null || modelConfig.getIsEnabled() != 1,
-                ErrorCode.PARAMS_ERROR, "模型已禁用: " + modelKey);
-        log.info("用户 {} 选择模型: {} ({}), 等级: {}, 费用: {}/1K tokens",
-                loginUser.getId(), modelConfig.getModelName(), modelKey,
-                modelConfig.getTier(), modelConfig.getPointsPerKToken());
-
-        // 4.0 防刷检测
+        // 防刷检测
         // 检查用户身份（管理员豁免所有限制）
         boolean isAdmin = UserConstant.ADMIN_ROLE.equals(loginUser.getUserRole());
 
@@ -322,14 +310,14 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         }
 
         // 4.1 检查用户积分最低门槛（不再预扣，由监听器实时扣费）
-        int minPoints = 50; // 最低积分门槛，确保基本使用能力
+        int minPoints = 50; // 最低积分门槛
         if (!userPointService.checkPointsSufficient(loginUser.getId(), minPoints)) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR,
                     String.format("积分不足，至少需要 %d 积分才能生成，请先签到或邀请好友获取积分", minPoints));
         }
         log.info("用户 {} 开始生成应用 {}，当前积分充足（>= {}）", loginUser.getId(), appId, minPoints);
 
-        // 5. 通过校验后，添加用户消息到对话历史
+        // 通过校验后，添加用户消息到对话历史
         chatHistoryService.addChatMessage(appId, message, ChatHistoryMessageTypeEnum.USER.getValue(), loginUser.getId());
 
         // 记录本次生成（用于后续重复检测，管理员免记录）
@@ -342,15 +330,14 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
                 MonitorContext.builder()
                         .userId(loginUser.getId().toString())
                         .appId(appId.toString())
-                        .modelKey(modelKey)
                         .build()
         );
 
-        // 6. 调用 AI 生成代码（流式）
-        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId, null, loginUser.getId(), loginUser, modelKey);
+        // 调用 AI 生成代码（流式）
+        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId, null, loginUser.getId(), loginUser);
 
         //流式响应完成后再清除上下文
-        //7. 收集 AI 响应内容并在完成后记录到对话历史
+        //收集 AI 响应内容并在完成后记录到对话历史
         return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, appId, loginUser, codeGenTypeEnum)
                 .doFinally(signalType -> {
                     MonitorContextHolder.clearContext();
@@ -576,30 +563,6 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     /**
      * 取消正在进行的代码生成
-     * <p>
-     * 这个方法用于中断指定应用的代码生成任务。
-     * <p>
-     * 工作流程：
-     * 1. 调用 AiCodeGeneratorFacade.interrupt(appId) 设置中断标志
-     * 2. AI检测到中断标志后，停止生成代码
-     * 3. 已生成的内容会自动保存到对话历史中
-     * <p>
-     * 参数说明：
-     *
-     * @param appId  应用ID，用于指定要中断哪个应用的代码生成
-     * @param userId 用户ID，用于权限验证
-     *               <p>
-     *               返回值：
-     * @return 是否成功取消
-     * <p>
-     * 使用场景：
-     * - 用户点击"停止生成"按钮
-     * - 用户切换到其他页面，需要停止当前生成
-     * - 系统检测到异常，需要立即停止生成
-     * <p>
-     * 注意：
-     * - 中断后，已生成的内容会自动保存到对话历史中
-     * - 如果应用没有正在进行的生成任务，这个方法也会返回true
      */
     public boolean cancelGeneration(Long appId, Long userId) {
         try {

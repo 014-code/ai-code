@@ -58,12 +58,12 @@ public class AiCodeGeneratorFacade {
 
     /**
      * 中断标志映射，用于控制不同应用的流式输出的中断
-     * 
+     * <p>
      * 这个Map存储了每个应用ID对应的中断标志，就像一个"控制台"，
      * 可以单独控制每个应用的代码生成任务是否需要中断。
-     * 
+     * <p>
      * 使用ConcurrentHashMap是为了保证多线程环境下的安全性。
-     * 
+     * <p>
      * Key: 应用ID (appId)
      * Value: 中断标志 (true表示需要中断，false表示正常进行)
      */
@@ -71,14 +71,15 @@ public class AiCodeGeneratorFacade {
 
     /**
      * 中断指定应用的流式输出
-     * @param appId 应用ID
+     *
+     * @param appId  应用ID
      * @param userId 用户ID
      * @return 是否成功中断
      */
     public boolean interrupt(Long appId, Long userId) {
         interruptedFlags.put(appId, true);
         log.info("已设置中断标志，appId: {} 流式输出将被中断", appId);
-        
+
         // 使用 GenerationTaskManager 取消任务
         boolean cancelled = generationTaskManager.cancelTask(appId, userId);
         if (cancelled) {
@@ -86,12 +87,13 @@ public class AiCodeGeneratorFacade {
         } else {
             log.warn("取消生成任务失败，appId: {}, userId: {}", appId, userId);
         }
-        
+
         return cancelled;
     }
 
     /**
      * 重置指定应用的中断标志
+     *
      * @param appId 应用ID
      */
     public void resetInterrupt(Long appId) {
@@ -101,6 +103,7 @@ public class AiCodeGeneratorFacade {
 
     /**
      * 检查指定应用是否被中断
+     *
      * @param appId 应用ID
      * @return 是否被中断
      */
@@ -199,21 +202,14 @@ public class AiCodeGeneratorFacade {
 
     /**
      * 统一流式返回方法（带SSE回调）
+     *
      * @return
      */
-    public Flux<String> generateAndSaveCodeStream(String userMessage, CodeGenTypeEnum codeGenTypeEnum, Long appId, Consumer<String> sseCallback, Long userId, User user, String modelKey) {
+    public Flux<String> generateAndSaveCodeStream(String userMessage, CodeGenTypeEnum codeGenTypeEnum, Long appId, Consumer<String> sseCallback, Long userId, User user) {
         if (codeGenTypeEnum == null) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "生成类型为空");
         }
-        // 根据 appId、codeGenType 和 modelKey 获取相对应的 AI Service
-        AiCodeGeneratorService aiCodeGeneratorService;
-        if (modelKey != null && !modelKey.isBlank()) {
-            log.info("使用动态模型创建AI服务 - appId: {}, codeGenType: {}, modelKey: {}", appId, codeGenTypeEnum, modelKey);
-            aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId, codeGenTypeEnum, modelKey);
-        } else {
-            log.info("使用默认模型创建AI服务 - appId: {}, codeGenType: {}", appId, codeGenTypeEnum);
-            aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId, codeGenTypeEnum);
-        }
+        AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId, codeGenTypeEnum);
         return switch (codeGenTypeEnum) {
             case HTML -> {
                 Flux<String> codeStream = aiCodeGeneratorService.generateHtmlCodeStream(userMessage);
@@ -270,30 +266,30 @@ public class AiCodeGeneratorFacade {
         return Flux.create(sink -> {
             // 使用 StringBuilder 实时接收内容
             StringBuilder contentBuilder = new StringBuilder();
-            
+
             // 创建一个占位符 Disposable
             Disposable placeholderDisposable = Flux.never().subscribe();
-            
+
             // 注册任务到任务管理器
             generationTaskManager.registerTask(appId, "CODE_GENERATION", placeholderDisposable, sink, userId, contentBuilder);
-            
+
             // 添加取消处理器
             sink.onCancel(() -> {
                 log.info("FluxSink 被取消，appId: {}", appId);
                 // 完成任务
                 generationTaskManager.completeTask(appId, contentBuilder, userId);
             });
-            
+
             tokenStream.onPartialResponse((String partialResponse) -> {
                 // 检查是否被中断
                 if (isInterrupted(appId)) {
                     log.info("检测到中断信号，停止流式输出，appId: {}", appId);
                     // 完成任务
-                generationTaskManager.completeTask(appId, contentBuilder, userId);
+                    generationTaskManager.completeTask(appId, contentBuilder, userId);
                     sink.complete();
                     return;
                 }
-                
+
                 AiResponseMessage aiResponseMessage = new AiResponseMessage(partialResponse);
                 sink.next(JSONUtil.toJsonStr(aiResponseMessage));
             }).onPartialToolExecutionRequest((index, toolExecutionRequest) -> {
@@ -301,11 +297,11 @@ public class AiCodeGeneratorFacade {
                 if (isInterrupted(appId)) {
                     log.info("检测到中断信号，停止流式输出，appId: {}", appId);
                     // 完成任务
-                generationTaskManager.completeTask(appId, contentBuilder, userId);
+                    generationTaskManager.completeTask(appId, contentBuilder, userId);
                     sink.complete();
                     return;
                 }
-                
+
                 ToolRequestMessage toolRequestMessage = new ToolRequestMessage(toolExecutionRequest);
                 String json = JSONUtil.toJsonStr(toolRequestMessage);
                 sink.next(json);
@@ -314,11 +310,11 @@ public class AiCodeGeneratorFacade {
                 if (isInterrupted(appId)) {
                     log.info("检测到中断信号，停止流式输出，appId: {}", appId);
                     // 完成任务
-                generationTaskManager.completeTask(appId, contentBuilder, userId);
+                    generationTaskManager.completeTask(appId, contentBuilder, userId);
                     sink.complete();
                     return;
                 }
-                
+
                 ToolExecutedMessage toolExecutedMessage = new ToolExecutedMessage(toolExecution);
                 sink.next(JSONUtil.toJsonStr(toolExecutedMessage));
             }).onCompleteResponse((ChatResponse response) -> {
@@ -349,40 +345,40 @@ public class AiCodeGeneratorFacade {
         return Flux.create(sink -> {
             // 重置中断标志
             resetInterrupt(appId);
-            
+
             // 使用 StringBuilder 实时接收内容
             StringBuilder contentBuilder = new StringBuilder();
-            
+
             // 创建一个占位符 Disposable
             Disposable placeholderDisposable = Flux.never().subscribe();
-            
+
             // 注册任务到任务管理器
             generationTaskManager.registerTask(appId, "CODE_GENERATION", placeholderDisposable, sink, userId, contentBuilder);
-            
+
             // 添加取消处理器
             sink.onCancel(() -> {
                 log.info("FluxSink 被取消，appId: {}", appId);
                 // 完成任务
                 generationTaskManager.completeTask(appId, contentBuilder, userId);
             });
-            
+
             tokenStream.onPartialResponse((String partialResponse) -> {
                 // 检查是否被中断
                 if (isInterrupted(appId)) {
                     log.info("检测到中断信号，停止流式输出，appId: {}", appId);
                     // 完成任务
-                generationTaskManager.completeTask(appId, contentBuilder, userId);
+                    generationTaskManager.completeTask(appId, contentBuilder, userId);
                     sink.complete();
                     return;
                 }
-                
+
                 contentBuilder.append(partialResponse);
-                
+
                 if (sseCallback != null) {
                     sseCallback.accept(partialResponse);
                 }
                 sink.next(partialResponse);
-                
+
                 // 通过 WebSocket 广播 AI 回复给所有协同编辑的用户
                 try {
                     AppEditHandler appEditHandler = applicationContext.getBean(AppEditHandler.class);
@@ -395,11 +391,11 @@ public class AiCodeGeneratorFacade {
                 if (isInterrupted(appId)) {
                     log.info("检测到中断信号，停止流式输出，appId: {}", appId);
                     // 完成任务
-                generationTaskManager.completeTask(appId, contentBuilder, userId);
+                    generationTaskManager.completeTask(appId, contentBuilder, userId);
                     sink.complete();
                     return;
                 }
-                
+
                 ToolRequestMessage toolRequestMessage = new ToolRequestMessage(toolExecutionRequest);
                 String json = JSONUtil.toJsonStr(toolRequestMessage);
                 if (sseCallback != null) {
@@ -411,11 +407,11 @@ public class AiCodeGeneratorFacade {
                 if (isInterrupted(appId)) {
                     log.info("检测到中断信号，停止流式输出，appId: {}", appId);
                     // 完成任务
-                generationTaskManager.completeTask(appId, contentBuilder, userId);
+                    generationTaskManager.completeTask(appId, contentBuilder, userId);
                     sink.complete();
                     return;
                 }
-                
+
                 ToolExecutedMessage toolExecutedMessage = new ToolExecutedMessage(toolExecution);
                 String json = JSONUtil.toJsonStr(toolExecutedMessage);
                 if (sseCallback != null) {

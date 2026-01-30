@@ -4,7 +4,6 @@ export interface EstimateCostResponse {
   genType: string;
   genTypeDescription: string;
   basePoints: number;
-  modelKey?: string;
   modelName?: string;
   pointsPerKToken?: number;
   qualityScore?: number;
@@ -16,7 +15,6 @@ export interface EstimateCostResponse {
 
 export async function estimateGenerationCost(params: {
   genType?: string;
-  modelKey?: string;
 } = {}) {
   return request.get<any, API.BaseResponse<EstimateCostResponse>>('/points/estimate', { params });
 }

@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React from 'react'
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native'
 import { WebView } from 'react-native-webview'
 import { Icon } from 'react-native-elements'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'

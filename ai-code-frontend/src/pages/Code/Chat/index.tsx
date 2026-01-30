@@ -23,7 +23,6 @@ import {
 } from "@/services/backend/chatHistoryController";
 import {getLoginUser} from "@/services/backend/userController";
 import {estimateGenerationCost} from "@/services/backend/pointsController";
-import {getEnabledModels} from "@/services/backend/aiModelConfigController";
 import ReactMarkdown from 'react-markdown';
 import {getStaticPreviewUrl} from "@/constants/proUrlOperation";
 import {CODE_GEN_TYPE_CONFIG} from "@/constants/codeGenTypeEnum";
@@ -77,13 +76,11 @@ const ChatPage: React.FC = () => {
     const [lastCreateTime, setLastCreateTime] = useState<string | undefined>();  // 最后一条消息的创建时间
     const [estimatedCost, setEstimatedCost] = useState<number>(6);  // 预估消耗积分
     const [estimateDetail, setEstimateDetail] = useState<{
-      modelName?: string;
-      qualityScore?: number;
-      qualityScoreDescription?: string;
-      estimatedTokenUsage?: number;
+        modelName?: string;
+        qualityScore?: number;
+        qualityScoreDescription?: string;
+        estimatedTokenUsage?: number;
     } | null>(null);  // 预估消耗详情
-    const [models, setModels] = useState<API.AiModelConfig[]>([]);  // 可用模型列表
-    const [selectedModelKey, setSelectedModelKey] = useState<string>('');  // 选中的模型key
 
     // 引用管理
     const messagesEndRef = useRef<HTMLDivElement>(null);  // 消息滚动到底部的引用
@@ -95,31 +92,41 @@ const ChatPage: React.FC = () => {
     const otherUserAiResponseRef = useRef<Map<number, string>>(new Map());  // 跟踪其他用户的AI回复片段
 
     // 使用无限滚动hook
-  const { data: infiniteMessages, loading: infiniteLoading, hasMore, loadMoreData, reset: resetInfiniteScroll, addData, setData: setInfiniteData, updateItem, scrollContainerRef } = useInfiniteScroll<API.ChatHistoryVO>({
-    loadMore: async () => {
-      if (!appId) return [];
-      
-      const res = await listAppChatHistory({
-        appId: appId,
+    const {
+        data: infiniteMessages,
+        loading: infiniteLoading,
+        hasMore,
+        loadMoreData,
+        reset: resetInfiniteScroll,
+        addData,
+        setData: setInfiniteData,
+        updateItem,
+        scrollContainerRef
+    } = useInfiniteScroll<API.ChatHistoryVO>({
+        loadMore: async () => {
+            if (!appId) return [];
+
+            const res = await listAppChatHistory({
+                appId: appId,
+                pageSize: 10,
+                lastCreateTime: lastCreateTime
+            });
+
+            const newMessages = res.data?.records || [];
+            if (newMessages.length > 0) {
+                const sortedNewMessages = [...newMessages].sort((a, b) =>
+                    new Date(a.createTime!).getTime() - new Date(b.createTime!).getTime()
+                );
+                setLastCreateTime(sortedNewMessages[0].createTime);
+                return sortedNewMessages;
+            }
+
+            return [];
+        },
         pageSize: 10,
-        lastCreateTime: lastCreateTime
-      });
-      
-      const newMessages = res.data?.records || [];
-      if (newMessages.length > 0) {
-        const sortedNewMessages = [...newMessages].sort((a, b) =>
-          new Date(a.createTime!).getTime() - new Date(b.createTime!).getTime()
-        );
-        setLastCreateTime(sortedNewMessages[0].createTime);
-        return sortedNewMessages;
-      }
-      
-      return [];
-    },
-    pageSize: 10,
-    threshold: 100,
-    loadAtTop: true,  // 在顶部加载更多
-  });
+        threshold: 100,
+        loadAtTop: true,  // 在顶部加载更多
+    });
 
     // 初始化页面数据
     useEffect(() => {
@@ -127,13 +134,6 @@ const ChatPage: React.FC = () => {
             initPageData();
         }
     }, [appId]);
-
-    // 加载预估消耗积分（当模型或应用信息变化时重新计算）
-    useEffect(() => {
-        if (selectedModelKey && appInfo) {
-            loadEstimatedCost();
-        }
-    }, [selectedModelKey, appInfo]);
 
     // 消息滚动到底部
     useEffect(() => {
@@ -208,43 +208,8 @@ const ChatPage: React.FC = () => {
             message.error('获取应用信息失败：' + error.message);
         });
 
-        // 获取可用模型列表
-        loadModels();
-
-        // 处理URL中的提示词
-        const urlParams = new URLSearchParams(window.location.search);
-        const promptFromUrl = urlParams.get('prompt');
-        if (promptFromUrl && !hasSentInitMessage) {
-            setTimeout(() => {
-                handleSendMessage(promptFromUrl, true).catch(error => {
-                    console.error('自动发送提示词失败：', error);
-                });
-                // 发送消息后再设置标志，防止重复发送
-                setHasSentInitMessage(true);
-                const newUrl = window.location.pathname;
-                window.history.replaceState({}, '', newUrl);
-            }, 500);
-        }
-
         // 加载最新对话历史
         loadLatestChatHistory();
-    };
-
-    /**
-     * 加载可用模型列表
-     */
-    const loadModels = () => {
-        getEnabledModels()
-            .then(res => {
-                const modelList = Array.isArray(res.data) ? res.data : [];
-                setModels(modelList);
-                if (modelList.length > 0) {
-                    setSelectedModelKey(modelList[0].modelKey || '');
-                }
-            })
-            .catch(error => {
-                console.error('加载模型列表失败：', error);
-            });
     };
 
     /**
@@ -253,8 +218,7 @@ const ChatPage: React.FC = () => {
     const loadEstimatedCost = () => {
         const genType = appInfo?.codeGenType || 'html';
         estimateGenerationCost({
-            genType,
-            modelKey: selectedModelKey || undefined
+            genType
         })
             .then(res => {
                 if (res.data) {
@@ -288,12 +252,6 @@ const ChatPage: React.FC = () => {
             setInfiniteData(sortedMessages);
 
             setIsInitialLoad(false);
-
-            // 如果有足够的消息，显示网站预览
-            if (sortedMessages.length >= 2) {
-                checkAndShowWebsite();
-            }
-
             // 如果没有消息且是应用所有者，自动发送初始消息
             // 只有在没有发送过初始消息时才自动发送
             if (sortedMessages.length === 0 && appInfo && loginUser &&
@@ -526,7 +484,10 @@ const ChatPage: React.FC = () => {
             // 处理错误
             const handleError = (error: unknown) => {
                 console.error('生成代码失败：', error);
-                updateItem(msg => msg.id === aiMessageId, msg => ({...msg, messageContent: '抱歉，生成过程中出现了错误，请重试。'}));
+                updateItem(msg => msg.id === aiMessageId, msg => ({
+                    ...msg,
+                    messageContent: '抱歉，生成过程中出现了错误，请重试。'
+                }));
                 setLoading(false);
                 setIsStreaming(false);
                 setIsSendingMessage(false);

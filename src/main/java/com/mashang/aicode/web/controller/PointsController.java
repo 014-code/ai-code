@@ -3,11 +3,9 @@ package com.mashang.aicode.web.controller;
 import com.mashang.aicode.web.common.BaseResponse;
 import com.mashang.aicode.web.common.ResultUtils;
 import com.mashang.aicode.web.constant.PointsConstants;
-import com.mashang.aicode.web.model.entity.AiModelConfig;
 import com.mashang.aicode.web.model.entity.PointsRecord;
 import com.mashang.aicode.web.model.entity.User;
 import com.mashang.aicode.web.model.entity.UserPoint;
-import com.mashang.aicode.web.service.AiModelConfigService;
 import com.mashang.aicode.web.service.PointsRecordService;
 import com.mashang.aicode.web.service.UserPointService;
 import com.mashang.aicode.web.service.UserService;
@@ -28,7 +26,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 积分控制器
+ * 积分控制器（单模型版本）
+ * 移除了多模型动态计算功能，使用固定的积分配置
  */
 @Slf4j
 @RestController
@@ -45,14 +44,12 @@ public class PointsController {
     @Resource
     private UserService userService;
 
-    @Resource
-    private AiModelConfigService aiModelConfigService;
+    private static final int DEFAULT_POINTS_PER_KTOKEN = 1;
+
+    private static final BigDecimal DEFAULT_QUALITY_SCORE = BigDecimal.ONE;
 
     /**
      * 获取用户积分概览
-     *
-     * @param request HTTP请求
-     * @return 积分概览信息
      */
     @GetMapping("/overview")
     @Operation(summary = "获取积分概览", description = "查询用户的积分统计信息")
@@ -60,7 +57,6 @@ public class PointsController {
         User loginUser = userService.getLoginUser(request);
         UserPoint userPoints = userPointsService.getOrCreateUserPoint(loginUser.getId());
 
-        // 计算累计获得和消耗
         List<PointsRecord> allRecords = pointsRecordService.getUserPointsRecords(loginUser.getId(), null);
         int totalEarned = 0;
         int totalConsumed = 0;
@@ -83,15 +79,11 @@ public class PointsController {
 
     /**
      * 获取积分明细记录
-     *
-     * @param type    积分类型（可选）
-     * @param request HTTP请求
-     * @return 积分记录列表
      */
     @GetMapping("/records")
     @Operation(summary = "获取积分明细", description = "查询用户的积分变动记录")
     public BaseResponse<List<PointsRecord>> getPointsRecords(
-            @Parameter(description = "积分类型（SIGN_IN/REGISTER/INVITE/GENERATE/FIRST_GENERATE）")
+            @Parameter(description = "积分类型（SIGN_IN/REGISTER/INVITE/GENERATE/FIRST_GENERATION）")
             @RequestParam(required = false) String type,
             HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
@@ -101,9 +93,6 @@ public class PointsController {
 
     /**
      * 获取当前用户积分
-     *
-     * @param request HTTP请求
-     * @return 当前可用积分
      */
     @GetMapping("/current")
     @Operation(summary = "获取当前积分", description = "查询用户当前可用积分")
@@ -119,20 +108,13 @@ public class PointsController {
     }
 
     /**
-     * 预估生成消耗积分
-     *
-     * @param genType  生成类型（html, multi_file, vue_project, react_project）
-     * @param modelKey 模型key（可选，用于精确计算）
-     * @param request  HTTP请求
-     * @return 预估消耗信息
+     * 预估生成消耗积分（单模型版本）
      */
     @GetMapping("/estimate")
-    @Operation(summary = "预估消耗积分", description = "根据生成类型和模型预估消耗的积分数量")
+    @Operation(summary = "预估消耗积分", description = "根据生成类型预估消耗的积分数量")
     public BaseResponse<Map<String, Object>> estimateGenerationCost(
             @Parameter(description = "生成类型（html, multi_file, vue_project, react_project）")
             @RequestParam(required = false, defaultValue = "html") String genType,
-            @Parameter(description = "模型key（可选，用于精确计算）")
-            @RequestParam(required = false) String modelKey,
             HttpServletRequest request) {
         Map<String, Object> result = new HashMap<>();
         result.put("genType", genType);
@@ -141,48 +123,36 @@ public class PointsController {
         int basePoints = PointsConstants.getPointsByGenType(genType);
         result.put("basePoints", basePoints);
 
-        if (modelKey != null && !modelKey.isEmpty()) {
-            AiModelConfig modelConfig = aiModelConfigService.getByModelKey(modelKey);
-            if (modelConfig != null) {
-                result.put("modelKey", modelKey);
-                result.put("modelName", modelConfig.getModelName());
-                result.put("pointsPerKToken", modelConfig.getPointsPerKToken());
-                result.put("qualityScore", modelConfig.getQualityScore());
+        result.put("modelName", "默认模型");
+        result.put("pointsPerKToken", DEFAULT_POINTS_PER_KTOKEN);
+        result.put("qualityScore", DEFAULT_QUALITY_SCORE);
 
-                Integer estimatedTokenUsage = modelConfig.getAvgTokenUsage();
-                result.put("estimatedTokenUsage", estimatedTokenUsage);
+        int estimatedTokenUsage = 5000;
+        result.put("estimatedTokenUsage", estimatedTokenUsage);
 
-                if (estimatedTokenUsage != null && estimatedTokenUsage > 0) {
-                    Integer estimatedPoints = aiModelConfigService.calculatePoints(modelKey, estimatedTokenUsage);
-                    result.put("estimatedPoints", estimatedPoints);
-                } else {
-                    result.put("estimatedPoints", basePoints);
-                    result.put("warning", "模型未配置平均Token使用量，使用基础积分");
-                }
-
-                BigDecimal qualityScore = modelConfig.getQualityScore();
-                if (qualityScore != null) {
-                    result.put("qualityScore", qualityScore);
-                    result.put("qualityScoreDescription", getQualityScoreDescription(qualityScore));
-                }
-            } else {
-                result.put("estimatedPoints", basePoints);
-                result.put("warning", "模型配置不存在，使用基础积分");
-            }
-        } else {
-            result.put("estimatedPoints", basePoints);
-        }
+        int estimatedPoints = calculatePoints(estimatedTokenUsage);
+        result.put("estimatedPoints", estimatedPoints);
+        result.put("qualityScoreDescription", "标准质量");
 
         return ResultUtils.success(result);
     }
 
-    private String getQualityScoreDescription(java.math.BigDecimal qualityScore) {
+    /**
+     * 计算积分（单模型版本）
+     * 简化逻辑：固定的每K Token积分和默认质量系数
+     */
+    private int calculatePoints(int tokenCount) {
+        int kTokens = (int) Math.ceil(tokenCount / 1000.0);
+        return kTokens * DEFAULT_POINTS_PER_KTOKEN;
+    }
+
+    private String getQualityScoreDescription(BigDecimal qualityScore) {
         if (qualityScore == null) {
             return "标准质量";
         }
-        if (qualityScore.compareTo(new java.math.BigDecimal("0.8")) < 0) {
+        if (qualityScore.compareTo(new BigDecimal("0.8")) < 0) {
             return "基础质量（积分优惠）";
-        } else if (qualityScore.compareTo(new java.math.BigDecimal("1.2")) > 0) {
+        } else if (qualityScore.compareTo(new BigDecimal("1.2")) > 0) {
             return "高质量（积分溢价）";
         } else {
             return "标准质量";
@@ -206,5 +176,4 @@ public class PointsController {
                 return "HTML 单文件生成";
         }
     }
-
 }

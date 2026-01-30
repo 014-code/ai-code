@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { addApp, listMyAppVoByPage, listFeaturedAppVoByPage, listAllAppTypes, listAllPresetPrompts } from '@/services/backend/appController';
-import { listEnabledModels } from '@/services/backend/aiModelController';
-import { Button, Card, Input, message, Typography, Row, Col, Tag, Dropdown, Space, Pagination, Select } from 'antd';
-import type { MenuProps } from 'antd';
+import {Button, Card, Input, message, Typography, Row, Col, Tag, Space, Pagination, Select, Dropdown} from 'antd';
 import AppCard from "@/pages/Code/Home/components/AppCard";
 import {
   CheckCircleOutlined,
@@ -46,10 +44,8 @@ const HomePage: React.FC = () => {
   const [selectedAppType, setSelectedAppType] = useState<string>('all'); // 选中的应用类型
   const [codeType, setCodeType] = useState<string>(CodeGenTypeEnum.HTML); // 代码生成类型
   const [isExpanded, setIsExpanded] = useState<boolean>(false); // 应用类型是否展开
-  const [presetPrompts, setPresetPrompts] = useState<API.PresetPromptVO[]>([]); // 预设提示词列表
-  const [typingPlaceholder, setTypingPlaceholder] = useState(''); // 打字效果占位符
-  const [models, setModels] = useState<API.AiModelConfig[]>([]); // AI模型列表
-  const [selectedModelKey, setSelectedModelKey] = useState<string>(''); // 选中的模型key
+  const [presetPrompts, setPresetPrompts] = useState<API.PresetPromptVO[]>([]);  // 预设提示词列表
+  const [typingPlaceholder, setTypingPlaceholder] = useState('');  // 打字效果占位符
 
   // 导航钩子
   const navigate = useNavigate();
@@ -80,8 +76,7 @@ const HomePage: React.FC = () => {
         appName: prompt, 
         appDesc: prompt, 
         initPrompt: prompt, 
-        codeGenType: codeType,
-        modelKey: selectedModelKey 
+        codeGenType: codeType
       });
       message.success('创建成功');
       navigate(`/chat/${appId}?prompt=${encodeURIComponent(prompt)}`);
@@ -165,21 +160,6 @@ const HomePage: React.FC = () => {
   };
 
   /**
-   * 加载AI模型列表
-   */
-  const loadModels = async () => {
-    try {
-      const { data } = await listEnabledModels();
-      setModels(Array.isArray(data) ? data : []);
-      if (Array.isArray(data) && data.length > 0) {
-        setSelectedModelKey(data[0].modelKey);
-      }
-    } catch (error) {
-      message.error('加载AI模型失败');
-    }
-  };
-
-  /**
    * 复制应用提示词
    * @param text 提示词文本
    */
@@ -205,7 +185,6 @@ const HomePage: React.FC = () => {
     loadFeaturedApps(selectedAppType);
     loadAppTypes();
     loadPresetPrompts();
-    loadModels();
   }, [selectedAppType]);
 
   /**
@@ -263,19 +242,6 @@ const HomePage: React.FC = () => {
         {/* 创建应用卡片 */}
         <Card className={styles.createCard}>
           <TextArea rows={4} value={prompt} onChange={e => setPrompt(e.target.value)} placeholder={typingPlaceholder} className={styles.textArea} />
-          <div style={{ marginTop: 12, marginBottom: 12 }}>
-            <Select
-              value={selectedModelKey}
-              onChange={setSelectedModelKey}
-              placeholder="选择AI模型"
-              style={{ width: '100%' }}
-              size="large"
-              options={models.map(model => ({
-                label: `${model.modelName} (${model.provider})`,
-                value: model.modelKey
-              }))}
-            />
-          </div>
           <Button type="primary" loading={loading} className={styles.createButton} onClick={handleCreateApp} size={"large"}>创建应用</Button>
         </Card>
         

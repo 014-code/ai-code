@@ -38,7 +38,7 @@
 
 ### 背景介绍
 
-AI Code 是一个企业级智能代码生成与协作平台，旨在利用人工智能技术提升软件开发效率。随着大语言模型（LLM）技术的快速发展，我们看到了将 AI 能力与软件开发流程深度结合的巨大潜力。本项目提供了一个完整的解决方案，涵盖从代码生成、多模型支持、团队协作到积分管理的全流程功能。
+AI Code 是一个企业级智能代码生成与协作平台，旨在利用人工智能技术提升软件开发效率。随着大语言模型（LLM）技术的快速发展，我们看到了将 AI 能力与软件开发流程深度结合的巨大潜力。本项目提供了一个完整的解决方案，涵盖从代码生成、团队协作到积分管理的全流程功能。
 
 传统的代码生成工具往往只关注单一场景，缺乏企业级的权限管理、团队协作和成本控制能力。AI Code 正是为解决这些痛点而设计，我们希望构建一个既能满足个人开发者需求，又适合企业团队使用的综合性平台。
 
@@ -56,7 +56,7 @@ AI Code 适用于多种实际应用场景。对于个人开发者而言，它可
 
 ### 智能代码生成
 
-平台采用模块化的代码生成架构，支持多种代码生成策略。核心代码生成引擎基于 LangChain4j 框架构建，能够灵活适配不同的大模型提供商。用户可以通过自然语言描述需求，系统自动生成完整的代码实现。生成结果支持多文件输出，满足复杂项目的需求。同时，平台集成了代码片段搜索功能，可以在生成过程中参考已有代码库，提高代码质量和一致性。
+平台采用模块化的代码生成架构。核心代码生成引擎基于 LangChain4j 框架构建，能够灵活调用 AI 大模型。用户可以通过自然语言描述需求，系统自动生成完整的代码实现。生成结果支持多文件输出，满足复杂项目的需求。同时，平台集成了代码片段搜索功能，可以在生成过程中参考已有代码库，提高代码质量和一致性。
 
 ### 多人协作可视化编辑
 
@@ -750,43 +750,47 @@ public class RedisCacheManagerConfig {
 }
 ```
 
-**模型工厂缓存实现（Caffeine + Redis）：**
+**AI 模型服务实现：**
 
 ```java
-// 动态 AI 模型工厂（双层缓存）
+// AI 代码生成服务工厂
 @Service
 @Slf4j
-public class DynamicAiModelFactory {
+public class AiCodeGeneratorServiceFactory {
 
-    // 本地缓存（Caffeine）- 一级缓存
-    private final Cache<String, StreamingChatModel> modelCache = Caffeine.newBuilder()
-            .maximumSize(100)
-            .expireAfterWrite(Duration.ofMinutes(30))    // 写入 30 分钟后过期
-            .expireAfterAccess(Duration.ofMinutes(10))   // 访问 10 分钟后过期
-            .removalListener((key, value, cause) -> {
-                log.debug("StreamingChatModel 被移除，modelKey: {}, 原因: {}", key, cause);
-            })
-            .build();
+    @Resource(name = "streamingChatModelPrototype")
+    private StreamingChatModel streamingChatModel;
 
-    // 获取模型（带缓存）
-    public StreamingChatModel getStreamingChatModel(String modelKey) {
-        if (modelKey == null || modelKey.isBlank()) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "模型key不能为空");
-        }
+    @Resource
+    private AppService appService;
 
-        // 先查本地缓存，未命中则创建新实例
-        return modelCache.get(modelKey, key -> createStreamingChatModel(key));
-    }
+    @Resource
+    private UserPointService userPointService;
 
-    // 清除缓存
-    public void invalidateCache(String modelKey) {
-        modelCache.invalidate(modelKey);
-        log.info("已清除模型缓存: {}", modelKey);
-    }
+    @Resource
+    private CodeSnippetService codeSnippetService;
 
-    public void invalidateAllCache() {
-        modelCache.invalidateAll();
-        log.info("已清除所有模型缓存");
+    @Resource
+    private AiCodeGeneratorLogService aiCodeGeneratorLogService;
+
+    @Resource
+    private ToolExecutor toolExecutor;
+
+    /**
+     * 创建 AI 代码生成服务
+     */
+    public AiCodeGeneratorService createAiCodeGeneratorService(Long appId, Long userId, String inviteCode) {
+        return new AiCodeGeneratorServiceImpl(
+                streamingChatModel,
+                appService,
+                userPointService,
+                codeSnippetService,
+                aiCodeGeneratorLogService,
+                toolExecutor,
+                appId,
+                userId,
+                inviteCode
+        );
     }
 }
 ```
@@ -819,17 +823,13 @@ public class IpRateLimiter {
 }
 ```
 
-### 多模型支持
-
-AI Code 集成了业界主流的大语言模型，包括 OpenAI GPT 系列、阿里通义千问（DashScope）、OpenRouter 等。平台采用工厂模式设计，新增模型提供商只需实现统一接口，无需修改核心逻辑。每种模型都支持独立的配置，包括 API 地址、积分消耗比例、模型参数等。系统会自动进行模型路由，根据任务类型和成本策略选择最优模型。
-
 ### 空间协作系统
 
 空间是平台的组织核心单元，支持多种协作模式。空间管理员可以邀请成员加入，分配不同的角色权限（所有者、管理员、普通成员）。空间内的应用默认对所有成员可见，成员可以查看对话历史、修改配置、部署应用。这种设计既保证了协作的便利性，又通过角色划分维护了权限的安全边界。
 
 ### 积分消费体系
 
-为了控制 AI 接口调用成本，平台实现了完整的积分管理体系。用户通过注册、签到、邀请等方式获取积分，调用 AI 接口时按消耗扣减积分。管理员可以在后台配置不同模型的积分单价，系统自动计算每次请求的积分消耗。积分记录详细记录了每笔消费的来源和用途，用户可以清晰了解自己的积分流向。
+为了控制 AI 接口调用成本，平台实现了完整的积分管理体系。用户通过注册、签到、邀请等方式获取积分，调用 AI 接口时按固定费率扣减积分。系统自动计算每次请求的积分消耗。积分记录详细记录了每笔消费的来源和用途，用户可以清晰了解自己的积分流向。
 
 ### 应用部署能力
 
@@ -1057,7 +1057,7 @@ public class AiCodeGeneratorFacade {
      */
     public Flux<String> generateAndSaveCodeStream(String userMessage, CodeGenTypeEnum codeGenTypeEnum, 
                                                    Long appId, Consumer<String> sseCallback, 
-                                                   Long userId, User user, String modelKey) {
+                                                   Long userId, User user) {
         // 1. 参数校验
         if (codeGenTypeEnum == null) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "生成类型为空");
@@ -1779,49 +1779,28 @@ flowchart TB
         Req["前端请求 /points/estimate"]
         Ctrl["PointsController.estimateGenerationCost()"]
         
-        subgraph Base["基础积分计算"]
-            BaseFn["PointsConstants.getPointsByGenType()"]
+        subgraph Base["积分计算"]
+            BaseFn["使用固定配置计算积分"]
             
-            subgraph Mapping["生成类型与基础积分映射"]
+            subgraph Mapping["生成类型与积分映射"]
                 HTML["HTML → 5 分"]
                 MF["MULTI_FILE → 8 分"]
                 Vue["VUE_PROJECT → 15 分"]
                 React["REACT_PROJECT → 15 分"]
             end
-        end
-        
-        ModelQ{"有指定模型?"}
-        NoModel["使用基础积分"]
-        YesModel["获取模型配置"]
-        
-        subgraph ModelConfig["AiModelConfigService"]
-            GetCfg["aiModelConfigService.getByModelKey()"]
             
-            subgraph Fields["模型配置字段"]
-                Key["modelKey - 模型唯一标识"]
-                Name["modelName - 模型名称"]
-                Token["avgTokenUsage - 平均Token使用量"]
-                Points["pointsPerKToken - 每1K Token消耗积分"]
-                Quality["qualityScore - 质量系数（可选）"]
+            subgraph Fixed["固定参数"]
+                Token["预估Token: 5000"]
+                KToken["1K Token 消耗 1 分"]
+                Quality["质量系数: 1.0"]
             end
         end
         
-        subgraph Calc["AiModelConfigService.calculatePoints()"]
-            Formula1["基础积分 = ceil(tokenCount / 1000.0) × pointsPerKToken"]
-            Formula2["最终积分 = 基础积分 × qualityScore"]
-        end
-        
         subgraph Response["返回预估结果"]
-            Res["{genType, basePoints, modelKey, estimatedPoints, ...}"]
+            Res["{genType, basePoints, estimatedPoints, qualityScore, estimatedTokenUsage}"]
         end
         
-        Req --> Ctrl
-        Ctrl --> Base
-        Base --> ModelQ
-        ModelQ -- NO --> NoModel
-        ModelQ -- YES --> YesModel
-        YesModel --> GetCfg
-        GetCfg --> Formula1 --> Formula2 --> Response
+        Req --> Ctrl --> Base --> Response
     end
 
     subgraph Deduct["积分扣减流程"]
@@ -1873,42 +1852,26 @@ flowchart TB
 
 
 
-
-
-**积分计算服务：AiModelConfigService**
+**积分计算服务实现**
 
 ```java
-@Override
-public Integer calculatePoints(String modelKey, Integer tokenCount) {
-    AiModelConfig config = getByModelKey(modelKey);
-    if (config == null) {
-        throw new IllegalArgumentException("模型配置不存在: " + modelKey);
-    }
-
+public Integer calculatePoints(Integer tokenCount) {
     // 1. 计算K Token数量（向上取整）
     int kTokens = (int) Math.ceil(tokenCount / 1000.0);
 
-    // 2. 基础积分 = K Tokens × 每K Token积分
-    int basePoints = kTokens * config.getPointsPerKToken();
+    // 2. 基础积分 = K Tokens × 每K Token积分（固定费率：1分/1K Token）
+    int basePoints = kTokens * PointsConstants.DEFAULT_POINTS_PER_KTOKEN;
 
-    // 3. 应用质量系数
-    BigDecimal qualityScore = config.getQualityScore();
-    if (qualityScore != null && qualityScore.compareTo(BigDecimal.ONE) != 0) {
-        BigDecimal finalPoints = BigDecimal.valueOf(basePoints)
-                .multiply(qualityScore)
-                .setScale(0, RoundingMode.HALF_UP);
+    // 3. 应用质量系数（固定1.0）
+    BigDecimal qualityScore = BigDecimal.valueOf(PointsConstants.DEFAULT_QUALITY_SCORE);
+    BigDecimal finalPoints = BigDecimal.valueOf(basePoints)
+            .multiply(qualityScore)
+            .setScale(0, RoundingMode.HALF_UP);
 
-        log.debug("模型 {} Token消耗: {}tokens → {}K tokens, 基础: {}×{}={}, 质量系数: {}, 最终: {}",
-                modelKey, tokenCount, kTokens, kTokens, config.getPointsPerKToken(),
-                basePoints, qualityScore, finalPoints.intValue());
+    log.debug("Token消耗: {}tokens → {}K tokens, 积分: {}×{}={}",
+            tokenCount, kTokens, kTokens, PointsConstants.DEFAULT_POINTS_PER_KTOKEN, finalPoints.intValue());
 
-        return finalPoints.intValue();
-    }
-
-    log.debug("模型 {} Token消耗: {}tokens → {}K tokens, 积分: {}×{}={} (无质量系数)",
-            modelKey, tokenCount, kTokens, kTokens, config.getPointsPerKToken(), basePoints);
-
-    return basePoints;
+    return finalPoints.intValue();
 }
 ```
 
@@ -1916,7 +1879,7 @@ public Integer calculatePoints(String modelKey, Integer tokenCount) {
 
 ```java
 private void deductPointsFIFO(Long userId, Integer points, String type, String reason,
-                              Long relatedId, String modelKey, Integer tokenCount, Integer currentBalance) {
+                              Long relatedId, Integer tokenCount, Integer currentBalance) {
     // 1. 查询所有有效的积分记录（按创建时间正序）
     QueryWrapper<PointsRecord> queryWrapper = new QueryWrapper<>();
     queryWrapper.eq("userId", userId)
@@ -1964,14 +1927,13 @@ private void deductPointsFIFO(Long userId, Integer points, String type, String r
             .type(type)
             .status(PointsStatusEnum.CONSUMED.getValue())
             .reason(reason + String.format("（FIFO策略，消耗%d笔记录）", consumedRecordCount))
-            .modelKey(modelKey)
             .tokenCount(tokenCount)
             .build();
 
     pointsRecordService.save(deductRecord);
 
-    log.info("用户 {} FIFO扣减 {} 积分（模型：{}，token：{}），消耗 {} 笔记录，原余额：{} → 新余额：{}",
-            userId, points, modelKey, tokenCount, consumedRecordCount,
+    log.info("用户 {} FIFO扣减 {} 积分（token：{}），消耗 {} 笔记录，原余额：{} → 新余额：{}",
+            userId, points, tokenCount, consumedRecordCount,
             originalBalance, currentBalance - points);
 }
 ```
@@ -1982,7 +1944,6 @@ private void deductPointsFIFO(Long userId, Integer points, String type, String r
 @GetMapping("/estimate")
 public BaseResponse<Map<String, Object>> estimateGenerationCost(
         @RequestParam(required = false, defaultValue = "html") String genType,
-        @RequestParam(required = false) String modelKey,
         HttpServletRequest request) {
 
     Map<String, Object> result = new HashMap<>();
@@ -1993,40 +1954,16 @@ public BaseResponse<Map<String, Object>> estimateGenerationCost(
     int basePoints = PointsConstants.getPointsByGenType(genType);
     result.put("basePoints", basePoints);
 
-    // 2. 如果指定了模型，使用模型配置计算
-    if (modelKey != null && !modelKey.isEmpty()) {
-        AiModelConfig modelConfig = aiModelConfigService.getByModelKey(modelKey);
-        if (modelConfig != null) {
-            result.put("modelKey", modelKey);
-            result.put("modelName", modelConfig.getModelName());
-            result.put("pointsPerKToken", modelConfig.getPointsPerKToken());
-            result.put("qualityScore", modelConfig.getQualityScore());
+    // 2. 使用固定配置计算预估积分
+    Integer estimatedTokenUsage = PointsConstants.DEFAULT_ESTIMATED_TOKEN_USAGE;
+    result.put("estimatedTokenUsage", estimatedTokenUsage);
 
-            Integer estimatedTokenUsage = modelConfig.getAvgTokenUsage();
-            result.put("estimatedTokenUsage", estimatedTokenUsage);
-
-            // 3. 计算预估积分
-            if (estimatedTokenUsage != null && estimatedTokenUsage > 0) {
-                Integer estimatedPoints = aiModelConfigService.calculatePoints(
-                        modelKey, estimatedTokenUsage);
-                result.put("estimatedPoints", estimatedPoints);
-            } else {
-                result.put("estimatedPoints", basePoints);
-                result.put("warning", "模型未配置平均Token使用量，使用基础积分");
-            }
-
-            // 4. 质量系数说明
-            BigDecimal qualityScore = modelConfig.getQualityScore();
-            if (qualityScore != null) {
-                result.put("qualityScoreDescription", getQualityScoreDescription(qualityScore));
-            }
-        } else {
-            result.put("estimatedPoints", basePoints);
-            result.put("warning", "模型配置不存在，使用基础积分");
-        }
-    } else {
-        result.put("estimatedPoints", basePoints);
-    }
+    // 3. 计算预估积分
+    Integer estimatedPoints = calculatePoints(estimatedTokenUsage);
+    result.put("estimatedPoints", estimatedPoints);
+    result.put("qualityScore", PointsConstants.DEFAULT_QUALITY_SCORE);
+    result.put("qualityScoreDescription", getQualityScoreDescription(
+            BigDecimal.valueOf(PointsConstants.DEFAULT_QUALITY_SCORE)));
 
     return ResultUtils.success(result);
 }
@@ -2842,14 +2779,13 @@ ai-code/
 │   │   │   ├── ErrorCode.java
 │   │   │   └── GlobalExceptionHandler.java
 │   │   │
-│   │   └── ai/                              # AI 能力模块
-│   │       ├── core/                        # 核心引擎
-│   │       │   ├── AiCodeGeneratorFacade.java
-│   │       │   └── StreamHandlerExecutor.java
-│   │       ├── factory/                     # 工厂模式
-│   │       │   ├── AiCodeGeneratorServiceFactory.java
-│   │       │   └── DynamicAiModelFactory.java
-│   │       ├── service/                     # AI 服务
+│   │       └── ai/                              # AI 能力模块
+│   │           ├── core/                        # 核心引擎
+│   │           │   ├── AiCodeGeneratorFacade.java
+│   │           │   └── StreamHandlerExecutor.java
+│   │           ├── factory/                     # 工厂模式
+│   │           │   └── AiCodeGeneratorServiceFactory.java
+│   │           ├── service/                     # AI 服务
 │   │       │   ├── AiCodeGeneratorService.java
 │   │       │   └── AppNameService.java
 │   │       ├── tool/                        # 工具集
@@ -2930,7 +2866,6 @@ ai-code-frontend/
 │   │   ├── Account/
 │   │   │   └── Center/                      # 个人中心
 │   │   ├── Admin/                           # 管理后台
-│   │   │   ├── AiModelConfig/               # AI模型配置
 │   │   │   ├── App/                         # 应用管理
 │   │   │   ├── ChatHistory/                 # 对话历史管理
 │   │   │   ├── CodeSnippet/                 # 代码片段管理
@@ -2959,7 +2894,6 @@ ai-code-frontend/
 │   │
 │   ├── services/                            # API 服务
 │   │   └── backend/                         # 后端 API
-│   │       ├── aiModelConfigController.ts
 │   │       ├── appController.ts
 │   │       ├── chatHistoryController.ts
 │   │       ├── inviteController.ts
@@ -3078,8 +3012,7 @@ Content-Type: application/json
 
 {
     "appId": 123,
-    "message": "帮我写一个排序算法",
-    "modelKey": "gpt-4"
+    "message": "帮我写一个排序算法"
 }
 ```
 
@@ -3108,7 +3041,7 @@ GET /api/userPoint/user/points
 #### 获取预估消耗
 
 ```http
-GET /api/points/estimate?modelKey=gpt-4
+GET /api/points/estimate?genType=html
 ```
 
 Response:
@@ -3117,13 +3050,12 @@ Response:
 {
     "code": 0,
     "data": {
-        "basePoints": 10,
-        "modelKey": "gpt-4",
-        "modelName": "GPT-4",
+        "genType": "html",
+        "basePoints": 5,
         "qualityScore": 1.0,
         "qualityScoreDescription": "标准质量",
-        "estimatedTokenUsage": 1000,
-        "estimatedPoints": 10
+        "estimatedTokenUsage": 5000,
+        "estimatedPoints": 5
     }
 }
 ```
@@ -3197,7 +3129,7 @@ GET /api/deploy/{deployKey}
 项目提供了预设的 Grafana 面板，包括：
 
 1. **应用概览**：请求量、响应时间、错误率
-2. **AI 模型使用**：各模型调用量、Token 消耗、积分消耗
+2. **AI 调用统计**：Token 消耗、积分消耗、响应时间
 3. **系统资源**：CPU、内存、磁盘、网络
 4. **数据库查询**：慢查询统计、连接池状态
 5. **业务指标**：用户活跃度、应用创建量、部署量
@@ -3386,20 +3318,11 @@ rm -rf node_modules package-lock.json
 npm install
 ```
 
-### Q4: 如何配置新的 AI 模型？
-
-在管理后台的「AI 模型配置」页面添加新模型，或直接插入数据库：
-
-```sql
-INSERT INTO ai_model_config (modelKey, modelName, provider, baseUrl, pointsPerKToken, isEnabled)
-VALUES ('new-model', '新模型', 'openai', 'https://api.openai.com/v1', 10, 1);
-```
-
-### Q5: 积分不足怎么办？
+### Q4: 积分不足怎么办？
 
 管理员可以在后台手动发放积分，或检查是否正确配置了积分获取规则。
 
-### Q6: 部署后无法访问？
+### Q5: 部署后无法访问？
 
 1. 检查 Nginx 配置是否正确
 2. 检查防火墙是否开放端口

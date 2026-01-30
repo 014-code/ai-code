@@ -1,16 +1,15 @@
-import { featuredList } from '@/api/app'
-import { AppQueryParams } from '@/api/params/appParams'
-import { AppVO } from '@/api/vo/app'
+import {featuredList} from '@/api/app'
+import {AppVO} from '@/api/vo/app'
 import AppCard from '@/components/ui/AppCard'
 import AppCardSkeleton from '@/components/skeleton/AppCardSkeleton'
 import AppWebView from '@/components/ui/AppWebView'
-import { getStaticPreviewUrl } from '@/utils/deployUrl'
-import { usePagination } from '@/hooks/usePagination'
-import React, { useEffect, useState } from 'react'
-import { ActivityIndicator, FlatList, RefreshControl, Text, View } from 'react-native'
-import { SearchBar } from 'react-native-elements'
-import { useRouter } from 'expo-router'
-import { useTheme } from '@/hooks/useTheme'
+import {getStaticPreviewUrl} from '@/utils/deployUrl'
+import {usePagination} from '@/hooks/usePagination'
+import React, {useEffect, useState} from 'react'
+import {ActivityIndicator, FlatList, RefreshControl, Text, View} from 'react-native'
+import {SearchBar} from 'react-native-elements'
+import {useRouter} from 'expo-router'
+import {useTheme} from '@/hooks/useTheme'
 import styles from '@/styles/list.less'
 
 /**
@@ -24,25 +23,25 @@ export default function List() {
      * 用于在应用中进行页面跳转
      */
     const router = useRouter()
-    
+
     /**
      * 主题管理钩子
      * 获取当前主题色，用于动态设置UI元素颜色
      */
-    const { themeColor } = useTheme()
-    
+    const {themeColor} = useTheme()
+
     /**
      * 搜索关键词状态
      * 存储用户输入的搜索关键词
      */
     const [searchKeyword, setSearchKeyword] = useState<string>('')
-    
+
     /**
      * WebView显示状态
      * 控制是否显示应用预览的WebView
      */
     const [showWebView, setShowWebView] = useState<boolean>(false)
-    
+
     /**
      * WebView URL状态
      * 存储当前预览的应用URL
@@ -52,7 +51,7 @@ export default function List() {
     /**
      * 分页数据管理
      * 使用统一的分页hook管理应用列表数据
-     * 
+     *
      * 配置项：
      * - pageSize: 每页显示10条数据
      * - fetchFunction: 使用featuredList接口获取数据
@@ -157,7 +156,7 @@ export default function List() {
             /**
              * 跳转到对话页面，传递应用ID参数
              */
-            router.push({ pathname: '/code/chat', params: { appId: app.id.toString() } })
+            router.push({pathname: '/code/chat', params: {appId: app.id.toString()}})
         } else {
             /**
              * 应用ID不存在，显示提示
@@ -175,8 +174,8 @@ export default function List() {
         /**
          * 创建3个骨架屏组件
          */
-        const skeletons = Array.from({ length: 3 }, (_, index) => (
-            <AppCardSkeleton key={index} />
+        const skeletons = Array.from({length: 3}, (_, index) => (
+            <AppCardSkeleton key={index}/>
         ))
         return <View style={styles.listContent}>{skeletons}</View>
     }
@@ -188,7 +187,7 @@ export default function List() {
      * @param index - 应用在列表中的索引
      * @returns 应用卡片组件
      */
-    const renderAppCard = ({ item, index }: { item: AppVO, index: number }) => {
+    const renderAppCard = ({item, index}: { item: AppVO, index: number }) => {
         return (
             <AppCard
                 app={item}
@@ -230,7 +229,7 @@ export default function List() {
         if (!loading || appData.length === 0) return null
         return (
             <View style={styles.footer}>
-                <ActivityIndicator size="small" color={themeColor} />
+                <ActivityIndicator size="small" color={themeColor}/>
                 <Text style={styles.footerText}>加载中...</Text>
             </View>
         )
