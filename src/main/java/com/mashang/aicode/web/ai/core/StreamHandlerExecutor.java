@@ -23,6 +23,9 @@ public class StreamHandlerExecutor {
     @Resource
     private JsonMessageStreamHandler jsonMessageStreamHandler;
 
+    @Resource
+    private SimpleTextStreamHandler simpleTextStreamHandler;
+
     /**
      * 创建流处理器并处理聊天历史记录
      *
@@ -48,7 +51,7 @@ public class StreamHandlerExecutor {
             }
             case HTML, MULTI_FILE -> {
                 log.info("Using SimpleTextStreamHandler for {}, appId: {}", codeGenType, appId);
-                yield new SimpleTextStreamHandler().handle(originFlux, chatHistoryService, appId, loginUser);
+                yield simpleTextStreamHandler.handle(originFlux, chatHistoryService, appId, loginUser, codeGenType);
             }
         };
     }

@@ -9,11 +9,14 @@ import com.mashang.aicode.web.ai.model.message.*;
 import com.mashang.aicode.web.ai.tool.BaseTool;
 import com.mashang.aicode.web.ai.tool.ToolManager;
 import com.mashang.aicode.web.constant.AppConstant;
+import com.mashang.aicode.web.constant.PointsConstants;
 import com.mashang.aicode.web.model.entity.App;
 import com.mashang.aicode.web.model.entity.User;
 import com.mashang.aicode.web.model.enums.ChatHistoryMessageTypeEnum;
+import com.mashang.aicode.web.model.enums.PointsTypeEnum;
 import com.mashang.aicode.web.service.AppService;
 import com.mashang.aicode.web.service.ChatHistoryService;
+import com.mashang.aicode.web.service.UserPointService;
 
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +49,9 @@ public class JsonMessageStreamHandler {
     @Resource
     @Lazy
     private AppService appService;
+
+    @Resource
+    private UserPointService userPointService;
 
 
 
@@ -85,20 +91,31 @@ public class JsonMessageStreamHandler {
                 })
                 .doOnComplete(() -> {
                     log.info("JsonMessageStreamHandler 流完成, appId: {}", appId);
-                    // 流式响应完成后，添加 AI 消息到对话历史
                     String aiResponse = chatHistoryStringBuilder.toString();
                     chatHistoryService.addChatMessage(appId, aiResponse, ChatHistoryMessageTypeEnum.AI.getValue(), loginUser.getId());
-                    // 异步构造 Vue/React 项目
                     String projectDirName = resolveProjectDirName(appId);
                     Path projectPath = Paths.get(AppConstant.CODE_OUTPUT_ROOT_DIR, projectDirName);
                     projectBuilder.buildProjectAsync(projectPath.toString());
+                    deductPointsAfterGeneration(appId, loginUser.getId());
                 })
                 .doOnError(error -> {
-                    // 如果AI回复失败，也要记录错误消息
                     log.error("AI 流处理失败，appId: {}, error: {}", appId, error.getMessage(), error);
                     String errorMessage = "AI回复失败: " + error.getMessage();
                     chatHistoryService.addChatMessage(appId, errorMessage, ChatHistoryMessageTypeEnum.AI.getValue(), loginUser.getId());
+                    deductPointsAfterGeneration(appId, loginUser.getId());
                 });
+    }
+
+    private void deductPointsAfterGeneration(long appId, Long userId) {
+        try {
+            App app = appService.getById(appId);
+            String codeGenType = app != null ? app.getCodeGenType() : null;
+            int points = PointsConstants.getPointsByGenType(codeGenType);
+            userPointService.deductPoints(userId, points, PointsTypeEnum.GENERATE.getValue(), "代码生成消费", null);
+            log.info("[积分扣减] 用户 {} 生成代码完成，扣减 {} 积分，类型: {}", userId, points, codeGenType);
+        } catch (Exception e) {
+            log.error("[积分扣减失败] 用户 {}, 错误: {}", userId, e.getMessage(), e);
+        }
     }
 
     private String resolveProjectDirName(long appId) {
