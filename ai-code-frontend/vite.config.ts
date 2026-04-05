@@ -38,7 +38,7 @@ export default defineConfig({
         changeOrigin: true,
       },
       '/deploy/': {
-        target: 'http://127.0.0.1:8080',
+        target: '172.26.129.176:8080',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/deploy/, ''),
       },

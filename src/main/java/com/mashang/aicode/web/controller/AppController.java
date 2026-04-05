@@ -215,10 +215,8 @@ public class AppController {
         App app = appService.getById(id);
         ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR);
 
-        // 校验权限（只能查看自己的应用或精选应用）
-        if (!app.getUserId().equals(loginUser.getId()) && app.getPriority() != 1) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
-        }
+        // 校验权限（应用所有者、精选应用、或空间成员可以访问）
+        checkAppAccessPermission(id, loginUser);
         // 浏览量增加
         App updateApp = new App();
         updateApp.setId(app.getId());

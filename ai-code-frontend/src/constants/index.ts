@@ -7,7 +7,10 @@
 export const APP_NAME = 'AI Code Generator';
 
 // API基础路径
-export const API_BASE_URL = '/api';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+
+// WebSocket基础路径
+export const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || '';
 
 // 生产环境后端主机
 export const BACKEND_HOST_PROD = "https://xxx";

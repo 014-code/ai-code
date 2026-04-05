@@ -54,6 +54,7 @@ public class WsHandshakeInterceptor implements HandshakeInterceptor {
     public boolean beforeHandshake(@NotNull ServerHttpRequest request, @NotNull ServerHttpResponse response, @NotNull WebSocketHandler wsHandler, @NotNull Map<String, Object> attributes) {
         if (request instanceof ServletServerHttpRequest) {
             HttpServletRequest servletRequest = ((ServletServerHttpRequest) request).getServletRequest();
+            log.info("请求参数aa: {}", servletRequest.getQueryString());
             // 获取请求参数
             String appId = servletRequest.getParameter("appId");
             if (StrUtil.isBlank(appId)) {

@@ -68,11 +68,8 @@ const UserProfilePage: React.FC = () => {
      * 获取用户积分信息
      */
     const fetchUserPoint = () => {
-        console.log('开始获取用户积分...');
         getCurrentUserPoint()
             .then((response) => {
-                console.log('获取用户积分响应:', response);
-                console.log('用户积分数据:', response.data);
                 setUserPoint(response.data);
             })
             .catch((error) => {

@@ -3,6 +3,7 @@
  * 提供用户登录功能，支持账户密码和邮箱密码登录方式
  */
 import Footer from '@/components/Footer';
+import Logo from '@/components/Logo';
 import { userLogin } from '@/services/backend/userController';
 import { LockOutlined, MailOutlined, UserOutlined } from '@ant-design/icons';
 import { LoginForm, ProFormText } from '@ant-design/pro-components';
@@ -47,7 +48,6 @@ const Login: React.FC = () => {
       
       if (token) {
         localStorage.setItem('satoken', token);
-        console.log('Token 已保存:', token);
       }
       
       setUserInfo(res.data);
@@ -74,7 +74,7 @@ const Login: React.FC = () => {
             minWidth: 280,
             maxWidth: '75vw',
           }}
-          logo={<img alt="logo" style={{ height: '100%' }} src="/logo.png" />}
+          logo={<Logo size={48} />}
           title="ai零代码生成平台"
           subTitle={'快速开发属于自己的前端项目'}
           initialValues={{

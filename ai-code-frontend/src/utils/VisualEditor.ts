@@ -165,7 +165,6 @@ export class VisualEditor {
    */
   handleIframeMessage(event: MessageEvent) {
     const { type, data } = event.data;
-    console.log("我是type", type, data)
     switch (type) {
       case 'ELEMENT_SELECTED':
         // 处理元素选中事件
@@ -504,14 +503,13 @@ export class VisualEditor {
                  highlightElement(event.data.elementInfo, event.data.userName);
                }
                break;
-             case 'CLEAR_HIGHLIGHT':
-               clearHighlightEffect();
-               break;
-             default:
-               console.log('未处理的消息类型:', type, event.data);
-               break;
-           }
-         });
+              case 'CLEAR_HIGHLIGHT':
+                clearHighlightEffect();
+                break;
+              default:
+                break;
+            }
+          });
 
          /**
           * 高亮显示元素（用于协同编辑）

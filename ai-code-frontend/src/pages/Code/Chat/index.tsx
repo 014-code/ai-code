@@ -26,6 +26,7 @@ import {estimateGenerationCost} from "@/services/backend/pointsController";
 import ReactMarkdown from 'react-markdown';
 import {getStaticPreviewUrl} from "@/constants/proUrlOperation";
 import {CODE_GEN_TYPE_CONFIG} from "@/constants/codeGenTypeEnum";
+import {API_BASE_URL} from "@/constants";
 import {VisualEditor, type ElementInfo} from '@/utils/VisualEditor';
 import VisualEditorPanel from "@/components/VisualEditor";
 import Logo from "@/components/Logo";
@@ -89,7 +90,28 @@ const ChatPage: React.FC = () => {
     const eventSourceRef = useRef<EventSource | null>(null);  // SSE连接引用
     const sendingMessageRef = useRef<boolean>(false);  // 使用 ref 来防止重复发送，避免 React 状态更新的异步问题
     const messageLockRef = useRef<boolean>(false);  // 使用全局锁来防止重复发送
-    const otherUserAiResponseRef = useRef<Map<number, string>>(new Map());  // 跟踪其他用户的AI回复片段
+    const otherUserAiResponseRef = useRef<Map<string, string>>(new Map());  // 跟踪其他用户的AI回复片段
+    const infiniteMessagesRef = useRef<API.ChatHistoryVO[]>([]);  // 保持最新消息快照，避免 WebSocket 回调闭包拿到旧状态
+
+    const dedupeAiMessages = (messageList: API.ChatHistoryVO[]) => {
+        const seenAiContent = new Set<string>();
+        return messageList.filter((msg) => {
+            if (msg.messageType !== 'ai') {
+                return true;
+            }
+            const content = (msg.messageContent || '').trim();
+            if (!content) {
+                return true;
+            }
+            const senderId = msg.user?.id ?? 'ai';
+            const key = `${senderId}::${content}`;
+            if (seenAiContent.has(key)) {
+                return false;
+            }
+            seenAiContent.add(key);
+            return true;
+        });
+    };
 
     // 使用无限滚动hook
     const {
@@ -118,7 +140,18 @@ const ChatPage: React.FC = () => {
                     new Date(a.createTime!).getTime() - new Date(b.createTime!).getTime()
                 );
                 setLastCreateTime(sortedNewMessages[0].createTime);
-                return sortedNewMessages;
+                const existedAiKeys = new Set(
+                    infiniteMessagesRef.current
+                        .filter(msg => msg.messageType === 'ai')
+                        .map(msg => `${msg.user?.id ?? 'ai'}::${(msg.messageContent || '').trim()}`)
+                );
+                return dedupeAiMessages(sortedNewMessages).filter(msg => {
+                    if (msg.messageType !== 'ai') {
+                        return true;
+                    }
+                    const key = `${msg.user?.id ?? 'ai'}::${(msg.messageContent || '').trim()}`;
+                    return !existedAiKeys.has(key);
+                });
             }
 
             return [];
@@ -127,6 +160,10 @@ const ChatPage: React.FC = () => {
         threshold: 100,
         loadAtTop: true,  // 在顶部加载更多
     });
+
+    useEffect(() => {
+        infiniteMessagesRef.current = infiniteMessages;
+    }, [infiniteMessages]);
 
     // 初始化页面数据
     useEffect(() => {
@@ -242,21 +279,21 @@ const ChatPage: React.FC = () => {
     const loadLatestChatHistory = () => {
         if (!appId) return;
 
-        console.log('loadLatestChatHistory 被调用，appId:', appId);
-
         listLatestChatHistoryVo({appId: appId}).then(res => {
             // 按时间排序消息
-            const sortedMessages = [...res.data].sort((a, b) =>
+            const sortedMessages = dedupeAiMessages([...res.data].sort((a, b) =>
                 new Date(a.createTime!).getTime() - new Date(b.createTime!).getTime()
-            );
+            ));
             setInfiniteData(sortedMessages);
+            if (sortedMessages.length > 0) {
+                setLastCreateTime(sortedMessages[0].createTime);
+            }
 
             setIsInitialLoad(false);
             // 如果没有消息且是应用所有者，自动发送初始消息
             // 只有在没有发送过初始消息时才自动发送
             if (sortedMessages.length === 0 && appInfo && loginUser &&
                 appInfo.userId === loginUser.id && !appInfo.deployKey && !hasSentInitMessage) {
-                console.log('准备自动发送初始消息');
                 autoSendInitMessage();
             }
         }).catch(error => {
@@ -293,11 +330,8 @@ const ChatPage: React.FC = () => {
 
         // 检查是否已经发送过初始消息
         if (hasSentInitMessage) {
-            console.log('已经发送过初始消息，跳过');
             return;
         }
-
-        console.log('准备发送初始消息，内容:', appInfo.initPrompt);
 
         // 设置标志，防止重复发送
         setHasSentInitMessage(true);
@@ -317,7 +351,7 @@ const ChatPage: React.FC = () => {
         }
         setDownloading(true);
 
-        fetch(`http://localhost:8123/api/app/download/${appId}`, {
+        fetch(`${API_BASE_URL}/app/download/${appId}`, {
             method: 'GET',
             credentials: 'include',
         }).then(response => {
@@ -362,8 +396,6 @@ const ChatPage: React.FC = () => {
      * @returns Promise
      */
     const handleSendMessage = (customMessage?: string, isAutoSend = false): Promise<void> => {
-        console.log('handleSendMessage 被调用，isAutoSend:', isAutoSend, 'sendingMessageRef.current:', sendingMessageRef.current, 'messageLockRef.current:', messageLockRef.current);
-
         return new Promise((resolve) => {
             if (!appId) {
                 message.error('应用不存在');
@@ -372,7 +404,6 @@ const ChatPage: React.FC = () => {
 
             // 检查是否正在发送消息，防止重复发送（即使是自动发送也要检查）
             if (sendingMessageRef.current) {
-                console.log('正在发送消息，忽略本次请求');
                 if (!isAutoSend) {
                     message.warning('正在发送消息，请稍候');
                 }
@@ -381,7 +412,6 @@ const ChatPage: React.FC = () => {
 
             // 检查全局锁，防止重复发送（即使是自动发送也要检查）
             if (messageLockRef.current) {
-                console.log('全局锁已开启，忽略本次请求');
                 return;
             }
 
@@ -402,7 +432,6 @@ const ChatPage: React.FC = () => {
 
             // 设置全局锁
             messageLockRef.current = true;
-            console.log('设置发送标志为 true，全局锁已开启');
 
             // 构建消息内容，包含选中的元素信息
             let finalMessageContent = messageContent;
@@ -412,7 +441,6 @@ const ChatPage: React.FC = () => {
 
             // 创建用户消息ID（使用时间戳 + 随机数，确保唯一性）
             const userMessageId = Date.now() + Math.floor(Math.random() * 1000000);
-            console.log('创建用户消息，ID:', userMessageId, '内容:', finalMessageContent);
 
             // 创建用户消息
             const userMessage: API.ChatHistoryVO = {
@@ -435,11 +463,10 @@ const ChatPage: React.FC = () => {
 
             // 一次性添加用户消息和AI消息到列表
             const aiMessageId = Date.now() + Math.floor(Math.random() * 1000000) + 1000000;
-            console.log('创建AI消息占位符，ID:', aiMessageId);
 
             // 清除当前用户的 AI 回复累积器
             if (loginUser?.id) {
-                otherUserAiResponseRef.current.delete(loginUser.id);
+                otherUserAiResponseRef.current.delete(String(loginUser.id));
             }
 
             const aiMessage: API.ChatHistoryVO = {
@@ -460,13 +487,11 @@ const ChatPage: React.FC = () => {
             }
 
             // 构建API请求URL
-            const isDev = import.meta.env.DEV;
-            const baseURL = isDev ? 'http://localhost:8123/api' : '/api';
             const params = new URLSearchParams({
                 appId: appId,
                 message: finalMessageContent,
             });
-            const url = `${baseURL}/app/chat/gen/code?${params}`;
+            const url = `${API_BASE_URL}/app/chat/gen/code?${params}`;
 
             // 流式处理
             let closed = false;
@@ -493,7 +518,6 @@ const ChatPage: React.FC = () => {
                 setIsSendingMessage(false);
                 sendingMessageRef.current = false;
                 messageLockRef.current = false;
-                console.log('重置发送标志和全局锁');
                 message.error('生成失败，请重试');
             };
 
@@ -502,14 +526,12 @@ const ChatPage: React.FC = () => {
 
             // 连接建立成功
             eventSourceRef.current.onopen = () => {
-                console.log('SSE 连接已建立');
                 // 不要在这里设置 setLoading(false)，保持 loading 状态，直到 AI 生成完成
                 // setLoading(false);
                 setIsStreaming(true);
                 setIsSendingMessage(false);
                 sendingMessageRef.current = false;
                 messageLockRef.current = false;
-                console.log('重置发送标志和全局锁');
             };
 
             // 接收消息
@@ -597,7 +619,6 @@ const ChatPage: React.FC = () => {
                     setIsSendingMessage(false);
                     sendingMessageRef.current = false;
                     messageLockRef.current = false;
-                    console.log('重置发送标志和全局锁');
 
                     // 更新应用信息并检查网站状态
                     setTimeout(async () => {
@@ -685,7 +706,6 @@ const ChatPage: React.FC = () => {
             setIsSendingMessage(false);
             sendingMessageRef.current = false;
             messageLockRef.current = false;
-            console.log('重置发送标志和全局锁');
             message.success('已取消生成');
         } catch (error) {
             message.error('取消失败：' + (error.message || '未知错误'));
@@ -817,9 +837,7 @@ const ChatPage: React.FC = () => {
 
         switch (data.type) {
             case NotificationTypeEnum.INFO:
-                console.log('收到INFO消息:', data);
                 if (data.onlineUsers) {
-                    console.log('设置在线用户列表:', data.onlineUsers);
                     setOnlineUsers(data.onlineUsers);
                 }
                 if (data.currentEditingUser) {
@@ -856,46 +874,49 @@ const ChatPage: React.FC = () => {
                 }
                 break;
 
-            case InteractionActionEnum.SEND_MESSAGE:
-                if (data.user && data.user.id !== loginUser?.id) {
-                    console.log('收到其他用户消息:', data.user);
-                    // 清除该用户的 AI 回复累积器
-                    if (data.user.id) {
-                        otherUserAiResponseRef.current.delete(data.user.id);
-                    }
-                    // 添加其他用户的消息到消息列表
-                    const otherUserMessage: API.ChatHistoryVO = {
-                        id: Date.now(),
-                        appId: appId,
-                        messageType: 'user',
-                        messageContent: data.message || '',
-                        createTime: new Date().toISOString(),
-                        user: data.user
-                    };
-                    console.log('添加的消息:', otherUserMessage);
-                    addData([otherUserMessage]);
+            case InteractionActionEnum.SEND_MESSAGE: {
+                const senderId = data.user?.id;
+                const isCurrentUser = senderId && loginUser?.id && String(senderId) === String(loginUser.id);
+                if (isCurrentUser) {
+                    break;
                 }
+                // 清除该用户的 AI 回复累积器
+                if (senderId) {
+                    otherUserAiResponseRef.current.delete(String(senderId));
+                }
+                // 添加其他用户的消息到消息列表
+                const otherUserMessage: API.ChatHistoryVO = {
+                    id: Date.now() + Math.floor(Math.random() * 1000000),
+                    appId: appId,
+                    messageType: 'user',
+                    messageContent: data.message || '',
+                    createTime: new Date().toISOString(),
+                    user: data.user
+                };
+                addData([otherUserMessage], false);
                 break;
+            }
 
-            case InteractionActionEnum.AI_RESPONSE:
-                if (data.user && data.user.id !== loginUser?.id) {
-                    console.log('收到其他用户的AI回复片段:', data.user, data.message);
-
-                    // 获取或创建该用户的 AI 回复累积器
-                    const userId = data.user.id;
-                    let accumulatedMessage = otherUserAiResponseRef.current.get(userId);
+            case InteractionActionEnum.AI_RESPONSE: {
+                const senderId = data.user?.id;
+                const isCurrentUser = senderId && loginUser?.id && String(senderId) === String(loginUser.id);
+                if (!senderId || isCurrentUser) {
+                    break;
+                }
+                // 获取或创建该用户的 AI 回复累积器
+                const userId = String(senderId);
+                let accumulatedMessage = otherUserAiResponseRef.current.get(userId);
 
                     if (!accumulatedMessage) {
                         // 第一次收到该用户的 AI 回复，创建新消息
                         const aiResponseMessage: API.ChatHistoryVO = {
-                            id: Date.now(),
+                            id: Date.now() + Math.floor(Math.random() * 1000000),
                             appId: appId,
                             messageType: 'ai',
                             messageContent: data.message || '',
                             createTime: new Date().toISOString(),
                             user: data.user
                         };
-                        console.log('创建新的AI回复消息:', aiResponseMessage);
                         addData([aiResponseMessage], false);  // 新消息添加到末尾
                         // 保存消息引用，用于后续更新
                         otherUserAiResponseRef.current.set(userId, data.message || '');
@@ -903,10 +924,10 @@ const ChatPage: React.FC = () => {
                         // 累积 AI 回复片段，更新最后一个消息
                         const newMessage = accumulatedMessage + (data.message || '');
                         otherUserAiResponseRef.current.set(userId, newMessage);
-                        const newMessages = [...infiniteMessages];
+                        const newMessages = [...infiniteMessagesRef.current];
                         // 找到最后一个该用户的 AI 消息并更新
                         for (let i = newMessages.length - 1; i >= 0; i--) {
-                            if (newMessages[i].user?.id === userId && newMessages[i].messageType === 'ai') {
+                            if (String(newMessages[i].user?.id) === userId && newMessages[i].messageType === 'ai') {
                                 newMessages[i] = {
                                     ...newMessages[i],
                                     messageContent: newMessage
@@ -916,8 +937,8 @@ const ChatPage: React.FC = () => {
                         }
                         setInfiniteData(newMessages);
                     }
-                }
                 break;
+            }
 
             case InteractionActionEnum.HOVER_ELEMENT:
                 if (data.user && data.user.id !== loginUser?.id) {
@@ -1177,7 +1198,6 @@ const ChatPage: React.FC = () => {
 
                             {/* 消息列表 */}
                             {infiniteMessages.map(msg => {
-                                console.log('渲染消息:', msg);
                                 const isCurrentUserMessage = msg.messageType === 'user' && (!msg.user || msg.user.id === loginUser?.id);
                                 const userAvatar = msg.user?.userAvatar || loginUser?.userAvatar;
                                 const userName = msg.user?.userName || loginUser?.userName;

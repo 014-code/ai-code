@@ -101,6 +101,9 @@ sequenceDiagram
     B-->>A: 11. 释放编辑锁
 ```
 
+示例：
+![img.png](img.png)
+
 **核心代码实现：**
 
 ```java

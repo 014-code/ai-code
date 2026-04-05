@@ -3,6 +3,7 @@
  * 提供用户注册功能，支持账户密码注册方式
  */
 import Footer from '@/components/Footer';
+import Logo from '@/components/Logo';
 import {userRegister, userRegisterByEmail, sendEmailCode} from '@/services/backend/userController';
 import {LockOutlined, UserOutlined, MailOutlined} from '@ant-design/icons';
 import {LoginForm, ProFormText} from '@ant-design/pro-components';
@@ -121,7 +122,7 @@ const UserRegisterPage: React.FC = () => {
                         minWidth: 280,
                         maxWidth: '75vw',
                     }}
-                    logo={<img alt="logo" style={{height: '100%'}} src="/logo.svg"/>}
+                    logo={<Logo size={48} />}
                     title="ai零代码平台 - 注册"
                     initialValues={{
                         autoLogin: true,

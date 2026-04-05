@@ -97,7 +97,6 @@ const BasicLayout = () => {
 
   return (
     <ProLayout
-      logo={<Logo size={32} />}
       title={defaultSettings.title}
       layout={defaultSettings.layout}
       navTheme={defaultSettings.navTheme}
@@ -125,6 +124,7 @@ const BasicLayout = () => {
       }}
       footerRender={() => <Footer />}
       {...defaultSettings}
+      logo={<Logo size={40} />}
     >
       <Outlet />
     </ProLayout>

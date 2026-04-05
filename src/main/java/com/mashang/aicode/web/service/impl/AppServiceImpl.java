@@ -74,6 +74,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Resource
     private ScreenshotService screenshotService;
+    @Resource
+    private SpaceUserService spaceUserService;
     @Autowired
     private GenerationValidationService generationValidationService;
     @Autowired
@@ -361,7 +363,16 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
 
         if (!app.getUserId().equals(loginUser.getId())) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限部署该应用");
+            boolean isSpaceMember = false;
+            if (app.getSpaceId() != null) {
+                QueryWrapper queryWrapper = new QueryWrapper();
+                queryWrapper.eq("spaceId", app.getSpaceId());
+                queryWrapper.eq("userId", loginUser.getId());
+                isSpaceMember = spaceUserService.count(queryWrapper) > 0;
+            }
+            if (!isSpaceMember) {
+                throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限部署该应用");
+            }
         }
 
         String deployKey = app.getDeployKey();
